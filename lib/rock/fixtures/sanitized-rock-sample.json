@@ -1,0 +1,193 @@
+{
+  "fixtureVersion": 1,
+  "generatedAt": "2026-04-17T00:00:00.000Z",
+  "sanitizer": "hand-authored-demo-data",
+  "notes": [
+    "Contains fake records only.",
+    "Preserves split gifts, household/campus/group relationships, and recurring gift status shapes without real donor PII."
+  ],
+  "people": [
+    {
+      "fixtureId": "person_demo_001",
+      "sourceMetadata": {
+        "rockId": 910001,
+        "rockGuid": "00000000-0000-4000-8000-000000910001",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-16T18:30:00.000Z"
+      },
+      "primaryAliasId": 915001,
+      "givenName": "Demo",
+      "familyName": "Donor",
+      "email": "demo.donor@example.test",
+      "campusFixtureId": "campus_central",
+      "householdFixtureId": "household_demo_001",
+      "isActive": true
+    },
+    {
+      "fixtureId": "person_demo_002",
+      "sourceMetadata": {
+        "rockId": 910002,
+        "rockGuid": "00000000-0000-4000-8000-000000910002",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": null
+      },
+      "primaryAliasId": 915002,
+      "givenName": "Sample",
+      "familyName": "Member",
+      "email": null,
+      "campusFixtureId": "campus_central",
+      "householdFixtureId": "household_demo_001",
+      "isActive": true
+    }
+  ],
+  "households": [
+    {
+      "fixtureId": "household_demo_001",
+      "sourceMetadata": {
+        "rockId": 920001,
+        "rockGuid": "00000000-0000-4000-8000-000000920001",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-16T19:00:00.000Z"
+      },
+      "campusFixtureId": "campus_central",
+      "name": "Demo Household",
+      "members": [
+        {
+          "personFixtureId": "person_demo_001",
+          "role": "adult"
+        },
+        {
+          "personFixtureId": "person_demo_002",
+          "role": "adult"
+        }
+      ],
+      "isActive": true
+    }
+  ],
+  "campuses": [
+    {
+      "fixtureId": "campus_central",
+      "sourceMetadata": {
+        "rockId": 970001,
+        "rockGuid": "00000000-0000-4000-8000-000000970001",
+        "apiVersion": "v1",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-16T19:00:00.000Z"
+      },
+      "name": "Central Campus",
+      "shortCode": "CENTRAL",
+      "isActive": true
+    }
+  ],
+  "groups": [
+    {
+      "fixtureId": "group_demo_small_group",
+      "sourceMetadata": {
+        "rockId": 980001,
+        "rockGuid": "00000000-0000-4000-8000-000000980001",
+        "apiVersion": "v1",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-15T08:30:00.000Z"
+      },
+      "campusFixtureId": "campus_central",
+      "name": "Demo Small Group",
+      "type": "small_group",
+      "isActive": true,
+      "isArchived": false
+    }
+  ],
+  "groupMembers": [
+    {
+      "fixtureId": "group_member_demo_001",
+      "sourceMetadata": {
+        "rockId": 981001,
+        "rockGuid": "00000000-0000-4000-8000-000000981001",
+        "apiVersion": "v1",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-15T08:30:00.000Z"
+      },
+      "personFixtureId": "person_demo_001",
+      "groupFixtureId": "group_demo_small_group",
+      "role": "Member",
+      "status": "Active",
+      "isArchived": false
+    }
+  ],
+  "financialAccounts": [
+    {
+      "fixtureId": "account_general",
+      "sourceMetadata": {
+        "rockId": 930001,
+        "rockGuid": "00000000-0000-4000-8000-000000930001",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-15T12:00:00.000Z"
+      },
+      "campusFixtureId": "campus_central",
+      "name": "General Fund",
+      "isActive": true
+    },
+    {
+      "fixtureId": "account_building",
+      "sourceMetadata": {
+        "rockId": 930002,
+        "rockGuid": "00000000-0000-4000-8000-000000930002",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-15T12:00:00.000Z"
+      },
+      "campusFixtureId": null,
+      "name": "Building Fund",
+      "isActive": true
+    }
+  ],
+  "gifts": [
+    {
+      "fixtureId": "gift_demo_001",
+      "sourceMetadata": {
+        "rockId": 940001,
+        "rockGuid": "00000000-0000-4000-8000-000000940001",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-14T09:15:00.000Z"
+      },
+      "personFixtureId": "person_demo_001",
+      "householdFixtureId": "household_demo_001",
+      "transactionDate": "2026-04-14T09:00:00.000Z",
+      "totalAmountCents": 12500,
+      "details": [
+        {
+          "accountFixtureId": "account_general",
+          "amountCents": 10000
+        },
+        {
+          "accountFixtureId": "account_building",
+          "amountCents": 2500
+        }
+      ],
+      "currency": "USD",
+      "isReversal": false
+    }
+  ],
+  "recurringGifts": [
+    {
+      "fixtureId": "recurring_demo_001",
+      "sourceMetadata": {
+        "rockId": 960001,
+        "rockGuid": "00000000-0000-4000-8000-000000960001",
+        "apiVersion": "unknown",
+        "fetchedAt": "2026-04-17T00:00:00.000Z",
+        "sourceUpdatedAt": "2026-04-10T10:30:00.000Z"
+      },
+      "personFixtureId": "person_demo_001",
+      "householdFixtureId": "household_demo_001",
+      "accountFixtureId": "account_general",
+      "status": "active",
+      "amountCents": 10000,
+      "scheduleLabel": "Monthly"
+    }
+  ]
+}

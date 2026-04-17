@@ -16,6 +16,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Start with `docs/brainstorms/2026-04-17-church-giving-management-requirements.md`.
 - Future implementation plans should live in `docs/plans/`.
 - Architecture notes and integration research should live in `docs/architecture/` or `docs/research/`.
+- Solved implementation learnings should live in `docs/solutions/`; search there before repeating similar auth, data, tooling, or integration work.
 - Keep unresolved assumptions visible in the relevant document instead of burying them in chat.
 
 ## Preferred Technical Direction
@@ -24,6 +25,9 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Preferred external API direction: GraphQL in the Next.js `app/api` route tree, likely GraphQL Yoga with Pothos and Prisma integration, because future consumers may include a website/CMS block or other repos.
 - tRPC can be considered for purely internal Next.js surfaces, but do not make it the only API boundary if external or multi-repo consumers need typed access.
 - Initial user administration can be handled directly through Postgres/seed tooling. A dedicated user-management UI is not required for the first implementation pass.
+- Use pnpm as the package manager. Keep `pnpm-lock.yaml` committed.
+- Use Tailwind CSS for styling. Avoid hand-rolled component styling unless there is a clear reason Tailwind utilities do not fit.
+- Husky runs pre-commit checks. Keep hooks fast and focused on lint/typecheck unless the project later chooses broader gates.
 - Favor clear service boundaries around Rock sync, giving analytics, task workflows, communication workflows, donor-facing APIs, auth, and AI assistance.
 
 ## Engineering Standards
@@ -46,7 +50,24 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 
 ## Local Commands
 
-This repo does not yet have an application scaffold. Once added, update this section with the actual commands for install, typecheck, lint, test, database migration, seed, and dev server startup.
+- Install dependencies: `pnpm install`
+- Start dev server: `pnpm dev`
+- Lint: `pnpm lint`
+- Typecheck: `pnpm typecheck`
+- Test: `pnpm test`
+- Format: `pnpm format`
+- Check formatting: `pnpm format:check`
+- Generate Prisma client: `pnpm prisma:generate`
+- Run development migrations: `pnpm prisma:migrate`
+- Seed bootstrap admin data: `pnpm prisma:seed`
+- Open Prisma Studio: `pnpm prisma:studio`
+- Discover Rock endpoint availability without raw payload values: `pnpm rock:discover`
+- Sync the verified Rock API v1 read surface into the local database using read-only GET requests: `pnpm rock:sync`
+- Enqueue one pg-boss managed full Rock sync: `pnpm sync:enqueue`
+- Schedule recurring pg-boss full Rock sync: `pnpm sync:schedule "0 * * * *"`
+- Start the pg-boss sync worker: `pnpm sync:worker`
+- Process one queued sync job and exit: `pnpm sync:worker -- --once`
+- Debug one stakeholder-approved person slice only: `pnpm rock:sync-person <rock-person-id>`
 
 ## Claude Compatibility
 

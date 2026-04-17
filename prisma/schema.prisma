@@ -1,0 +1,654 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AppRole {
+  ADMIN
+  FINANCE
+  PASTORAL_CARE
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum SyncRunStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+  PARTIAL
+}
+
+enum SyncIssueSeverity {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum SyncIssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum GiftReliabilityKind {
+  ONE_OFF
+  SCHEDULED_RECURRING
+  INFERRED_RECURRING
+  PLEDGE
+}
+
+enum StaffTaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum StaffTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CommunicationPrepStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  HANDED_OFF
+  CANCELED
+}
+
+model AppUser {
+  id                 String              @id @default(cuid())
+  auth0Subject       String              @unique
+  email              String?
+  name               String?
+  role               AppRole
+  active             Boolean             @default(true)
+  rockPersonId       String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  staffTasks         StaffTask[]
+  communicationPreps CommunicationPrep[]
+
+  @@index([email])
+  @@index([rockPersonId])
+}
+
+model AccessRequest {
+  id           String              @id @default(cuid())
+  auth0Subject String              @unique
+  email        String?
+  name         String?
+  status       AccessRequestStatus @default(PENDING)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+model SyncRun {
+  id             String        @id @default(cuid())
+  source         String
+  status         SyncRunStatus @default(STARTED)
+  startedAt      DateTime      @default(now())
+  completedAt    DateTime?
+  lastSourceDate DateTime?
+  recordsRead    Int           @default(0)
+  recordsWritten Int           @default(0)
+  recordsSkipped Int           @default(0)
+  errorMessage   String?
+  createdAt      DateTime      @default(now())
+
+  issues                               SyncIssue[]
+  groupTypes                           RockGroupType[]
+  groupRoles                           RockGroupRole[]
+  definedValues                        RockDefinedValue[]
+  personAliases                        RockPersonAlias[]
+  campuses                             RockCampus[]
+  people                               RockPerson[]
+  households                           RockHousehold[]
+  householdMembers                     RockHouseholdMember[]
+  groups                               RockGroup[]
+  groupMembers                         RockGroupMember[]
+  financialAccounts                    RockFinancialAccount[]
+  financialTransactions                RockFinancialTransaction[]
+  financialTransactionDetails          RockFinancialTransactionDetail[]
+  financialScheduledTransactions       RockFinancialScheduledTransaction[]
+  financialScheduledTransactionDetails RockFinancialScheduledTransactionDetail[]
+  givingFacts                          GivingFact[]
+
+  @@index([source, startedAt])
+  @@index([status])
+}
+
+model SyncIssue {
+  id             String            @id @default(cuid())
+  syncRunId      String
+  severity       SyncIssueSeverity
+  status         SyncIssueStatus   @default(OPEN)
+  source         String
+  recordType     String?
+  rockId         String?
+  code           String
+  message        String
+  redactedDetail Json?
+  createdAt      DateTime          @default(now())
+  resolvedAt     DateTime?
+
+  syncRun SyncRun @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+
+  @@index([syncRunId])
+  @@index([status])
+  @@index([recordType, rockId])
+}
+
+model RockGroupType {
+  rockId          Int       @id
+  rockGuid        String?   @unique
+  name            String
+  order           Int?
+  sourceUpdatedAt DateTime?
+  firstSyncedAt   DateTime  @default(now())
+  lastSyncedAt    DateTime  @updatedAt
+  lastSyncRunId   String
+
+  lastSyncRun  SyncRun           @relation(fields: [lastSyncRunId], references: [id])
+  households   RockHousehold[]
+  groups       RockGroup[]
+  groupRoles   RockGroupRole[]
+  groupMembers RockGroupMember[]
+
+  @@index([name])
+  @@index([lastSyncRunId])
+}
+
+model RockGroupRole {
+  rockId          Int       @id
+  rockGuid        String?   @unique
+  groupTypeRockId Int?
+  name            String
+  order           Int?
+  maxCount        Int?
+  minCount        Int?
+  sourceUpdatedAt DateTime?
+  firstSyncedAt   DateTime  @default(now())
+  lastSyncedAt    DateTime  @updatedAt
+  lastSyncRunId   String
+
+  lastSyncRun      SyncRun               @relation(fields: [lastSyncRunId], references: [id])
+  groupType        RockGroupType?        @relation(fields: [groupTypeRockId], references: [rockId])
+  householdMembers RockHouseholdMember[]
+  groupMembers     RockGroupMember[]
+
+  @@index([groupTypeRockId])
+  @@index([name])
+  @@index([lastSyncRunId])
+}
+
+model RockDefinedValue {
+  rockId            Int       @id
+  rockGuid          String?   @unique
+  definedTypeRockId Int?
+  value             String
+  description       String?
+  active            Boolean?
+  order             Int?
+  sourceUpdatedAt   DateTime?
+  firstSyncedAt     DateTime  @default(now())
+  lastSyncedAt      DateTime  @updatedAt
+  lastSyncRunId     String
+
+  lastSyncRun                     SyncRun                             @relation(fields: [lastSyncRunId], references: [id])
+  peopleRecordStatuses            RockPerson[]                        @relation("PersonRecordStatus")
+  transactionSources              RockFinancialTransaction[]          @relation("FinancialTransactionSource")
+  transactionTypes                RockFinancialTransaction[]          @relation("FinancialTransactionType")
+  scheduledTransactionFrequencies RockFinancialScheduledTransaction[] @relation("ScheduledTransactionFrequency")
+
+  @@index([definedTypeRockId])
+  @@index([value])
+  @@index([lastSyncRunId])
+}
+
+model RockPersonAlias {
+  rockId          Int       @id
+  rockGuid        String?   @unique
+  personRockId    Int?
+  sourceUpdatedAt DateTime?
+  firstSyncedAt   DateTime  @default(now())
+  lastSyncedAt    DateTime  @updatedAt
+  lastSyncRunId   String
+
+  lastSyncRun              SyncRun                             @relation(fields: [lastSyncRunId], references: [id])
+  person                   RockPerson?                         @relation("PersonAliases", fields: [personRockId], references: [rockId])
+  primaryForPeople         RockPerson[]                        @relation("PersonPrimaryAlias")
+  authorizedTransactions   RockFinancialTransaction[]
+  authorizedScheduledGifts RockFinancialScheduledTransaction[]
+
+  @@index([personRockId])
+  @@index([lastSyncRunId])
+}
+
+model RockCampus {
+  rockId          Int       @id
+  rockGuid        String?   @unique
+  name            String
+  shortCode       String?
+  active          Boolean
+  sourceUpdatedAt DateTime?
+  firstSyncedAt   DateTime  @default(now())
+  lastSyncedAt    DateTime  @updatedAt
+  lastSyncRunId   String
+
+  lastSyncRun       SyncRun                @relation(fields: [lastSyncRunId], references: [id])
+  people            RockPerson[]
+  households        RockHousehold[]
+  groups            RockGroup[]
+  financialAccounts RockFinancialAccount[]
+
+  @@index([active])
+  @@index([lastSyncRunId])
+}
+
+model RockPerson {
+  rockId                  Int       @id
+  rockGuid                String?   @unique
+  primaryAliasRockId      Int?      @unique
+  primaryAliasGuid        String?
+  /// Rock Person.GivingGroupId. Usually points at the family/giving group used for giving rollups.
+  givingGroupRockId       Int?
+  /// Rock Person.GivingId. Preserved for grouping donor/giving identity exactly as Rock reports it.
+  givingId                String?
+  givingLeaderRockId      Int?
+  primaryFamilyRockId     Int?
+  primaryCampusRockId     Int?
+  firstName               String?
+  nickName                String?
+  lastName                String?
+  email                   String?
+  emailActive             Boolean?
+  recordStatusValueRockId Int?
+  deceased                Boolean   @default(false)
+  sourceUpdatedAt         DateTime?
+  firstSyncedAt           DateTime  @default(now())
+  lastSyncedAt            DateTime  @updatedAt
+  lastSyncRunId           String
+
+  lastSyncRun           SyncRun                             @relation(fields: [lastSyncRunId], references: [id])
+  primaryAlias          RockPersonAlias?                    @relation("PersonPrimaryAlias", fields: [primaryAliasRockId], references: [rockId])
+  primaryCampus         RockCampus?                         @relation(fields: [primaryCampusRockId], references: [rockId])
+  primaryHousehold      RockHousehold?                      @relation(fields: [primaryFamilyRockId], references: [rockId])
+  givingHousehold       RockHousehold?                      @relation("PersonGivingHousehold", fields: [givingGroupRockId], references: [rockId])
+  givingLeader          RockPerson?                         @relation("PersonGivingLeader", fields: [givingLeaderRockId], references: [rockId])
+  givingMembers         RockPerson[]                        @relation("PersonGivingLeader")
+  aliases               RockPersonAlias[]                   @relation("PersonAliases")
+  recordStatus          RockDefinedValue?                   @relation("PersonRecordStatus", fields: [recordStatusValueRockId], references: [rockId])
+  householdMembers      RockHouseholdMember[]
+  groupMembers          RockGroupMember[]
+  transactions          RockFinancialTransaction[]
+  scheduledTransactions RockFinancialScheduledTransaction[]
+  givingFacts           GivingFact[]
+  staffTasks            StaffTask[]
+  communicationPreps    CommunicationPrep[]
+
+  @@index([email])
+  @@index([primaryAliasRockId])
+  @@index([givingGroupRockId])
+  @@index([givingId])
+  @@index([givingLeaderRockId])
+  @@index([recordStatusValueRockId])
+  @@index([primaryCampusRockId])
+  @@index([primaryFamilyRockId])
+  @@index([lastSyncRunId])
+}
+
+/// Local read-only copy of a Rock Family group.
+/// Rock families are groups with GroupTypeId = 10. Person.PrimaryFamilyId and
+/// Person.GivingGroupId can both point at these group records.
+model RockHousehold {
+  rockId          Int       @id
+  rockGuid        String?   @unique
+  groupTypeRockId Int       @default(10)
+  givingId        String?
+  campusRockId    Int?
+  name            String
+  active          Boolean
+  archived        Boolean   @default(false)
+  sourceUpdatedAt DateTime?
+  firstSyncedAt   DateTime  @default(now())
+  lastSyncedAt    DateTime  @updatedAt
+  lastSyncRunId   String
+
+  lastSyncRun        SyncRun               @relation(fields: [lastSyncRunId], references: [id])
+  groupType          RockGroupType         @relation(fields: [groupTypeRockId], references: [rockId])
+  campus             RockCampus?           @relation(fields: [campusRockId], references: [rockId])
+  people             RockPerson[]
+  givingPeople       RockPerson[]          @relation("PersonGivingHousehold")
+  members            RockHouseholdMember[]
+  givingFacts        GivingFact[]
+  staffTasks         StaffTask[]
+  communicationPreps CommunicationPrep[]
+
+  @@index([campusRockId])
+  @@index([groupTypeRockId])
+  @@index([givingId])
+  @@index([active])
+  @@index([lastSyncRunId])
+}
+
+model RockHouseholdMember {
+  rockId            Int       @id
+  rockGuid          String?   @unique
+  householdRockId   Int
+  personRockId      Int
+  groupRoleRockId   Int?
+  groupMemberStatus Int?
+  archived          Boolean   @default(false)
+  sourceUpdatedAt   DateTime?
+  firstSyncedAt     DateTime  @default(now())
+  lastSyncedAt      DateTime  @updatedAt
+  lastSyncRunId     String
+
+  lastSyncRun SyncRun        @relation(fields: [lastSyncRunId], references: [id])
+  household   RockHousehold  @relation(fields: [householdRockId], references: [rockId])
+  person      RockPerson     @relation(fields: [personRockId], references: [rockId])
+  groupRole   RockGroupRole? @relation(fields: [groupRoleRockId], references: [rockId])
+
+  @@unique([householdRockId, personRockId])
+  @@index([personRockId])
+  @@index([groupRoleRockId])
+  @@index([lastSyncRunId])
+}
+
+model RockGroup {
+  rockId            Int       @id
+  rockGuid          String?   @unique
+  groupTypeRockId   Int
+  parentGroupRockId Int?
+  campusRockId      Int?
+  name              String
+  active            Boolean
+  archived          Boolean   @default(false)
+  sourceUpdatedAt   DateTime?
+  firstSyncedAt     DateTime  @default(now())
+  lastSyncedAt      DateTime  @updatedAt
+  lastSyncRunId     String
+
+  lastSyncRun SyncRun           @relation(fields: [lastSyncRunId], references: [id])
+  groupType   RockGroupType     @relation(fields: [groupTypeRockId], references: [rockId])
+  campus      RockCampus?       @relation(fields: [campusRockId], references: [rockId])
+  parentGroup RockGroup?        @relation("GroupHierarchy", fields: [parentGroupRockId], references: [rockId])
+  childGroups RockGroup[]       @relation("GroupHierarchy")
+  members     RockGroupMember[]
+
+  @@index([groupTypeRockId])
+  @@index([campusRockId])
+  @@index([parentGroupRockId])
+  @@index([active, archived])
+  @@index([lastSyncRunId])
+}
+
+model RockGroupMember {
+  rockId             Int       @id
+  rockGuid           String?   @unique
+  groupRockId        Int
+  personRockId       Int
+  groupTypeRockId    Int
+  groupRoleRockId    Int?
+  groupMemberStatus  Int
+  archived           Boolean   @default(false)
+  activeConnectGroup Boolean   @default(false)
+  sourceUpdatedAt    DateTime?
+  firstSyncedAt      DateTime  @default(now())
+  lastSyncedAt       DateTime  @updatedAt
+  lastSyncRunId      String
+
+  lastSyncRun SyncRun        @relation(fields: [lastSyncRunId], references: [id])
+  group       RockGroup      @relation(fields: [groupRockId], references: [rockId])
+  person      RockPerson     @relation(fields: [personRockId], references: [rockId])
+  groupType   RockGroupType  @relation(fields: [groupTypeRockId], references: [rockId])
+  groupRole   RockGroupRole? @relation(fields: [groupRoleRockId], references: [rockId])
+
+  @@unique([groupRockId, personRockId, groupRoleRockId])
+  @@index([personRockId])
+  @@index([groupTypeRockId])
+  @@index([groupRoleRockId])
+  @@index([activeConnectGroup])
+  @@index([lastSyncRunId])
+}
+
+model RockFinancialAccount {
+  rockId              Int       @id
+  rockGuid            String?   @unique
+  parentAccountRockId Int?
+  campusRockId        Int?
+  name                String
+  active              Boolean
+  public              Boolean?
+  taxDeductible       Boolean?
+  startDate           DateTime?
+  endDate             DateTime?
+  sourceUpdatedAt     DateTime?
+  firstSyncedAt       DateTime  @default(now())
+  lastSyncedAt        DateTime  @updatedAt
+  lastSyncRunId       String
+
+  lastSyncRun                 SyncRun                                   @relation(fields: [lastSyncRunId], references: [id])
+  campus                      RockCampus?                               @relation(fields: [campusRockId], references: [rockId])
+  parentAccount               RockFinancialAccount?                     @relation("FinancialAccountHierarchy", fields: [parentAccountRockId], references: [rockId])
+  childAccounts               RockFinancialAccount[]                    @relation("FinancialAccountHierarchy")
+  transactionDetails          RockFinancialTransactionDetail[]
+  scheduledTransactionDetails RockFinancialScheduledTransactionDetail[]
+
+  @@index([campusRockId])
+  @@index([parentAccountRockId])
+  @@index([active])
+  @@index([lastSyncRunId])
+}
+
+model RockFinancialTransaction {
+  rockId                      Int       @id
+  rockGuid                    String?   @unique
+  authorizedPersonAliasRockId Int?
+  authorizedPersonRockId      Int?
+  scheduledTransactionRockId  Int?
+  transactionDate             DateTime
+  transactionDateKey          Int?
+  status                      String?
+  statusMessage               String?
+  sourceTypeValueRockId       Int?
+  transactionTypeValueRockId  Int?
+  reconciled                  Boolean?
+  settled                     Boolean?
+  showAsAnonymous             Boolean?
+  sourceUpdatedAt             DateTime?
+  firstSyncedAt               DateTime  @default(now())
+  lastSyncedAt                DateTime  @updatedAt
+  lastSyncRunId               String
+
+  lastSyncRun           SyncRun                            @relation(fields: [lastSyncRunId], references: [id])
+  authorizedPersonAlias RockPersonAlias?                   @relation(fields: [authorizedPersonAliasRockId], references: [rockId])
+  authorizedPerson      RockPerson?                        @relation(fields: [authorizedPersonRockId], references: [rockId])
+  scheduledTransaction  RockFinancialScheduledTransaction? @relation(fields: [scheduledTransactionRockId], references: [rockId])
+  sourceType            RockDefinedValue?                  @relation("FinancialTransactionSource", fields: [sourceTypeValueRockId], references: [rockId])
+  transactionType       RockDefinedValue?                  @relation("FinancialTransactionType", fields: [transactionTypeValueRockId], references: [rockId])
+  details               RockFinancialTransactionDetail[]
+  givingFacts           GivingFact[]
+
+  @@index([authorizedPersonAliasRockId])
+  @@index([authorizedPersonRockId])
+  @@index([scheduledTransactionRockId])
+  @@index([sourceTypeValueRockId])
+  @@index([transactionTypeValueRockId])
+  @@index([transactionDate])
+  @@index([lastSyncRunId])
+}
+
+model RockFinancialTransactionDetail {
+  rockId            Int       @id
+  rockGuid          String?   @unique
+  transactionRockId Int
+  accountRockId     Int
+  amount            Decimal   @db.Decimal(12, 2)
+  feeAmount         Decimal?  @db.Decimal(12, 2)
+  sourceUpdatedAt   DateTime?
+  firstSyncedAt     DateTime  @default(now())
+  lastSyncedAt      DateTime  @updatedAt
+  lastSyncRunId     String
+
+  lastSyncRun SyncRun                  @relation(fields: [lastSyncRunId], references: [id])
+  transaction RockFinancialTransaction @relation(fields: [transactionRockId], references: [rockId])
+  account     RockFinancialAccount     @relation(fields: [accountRockId], references: [rockId])
+  givingFacts GivingFact[]
+
+  @@index([transactionRockId])
+  @@index([accountRockId])
+  @@index([lastSyncRunId])
+}
+
+model RockFinancialScheduledTransaction {
+  rockId                          Int       @id
+  rockGuid                        String?   @unique
+  authorizedPersonAliasRockId     Int?
+  authorizedPersonRockId          Int?
+  transactionFrequencyValueRockId Int?
+  startDate                       DateTime?
+  endDate                         DateTime?
+  nextPaymentDate                 DateTime?
+  active                          Boolean
+  status                          String?
+  statusMessage                   String?
+  sourceUpdatedAt                 DateTime?
+  firstSyncedAt                   DateTime  @default(now())
+  lastSyncedAt                    DateTime  @updatedAt
+  lastSyncRunId                   String
+
+  lastSyncRun           SyncRun                                   @relation(fields: [lastSyncRunId], references: [id])
+  authorizedPersonAlias RockPersonAlias?                          @relation(fields: [authorizedPersonAliasRockId], references: [rockId])
+  authorizedPerson      RockPerson?                               @relation(fields: [authorizedPersonRockId], references: [rockId])
+  transactionFrequency  RockDefinedValue?                         @relation("ScheduledTransactionFrequency", fields: [transactionFrequencyValueRockId], references: [rockId])
+  transactions          RockFinancialTransaction[]
+  details               RockFinancialScheduledTransactionDetail[]
+  givingFacts           GivingFact[]
+
+  @@index([authorizedPersonAliasRockId])
+  @@index([authorizedPersonRockId])
+  @@index([transactionFrequencyValueRockId])
+  @@index([active])
+  @@index([nextPaymentDate])
+  @@index([lastSyncRunId])
+}
+
+model RockFinancialScheduledTransactionDetail {
+  rockId                     Int       @id
+  rockGuid                   String?   @unique
+  scheduledTransactionRockId Int
+  accountRockId              Int
+  amount                     Decimal   @db.Decimal(12, 2)
+  sourceUpdatedAt            DateTime?
+  firstSyncedAt              DateTime  @default(now())
+  lastSyncedAt               DateTime  @updatedAt
+  lastSyncRunId              String
+
+  lastSyncRun          SyncRun                           @relation(fields: [lastSyncRunId], references: [id])
+  scheduledTransaction RockFinancialScheduledTransaction @relation(fields: [scheduledTransactionRockId], references: [rockId])
+  account              RockFinancialAccount              @relation(fields: [accountRockId], references: [rockId])
+  givingFacts          GivingFact[]
+
+  @@index([scheduledTransactionRockId])
+  @@index([accountRockId])
+  @@index([lastSyncRunId])
+}
+
+model GivingFact {
+  id                               String              @id @default(cuid())
+  reliabilityKind                  GiftReliabilityKind
+  transactionRockId                Int?
+  transactionDetailRockId          Int?
+  scheduledTransactionRockId       Int?
+  scheduledTransactionDetailRockId Int?
+  personRockId                     Int?
+  householdRockId                  Int?
+  accountRockId                    Int?
+  campusRockId                     Int?
+  amount                           Decimal             @db.Decimal(12, 2)
+  occurredAt                       DateTime?
+  effectiveMonth                   DateTime
+  explanation                      String
+  sourceUpdatedAt                  DateTime?
+  firstDerivedAt                   DateTime            @default(now())
+  lastDerivedAt                    DateTime            @updatedAt
+  lastSyncRunId                    String
+
+  lastSyncRun                SyncRun                                  @relation(fields: [lastSyncRunId], references: [id])
+  transaction                RockFinancialTransaction?                @relation(fields: [transactionRockId], references: [rockId])
+  transactionDetail          RockFinancialTransactionDetail?          @relation(fields: [transactionDetailRockId], references: [rockId])
+  scheduledTransaction       RockFinancialScheduledTransaction?       @relation(fields: [scheduledTransactionRockId], references: [rockId])
+  scheduledTransactionDetail RockFinancialScheduledTransactionDetail? @relation(fields: [scheduledTransactionDetailRockId], references: [rockId])
+  person                     RockPerson?                              @relation(fields: [personRockId], references: [rockId])
+  household                  RockHousehold?                           @relation(fields: [householdRockId], references: [rockId])
+
+  @@index([reliabilityKind])
+  @@index([personRockId])
+  @@index([householdRockId])
+  @@index([accountRockId])
+  @@index([campusRockId])
+  @@index([effectiveMonth])
+  @@index([lastSyncRunId])
+}
+
+model StaffTask {
+  id               String            @id @default(cuid())
+  title            String
+  description      String?
+  status           StaffTaskStatus   @default(OPEN)
+  priority         StaffTaskPriority @default(NORMAL)
+  assignedToUserId String?
+  personRockId     Int?
+  householdRockId  Int?
+  dueAt            DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  assignedTo AppUser?       @relation(fields: [assignedToUserId], references: [id])
+  person     RockPerson?    @relation(fields: [personRockId], references: [rockId])
+  household  RockHousehold? @relation(fields: [householdRockId], references: [rockId])
+
+  @@index([status])
+  @@index([assignedToUserId])
+  @@index([personRockId])
+  @@index([householdRockId])
+  @@index([dueAt])
+}
+
+model CommunicationPrep {
+  id              String                  @id @default(cuid())
+  title           String
+  status          CommunicationPrepStatus @default(DRAFT)
+  segmentSummary  String
+  handoffTarget   String?
+  createdByUserId String?
+  personRockId    Int?
+  householdRockId Int?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  createdBy AppUser?       @relation(fields: [createdByUserId], references: [id])
+  person    RockPerson?    @relation(fields: [personRockId], references: [rockId])
+  household RockHousehold? @relation(fields: [householdRockId], references: [rockId])
+
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([personRockId])
+  @@index([householdRockId])
+}

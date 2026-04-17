@@ -1,0 +1,9 @@
+.claude/
+.devcontainer/
+.next/
+coverage/
+node_modules/
+.pnp-store/
+.pnpm-store/
+prisma/migrations/migration_lock.toml
+pnpm-lock.yaml
