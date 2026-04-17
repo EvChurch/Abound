@@ -102,6 +102,12 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm install ${NODE_VERSION} && \
   fnm default ${NODE_VERSION}
 
+# Install pnpm via corepack (version pinned in package.json packageManager field)
+RUN export PATH="$FNM_DIR:$PATH" && \
+  eval "$(fnm env)" && \
+  corepack enable && \
+  corepack prepare pnpm@10.33.0 --activate
+
 # Install OpenAI Codex CLI
 RUN export PATH="$FNM_DIR:$PATH" && \
   eval "$(fnm env)" && \

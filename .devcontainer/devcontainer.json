@@ -4,6 +4,9 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "updateRemoteUserUID": true,
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
   "customizations": {
     "vscode": {
       "extensions": [
