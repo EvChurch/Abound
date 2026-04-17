@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db:reset": "tsx scripts/test-db-reset.ts",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -17,7 +18,15 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "rock:discover": "tsx scripts/rock-discovery.ts",
+    "rock:sync": "tsx scripts/rock-sync.ts",
+    "rock:sync-person": "tsx scripts/rock-sync-person.ts",
+    "sync:enqueue": "tsx scripts/sync-enqueue.ts",
+    "sync:enqueue-person": "tsx scripts/sync-enqueue-person.ts",
+    "sync:schedule": "tsx scripts/sync-schedule.ts",
+    "sync:schedule-person": "tsx scripts/sync-schedule-person.ts",
+    "sync:worker": "tsx scripts/sync-worker.ts"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "4.16.2",
@@ -25,6 +34,7 @@
     "@prisma/client": "7.7.0",
     "next": "16.2.3",
     "pg": "8.16.3",
+    "pg-boss": "12.15.0",
     "react": "19.2.5",
     "react-dom": "19.2.5"
   },

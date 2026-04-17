@@ -61,6 +61,13 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Run development migrations: `pnpm prisma:migrate`
 - Seed bootstrap admin data: `pnpm prisma:seed`
 - Open Prisma Studio: `pnpm prisma:studio`
+- Discover Rock endpoint availability without raw payload values: `pnpm rock:discover`
+- Sync the verified Rock API v1 read surface into the local database using read-only GET requests: `pnpm rock:sync`
+- Enqueue one pg-boss managed full Rock sync: `pnpm sync:enqueue`
+- Schedule recurring pg-boss full Rock sync: `pnpm sync:schedule "0 * * * *"`
+- Start the pg-boss sync worker: `pnpm sync:worker`
+- Process one queued sync job and exit: `pnpm sync:worker -- --once`
+- Debug one stakeholder-approved person slice only: `pnpm rock:sync-person <rock-person-id>`
 
 ## Claude Compatibility
 

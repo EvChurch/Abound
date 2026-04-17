@@ -236,7 +236,7 @@ flowchart LR
 
 - The repo has a runnable app scaffold, documented local commands, and a passing smoke test.
 
-- [ ] **Unit 2: Document Rock Integration Research**
+- [x] **Unit 2: Document Rock Integration Research**
 
 **Goal:** Verify available Rock integration paths before writing irreversible sync assumptions into code.
 
@@ -275,7 +275,22 @@ flowchart LR
 
 - Future agents can read `docs/research/rock-integration.md` and know which Rock path to implement, which fields are verified, and which assumptions remain open.
 
-- [ ] **Unit 3: Establish the Data Model and Migration Baseline**
+**Progress note 2026-04-17:**
+
+- Created `docs/research/rock-integration.md` and `docs/research/payment-and-giving-boundaries.md`.
+- Added the first sanitized fixture contract in `lib/rock/types.ts`.
+- Added fake sample data in `lib/rock/fixtures/sanitized-rock-sample.json`.
+- Added `tests/unit/rock-fixtures.test.ts` for valid fixtures, broken references, missing reconciliation timestamps, obvious secrets, and full payment instrument values.
+- Added `pnpm rock:discover` for read-only Rock endpoint status and JSON-shape discovery without raw response values.
+- Confirmed Rock 17 church-hosted on Azure, API v2 docs availability, and API v1 REST readability for people, groups, group members, campuses, financial accounts, financial transactions, financial transaction details, and financial scheduled transactions.
+- Confirmed stakeholder-owned person, household/family, campus, group membership, transaction, and scheduled-transaction relationship paths without committing raw values.
+- Confirmed group type taxonomy access and identified `Connect Group` (`GroupTypeId = 25`) as the member-facing small-group boundary. `Small Group Section` appears to be hierarchy/organization context.
+- Confirmed one-off transaction/detail shape from the stakeholder-owned record and scheduled transaction/detail shape from value-free global samples.
+- Confirmed Rock's `GroupMemberStatus` enum mapping: `0 = Inactive`, `1 = Active`, `2 = Pending`.
+- Expanded sanitized fixture types to include campuses, groups, and group members.
+- Unit 2 research is complete enough to support Unit 3 data modeling. Keep the no-write Rock boundary and high-risk REST key handling in force during implementation.
+
+- [x] **Unit 3: Establish the Data Model and Migration Baseline**
 
 **Goal:** Create the initial Prisma schema for synced source records, sync runs, giving facts, staff tasks, communication prep, and audit-friendly metadata.
 
@@ -321,6 +336,23 @@ flowchart LR
 **Verification:**
 
 - The database schema supports traceable synced data, staff workflow state, and sync observability without claiming ownership of Rock-owned fields.
+
+**Progress note 2026-04-17:**
+
+- Added the synced Rock data model to `prisma/schema.prisma`.
+- Added migration baseline `prisma/migrations/20260417000000_initial_baseline/migration.sql`.
+- Added `SyncRun` and `SyncIssue` for sync observability and reconciliation.
+- Added Rock-owned synced tables for campuses, people, households, household members, groups, group members, financial accounts, transactions, transaction details, scheduled transactions, and scheduled transaction details.
+- Added Rock reference tables for group types, group roles, defined values, and person aliases so Rock reference IDs are backed by synced local rows.
+- Clarified that local households are Rock Family groups (`GroupTypeId = 10`) and preserve `People.GivingGroupId`, `People.GivingId`, and giving leader metadata for giving rollups.
+- Added `GivingFact` for one-off, scheduled recurring, inferred recurring, and pledge-backed reporting rows.
+- Added `StaffTask` and `CommunicationPrep` as local workflow records that can attach to synced people or households without claiming Rock ownership.
+- Added `docs/architecture/data-model.md`.
+- Added guardrail helpers in `lib/sync/models.ts`, `lib/giving/models.ts`, and `lib/tasks/models.ts`.
+- Added `tests/unit/data-model.test.ts` and `tests/integration/prisma-migrations.test.ts`.
+- Squashed early local migrations into a single baseline because the application is not deployed yet.
+- Reset the local database from that baseline and regenerated Prisma Client with `pnpm prisma generate`.
+- Re-verified the expanded full sync against the live Rock instance: 180,509 source records read, 245,395 local writes, 1 skipped warning, and zero missing references across the new group type, group role, defined value, and person alias links.
 
 - [ ] **Unit 4: Build the Rock Sync and Reconciliation Foundation**
 
@@ -370,6 +402,29 @@ flowchart LR
 **Verification:**
 
 - Staff and agents can inspect sync freshness, failures, and reconciliation issues without accessing live Rock directly.
+
+**Progress note 2026-04-17:**
+
+- Added read-only Rock client in `lib/rock/client.ts`.
+- Added `pnpm rock:sync` for full live sync into the local database using the verified API v1 read surface.
+- Kept `pnpm rock:sync-person <rock-person-id>` as a narrow debug probe for stakeholder-approved records only.
+- Added pg-boss dependency and scripts for queued/scheduled full sync: `sync:enqueue`, `sync:schedule`, and `sync:worker`.
+- Added sync persistence in `lib/sync/run-sync.ts`.
+- Added reconciliation issue types in `lib/sync/reconcile.ts`.
+- Added redaction helpers in `lib/sync/redaction.ts`.
+- Added `tests/unit/rock-client.test.ts`.
+- Added `tests/unit/sync-reconciliation.test.ts`.
+- Added `tests/integration/rock-sync.test.ts`.
+- Verified sanitized fixture sync persists local records and derived giving facts.
+- Ran live full sync using only API v1 `GET` requests. Result: succeeded with 164,986 source records read, 229,872 local writes, 1 skipped record, and 1 issue.
+- Verified the pg-boss full-sync path locally by enqueuing `rock-full-sync`, processing it once with `pnpm sync:worker -- --once`, and scheduling hourly full sync with `pnpm sync:schedule "0 * * * *"`. The worker result also succeeded with 164,986 source records read, 229,872 local writes, 1 skipped record, and 1 issue.
+- Confirmed the local pg-boss schedule table contains `rock-full-sync` only for the recurring sync.
+- Changed Rock mirror tables to use `rockId` as their primary key while local app-owned/derived tables keep local generated IDs.
+- Chunked full-sync persistence by stage and added safe progress output for direct sync and pg-boss worker runs.
+- Reset the local database after squashing migrations, dropped stale pg-boss schema state, regenerated Prisma Client, and reran `SYNC_CHUNK_SIZE=1000 pnpm rock:sync` successfully. Clean-database result: 164,986 source records read, 229,872 local writes, 1 skipped record, and 1 issue.
+- Family people are fetched from family `GroupMembers` so the local family/household includes the grouped people, not only the target person.
+- Moved fixture-backed database tests behind `TEST_DATABASE_URL` so demo records cannot pollute the local development database used for live Rock sync.
+- Remaining Unit 4 work: add richer reconciliation for inactive/removed records, run the pg-boss worker under the intended deployment process, and finish staff-visible sync status UI.
 
 - [ ] **Unit 5: Establish the GraphQL API Boundary**
 
