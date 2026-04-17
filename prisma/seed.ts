@@ -20,19 +20,33 @@ async function main() {
     return;
   }
 
-  await prisma.appUser.upsert({
+  const existingUser = await prisma.appUser.findUnique({
     where: { auth0Subject },
-    create: {
-      auth0Subject,
-      email: email ?? null,
-      role: "ADMIN",
-    },
-    update: {
-      email: email ?? null,
-      role: "ADMIN",
-      active: true,
-    },
   });
+
+  if (!existingUser) {
+    await prisma.appUser.create({
+      data: {
+        auth0Subject,
+        email: email ?? null,
+        role: "ADMIN",
+      },
+    });
+    return;
+  }
+
+  if (!existingUser.active || existingUser.role !== "ADMIN") {
+    throw new Error(
+      "Refusing to re-enable or promote an existing seed admin user. Update the user explicitly in Postgres.",
+    );
+  }
+
+  if (email) {
+    await prisma.appUser.update({
+      where: { auth0Subject },
+      data: { email },
+    });
+  }
 }
 
 main()

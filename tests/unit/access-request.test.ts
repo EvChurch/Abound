@@ -14,7 +14,7 @@ describe("requestAccess", () => {
         name: " Test User ",
       },
       {
-        async upsertPending(input) {
+        async createPending(input) {
           calls.push(input);
           return {
             id: "request_1",
@@ -25,6 +25,12 @@ describe("requestAccess", () => {
             createdAt: new Date("2026-04-17T00:00:00.000Z"),
             updatedAt: new Date("2026-04-17T00:00:00.000Z"),
           } satisfies AccessRequestRecord;
+        },
+        async findByAuth0Subject() {
+          return null;
+        },
+        async updatePendingContact() {
+          throw new Error("should not update");
         },
       },
     );
@@ -44,11 +50,98 @@ describe("requestAccess", () => {
       requestAccess(
         { auth0Subject: " " },
         {
-          async upsertPending() {
+          async createPending() {
             throw new Error("should not persist");
+          },
+          async findByAuth0Subject() {
+            throw new Error("should not query");
+          },
+          async updatePendingContact() {
+            throw new Error("should not update");
           },
         },
       ),
     ).rejects.toThrow("Auth0 subject is required");
+  });
+
+  it("updates contact details for existing pending requests", async () => {
+    const updates: AccessRequestInput[] = [];
+
+    await requestAccess(
+      {
+        auth0Subject: "auth0|pending",
+        email: "new@example.com",
+        name: "New Name",
+      },
+      {
+        async createPending() {
+          throw new Error("should not create");
+        },
+        async findByAuth0Subject() {
+          return {
+            id: "request_1",
+            auth0Subject: "auth0|pending",
+            email: "old@example.com",
+            name: "Old Name",
+            status: "PENDING",
+            createdAt: new Date("2026-04-17T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-17T00:00:00.000Z"),
+          };
+        },
+        async updatePendingContact(input) {
+          updates.push(input);
+          return {
+            id: "request_1",
+            auth0Subject: input.auth0Subject,
+            email: input.email ?? null,
+            name: input.name ?? null,
+            status: "PENDING",
+            createdAt: new Date("2026-04-17T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-17T00:00:00.000Z"),
+          };
+        },
+      },
+    );
+
+    expect(updates).toEqual([
+      {
+        auth0Subject: "auth0|pending",
+        email: "new@example.com",
+        name: "New Name",
+      },
+    ]);
+  });
+
+  it("preserves terminal access request statuses on resubmission", async () => {
+    const deniedRequest: AccessRequestRecord = {
+      id: "request_1",
+      auth0Subject: "auth0|denied",
+      email: "denied@example.com",
+      name: "Denied User",
+      status: "DENIED",
+      createdAt: new Date("2026-04-17T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-17T00:00:00.000Z"),
+    };
+
+    await expect(
+      requestAccess(
+        {
+          auth0Subject: "auth0|denied",
+          email: "changed@example.com",
+          name: "Changed Name",
+        },
+        {
+          async createPending() {
+            throw new Error("should not create");
+          },
+          async findByAuth0Subject() {
+            return deniedRequest;
+          },
+          async updatePendingContact() {
+            throw new Error("should not update terminal requests");
+          },
+        },
+      ),
+    ).resolves.toBe(deniedRequest);
   });
 });

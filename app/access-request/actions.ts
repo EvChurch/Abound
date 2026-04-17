@@ -3,23 +3,28 @@
 import { redirect } from "next/navigation";
 
 import { auth0 } from "@/lib/auth/auth0";
+import { resolveAccessState } from "@/lib/auth/access-control";
+import { prismaAppUsers } from "@/lib/auth/prisma-users";
 import { prismaAccessRequests } from "@/lib/auth/prisma-access-requests";
 import { requestAccess } from "@/lib/auth/access-requests";
-import { toAuthenticatedIdentity } from "@/lib/auth/users";
 
 export async function submitAccessRequest() {
   const session = await auth0.getSession();
-  const identity = toAuthenticatedIdentity(session?.user);
+  const accessState = await resolveAccessState(session?.user, prismaAppUsers);
 
-  if (!identity) {
+  if (accessState.status === "anonymous") {
     redirect("/auth/login");
+  }
+
+  if (accessState.status === "authorized") {
+    redirect("/");
   }
 
   await requestAccess(
     {
-      auth0Subject: identity.sub,
-      email: identity.email,
-      name: identity.name,
+      auth0Subject: accessState.identity.sub,
+      email: accessState.identity.email,
+      name: accessState.identity.name,
     },
     prismaAccessRequests,
   );

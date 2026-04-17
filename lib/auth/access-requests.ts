@@ -1,7 +1,9 @@
 import type { AccessRequestInput, AccessRequestRecord } from "@/lib/auth/types";
 
 export type AccessRequestRepository = {
-  upsertPending(input: AccessRequestInput): Promise<AccessRequestRecord>;
+  createPending(input: AccessRequestInput): Promise<AccessRequestRecord>;
+  findByAuth0Subject(auth0Subject: string): Promise<AccessRequestRecord | null>;
+  updatePendingContact(input: AccessRequestInput): Promise<AccessRequestRecord>;
 };
 
 export async function requestAccess(
@@ -14,11 +16,23 @@ export async function requestAccess(
     throw new Error("Auth0 subject is required to request access.");
   }
 
-  return repository.upsertPending({
+  const normalizedInput = {
     auth0Subject,
     email: normalizeOptional(input.email),
     name: normalizeOptional(input.name),
-  });
+  };
+
+  const existingRequest = await repository.findByAuth0Subject(auth0Subject);
+
+  if (!existingRequest) {
+    return repository.createPending(normalizedInput);
+  }
+
+  if (existingRequest.status !== "PENDING") {
+    return existingRequest;
+  }
+
+  return repository.updatePendingContact(normalizedInput);
 }
 
 function normalizeOptional(value: string | null | undefined) {

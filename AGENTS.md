@@ -16,6 +16,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Start with `docs/brainstorms/2026-04-17-church-giving-management-requirements.md`.
 - Future implementation plans should live in `docs/plans/`.
 - Architecture notes and integration research should live in `docs/architecture/` or `docs/research/`.
+- Solved implementation learnings should live in `docs/solutions/`; search there before repeating similar auth, data, tooling, or integration work.
 - Keep unresolved assumptions visible in the relevant document instead of burying them in chat.
 
 ## Preferred Technical Direction
@@ -58,6 +59,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Check formatting: `pnpm format:check`
 - Generate Prisma client: `pnpm prisma:generate`
 - Run development migrations: `pnpm prisma:migrate`
+- Seed bootstrap admin data: `pnpm prisma:seed`
 - Open Prisma Studio: `pnpm prisma:studio`
 
 ## Claude Compatibility

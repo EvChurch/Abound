@@ -203,13 +203,13 @@ flowchart LR
 - Create: `next.config.ts`
 - Create: `eslint.config.mjs`
 - Create: `vitest.config.ts`
-- Create: `playwright.config.ts`
+- Defer: `playwright.config.ts` until browser coverage is introduced.
 - Create: `app/layout.tsx`
 - Create: `app/page.tsx`
 - Create: `components/`
 - Create: `lib/`
 - Create: `tests/unit/`
-- Create: `tests/integration/`
+- Defer: `tests/integration/` until database-backed integration tests are introduced.
 - Modify: `AGENTS.md`
 - Test: `tests/unit/app-smoke.test.ts`
 
@@ -440,7 +440,7 @@ flowchart LR
 - Edge case: paginated list queries enforce maximum page sizes.
 - Edge case: GraphQL fields exposing sensitive details require explicit permission checks.
 - Edge case: an Auth0-authenticated user with no local app role is denied staff access.
-- Edge case: duplicate access requests from the same Auth0 subject or email update/reuse the existing pending request instead of spamming admins.
+- Edge case: duplicate access requests from the same Auth0 subject update/reuse the existing pending request instead of spamming admins. Email-only deduplication is deferred until verified-email matching rules are defined.
 - Edge case: local app users with no Rock person link can still access authorized staff workflows.
 - Error path: unauthenticated requests cannot access staff data.
 - Error path: authenticated donor-role placeholder users cannot access staff-only fields.

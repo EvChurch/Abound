@@ -4,7 +4,7 @@ Created: 2026-04-17
 
 ## Current Stopping Point
 
-The first application foundation pass is complete on branch `feat/app-auth-foundation` in commit `f7ca9f0`.
+The first application foundation pass is on branch `feat/app-auth-foundation`. The initial scaffold landed in commit `f7ca9f0`, with review hardening continuing on the same branch.
 
 Completed:
 
