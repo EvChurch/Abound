@@ -24,6 +24,9 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Preferred external API direction: GraphQL in the Next.js `app/api` route tree, likely GraphQL Yoga with Pothos and Prisma integration, because future consumers may include a website/CMS block or other repos.
 - tRPC can be considered for purely internal Next.js surfaces, but do not make it the only API boundary if external or multi-repo consumers need typed access.
 - Initial user administration can be handled directly through Postgres/seed tooling. A dedicated user-management UI is not required for the first implementation pass.
+- Use pnpm as the package manager. Keep `pnpm-lock.yaml` committed.
+- Use Tailwind CSS for styling. Avoid hand-rolled component styling unless there is a clear reason Tailwind utilities do not fit.
+- Husky runs pre-commit checks. Keep hooks fast and focused on lint/typecheck unless the project later chooses broader gates.
 - Favor clear service boundaries around Rock sync, giving analytics, task workflows, communication workflows, donor-facing APIs, auth, and AI assistance.
 
 ## Engineering Standards
@@ -46,7 +49,16 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 
 ## Local Commands
 
-This repo does not yet have an application scaffold. Once added, update this section with the actual commands for install, typecheck, lint, test, database migration, seed, and dev server startup.
+- Install dependencies: `pnpm install`
+- Start dev server: `pnpm dev`
+- Lint: `pnpm lint`
+- Typecheck: `pnpm typecheck`
+- Test: `pnpm test`
+- Format: `pnpm format`
+- Check formatting: `pnpm format:check`
+- Generate Prisma client: `pnpm prisma:generate`
+- Run development migrations: `pnpm prisma:migrate`
+- Open Prisma Studio: `pnpm prisma:studio`
 
 ## Claude Compatibility
 

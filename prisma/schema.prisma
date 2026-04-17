@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AppRole {
+  ADMIN
+  FINANCE
+  PASTORAL_CARE
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model AppUser {
+  id           String   @id @default(cuid())
+  auth0Subject String   @unique
+  email        String?
+  name         String?
+  role         AppRole
+  active       Boolean  @default(true)
+  rockPersonId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@index([rockPersonId])
+}
+
+model AccessRequest {
+  id           String              @id @default(cuid())
+  auth0Subject String              @unique
+  email        String?
+  name         String?
+  status       AccessRequestStatus @default(PENDING)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([email])
+  @@index([status])
+}

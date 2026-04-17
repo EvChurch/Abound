@@ -1,0 +1,8 @@
+.claude/
+.devcontainer/
+.next/
+coverage/
+node_modules/
+.pnp-store/
+.pnpm-store/
+pnpm-lock.yaml

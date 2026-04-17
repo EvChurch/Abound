@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-app-background: #f7f8fa;
+  --color-app-foreground: #1d2430;
+  --color-app-muted: #5d6675;
+  --color-app-accent: #176b87;
+  --color-app-accent-strong: #0f4c63;
+}
+
+body {
+  background: var(--color-app-background);
+  color: var(--color-app-foreground);
+}
