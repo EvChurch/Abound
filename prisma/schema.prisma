@@ -2,6 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator pothos {
+  provider     = "prisma-pothos-types"
+  clientOutput = "@prisma/client"
+  output       = "../lib/graphql/pothos-prisma-types.ts"
+}
+
 datasource db {
   provider = "postgresql"
 }
@@ -625,6 +631,7 @@ model StaffTask {
   household  RockHousehold? @relation(fields: [householdRockId], references: [rockId])
 
   @@index([status])
+  @@index([createdAt(sort: Desc), id])
   @@index([assignedToUserId])
   @@index([personRockId])
   @@index([householdRockId])

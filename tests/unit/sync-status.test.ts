@@ -73,5 +73,10 @@ describe("getSyncStatusSummary", () => {
       financialTransactionDetails: 6,
       givingFacts: 7,
     });
+    expect(client.syncIssue.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 50,
+      }),
+    );
   });
 });
