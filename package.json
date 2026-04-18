@@ -15,7 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "prisma generate && prettier --write lib/graphql/pothos-prisma-types.ts",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
