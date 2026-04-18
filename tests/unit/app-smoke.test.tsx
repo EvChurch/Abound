@@ -5,6 +5,11 @@ import type { AccessState } from "@/lib/auth/types";
 
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
+  redirect: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
 }));
 
 vi.mock("@/lib/auth/auth0", () => ({
@@ -22,20 +27,13 @@ import HomePage from "@/app/page";
 describe("HomePage", () => {
   beforeEach(() => {
     mocks.accessState = { status: "anonymous" };
+    mocks.redirect.mockImplementation((path: string) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    });
   });
 
-  it("renders the sign-in entry point for anonymous users", async () => {
-    render(await HomePage());
-
-    expect(
-      screen.getByRole("heading", {
-        name: "Staff tools for clear, careful giving work.",
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/auth/login",
-    );
+  it("redirects anonymous users to the Auth0 login handler", async () => {
+    await expect(HomePage()).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
   it("renders the access request entry point for authenticated users without a local profile", async () => {

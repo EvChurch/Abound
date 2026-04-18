@@ -18,7 +18,41 @@ const mocks = vi.hoisted(() => ({
       recordsWritten: 75,
       recordsSkipped: 0,
     },
-    openIssueCount: 0,
+    recentRuns: [
+      {
+        id: "sync_1",
+        source: "rock:v1",
+        status: "SUCCEEDED",
+        startedAt: new Date("2026-04-17T00:00:00.000Z"),
+        completedAt: new Date("2026-04-17T00:01:00.000Z"),
+        recordsRead: 55,
+        recordsWritten: 75,
+        recordsSkipped: 0,
+      },
+      {
+        id: "sync_0",
+        source: "rock:v1",
+        status: "PARTIAL",
+        startedAt: new Date("2026-04-16T23:00:00.000Z"),
+        completedAt: new Date("2026-04-16T23:01:00.000Z"),
+        recordsRead: 54,
+        recordsWritten: 74,
+        recordsSkipped: 1,
+      },
+    ],
+    openIssues: [
+      {
+        id: "issue_1",
+        severity: "WARNING",
+        source: "rock:v1",
+        recordType: "FinancialTransaction",
+        rockId: "123",
+        code: "MISSING_REFERENCE",
+        message: "A synced record references a missing Rock row.",
+        createdAt: new Date("2026-04-17T00:02:00.000Z"),
+      },
+    ],
+    openIssueCount: 1,
     syncedCounts: {
       people: 6,
       households: 2,
@@ -97,8 +131,14 @@ describe("SyncPage", () => {
     expect(
       screen.getByRole("heading", { name: "Rock data import health." }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Healthy")).toBeInTheDocument();
+    expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0);
     expect(screen.getByText("Records read")).toBeInTheDocument();
+    expect(screen.getByText("Recent runs")).toBeInTheDocument();
+    expect(screen.getByText("Needs review")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Open issues" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MISSING_REFERENCE")).toBeInTheDocument();
     expect(screen.getByText("Runner recommendation")).toBeInTheDocument();
     expect(screen.queryByText(/donor@example/i)).not.toBeInTheDocument();
   });

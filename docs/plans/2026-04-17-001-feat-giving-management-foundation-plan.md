@@ -354,7 +354,7 @@ flowchart LR
 - Reset the local database from that baseline and regenerated Prisma Client with `pnpm prisma generate`.
 - Re-verified the expanded full sync against the live Rock instance: 180,509 source records read, 245,395 local writes, 1 skipped warning, and zero missing references across the new group type, group role, defined value, and person alias links.
 
-- [ ] **Unit 4: Build the Rock Sync and Reconciliation Foundation**
+- [x] **Unit 4: Build the Rock Sync and Reconciliation Foundation**
 
 **Goal:** Implement a first read-only sync path from sanitized Rock fixtures and then from the verified Rock integration path, recording sync health and reconciliation issues.
 
@@ -424,7 +424,8 @@ flowchart LR
 - Reset the local database after squashing migrations, dropped stale pg-boss schema state, regenerated Prisma Client, and reran `SYNC_CHUNK_SIZE=1000 pnpm rock:sync` successfully. Clean-database result: 164,986 source records read, 229,872 local writes, 1 skipped record, and 1 issue.
 - Family people are fetched from family `GroupMembers` so the local family/household includes the grouped people, not only the target person.
 - Moved fixture-backed database tests behind `TEST_DATABASE_URL` so demo records cannot pollute the local development database used for live Rock sync.
-- Remaining Unit 4 work: add richer reconciliation for inactive/removed records, run the pg-boss worker under the intended deployment process, and finish staff-visible sync status UI.
+- Staff-visible sync status now includes the latest run, recent run history, open issue summaries, synced record counts, and safe operational guidance without exposing donor payloads.
+- Remaining follow-on work after Unit 4: add richer reconciliation for inactive/removed upstream records, run the pg-boss worker under the intended deployment process, and turn the sync page into the broader staff operations dashboard in Unit 6.
 
 - [ ] **Unit 5: Establish the GraphQL API Boundary**
 

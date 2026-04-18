@@ -3,16 +3,9 @@ import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 export type SyncStatusSummary = {
-  latestRun: {
-    id: string;
-    source: string;
-    status: string;
-    startedAt: Date;
-    completedAt: Date | null;
-    recordsRead: number;
-    recordsWritten: number;
-    recordsSkipped: number;
-  } | null;
+  latestRun: SyncRunSummary | null;
+  recentRuns: SyncRunSummary[];
+  openIssues: SyncIssueSummary[];
   openIssueCount: number;
   syncedCounts: {
     people: number;
@@ -26,12 +19,35 @@ export type SyncStatusSummary = {
   };
 };
 
+export type SyncRunSummary = {
+  id: string;
+  source: string;
+  status: string;
+  startedAt: Date;
+  completedAt: Date | null;
+  recordsRead: number;
+  recordsWritten: number;
+  recordsSkipped: number;
+};
+
+export type SyncIssueSummary = {
+  id: string;
+  severity: string;
+  source: string;
+  recordType: string | null;
+  rockId: string | null;
+  code: string;
+  message: string;
+  createdAt: Date;
+};
+
 export async function getSyncStatusSummary(
   client: PrismaClient = prisma,
 ): Promise<SyncStatusSummary> {
   const [
-    latestRun,
+    recentRuns,
     openIssueCount,
+    openIssues,
     people,
     households,
     householdMembers,
@@ -41,10 +57,11 @@ export async function getSyncStatusSummary(
     financialTransactionDetails,
     givingFacts,
   ] = await Promise.all([
-    client.syncRun.findFirst({
+    client.syncRun.findMany({
       orderBy: {
         startedAt: "desc",
       },
+      take: 5,
       select: {
         id: true,
         source: true,
@@ -59,6 +76,25 @@ export async function getSyncStatusSummary(
     client.syncIssue.count({
       where: {
         status: "OPEN",
+      },
+    }),
+    client.syncIssue.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 10,
+      where: {
+        status: "OPEN",
+      },
+      select: {
+        id: true,
+        severity: true,
+        source: true,
+        recordType: true,
+        rockId: true,
+        code: true,
+        message: true,
+        createdAt: true,
       },
     }),
     client.rockPerson.count(),
@@ -80,7 +116,9 @@ export async function getSyncStatusSummary(
   ]);
 
   return {
-    latestRun,
+    latestRun: recentRuns[0] ?? null,
+    recentRuns,
+    openIssues,
     openIssueCount,
     syncedCounts: {
       people,
