@@ -2,6 +2,8 @@ import type { PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 
+const MAX_OPEN_SYNC_ISSUES = 50;
+
 export type SyncStatusSummary = {
   latestRun: SyncRunSummary | null;
   recentRuns: SyncRunSummary[];
@@ -82,7 +84,7 @@ export async function getSyncStatusSummary(
       orderBy: {
         createdAt: "desc",
       },
-      take: 10,
+      take: MAX_OPEN_SYNC_ISSUES,
       where: {
         status: "OPEN",
       },

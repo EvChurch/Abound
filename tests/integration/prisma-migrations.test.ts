@@ -6,6 +6,10 @@ const migration = readFileSync(
   "prisma/migrations/20260417000000_initial_baseline/migration.sql",
   "utf8",
 );
+const staffTaskIndexMigration = readFileSync(
+  "prisma/migrations/20260418000000_add_staff_task_list_index/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -63,5 +67,11 @@ describe("synced data model migration", () => {
       /gatewayCustomerId|paymentMethod|paymentToken/i,
     );
     expect(migration).not.toMatch(/paymentInstrument/i);
+  });
+
+  it("indexes staff task list ordering", () => {
+    expect(staffTaskIndexMigration).toContain(
+      'CREATE INDEX "StaffTask_createdAt_id_idx" ON "StaffTask"("createdAt" DESC, "id")',
+    );
   });
 });

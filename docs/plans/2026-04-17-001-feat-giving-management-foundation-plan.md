@@ -427,7 +427,7 @@ flowchart LR
 - Staff-visible sync status now includes the latest run, recent run history, open issue summaries, synced record counts, and safe operational guidance without exposing donor payloads.
 - Remaining follow-on work after Unit 4: add richer reconciliation for inactive/removed upstream records, run the pg-boss worker under the intended deployment process, and turn the sync page into the broader staff operations dashboard in Unit 6.
 
-- [ ] **Unit 5: Establish the GraphQL API Boundary**
+- [x] **Unit 5: Establish the GraphQL API Boundary**
 
 **Goal:** Add a GraphQL Yoga + Pothos API that exposes staff-safe queries for sync status, giving summaries, tasks, and communication prep.
 
@@ -508,6 +508,21 @@ flowchart LR
 **Verification:**
 
 - The API boundary is usable by the staff UI and suitable for future external consumers without exposing raw Prisma models indiscriminately.
+
+**Progress note 2026-04-18:**
+
+- Added focused implementation plan `docs/plans/2026-04-18-001-feat-graphql-api-boundary-plan.md`.
+- Added GraphQL Yoga route handler at `app/api/graphql/route.ts`.
+- Added Pothos builder, generated Prisma metadata, and schema registration under `lib/graphql/`.
+- Added Pothos Prisma generator output at `lib/graphql/pothos-prisma-types.ts` with portable `@prisma/client` imports.
+- Added auth-aware GraphQL context in `lib/graphql/context.ts` that reuses Auth0 session resolution and local `AppUser` authorization.
+- Added permission helper in `lib/auth/permissions.ts`.
+- Added staff-only GraphQL fields for `viewer`, `syncStatus`, bounded sync issues, `staffTasks`, `createStaffTask`, and `updateStaffTask`.
+- Added local task service in `lib/tasks/service.ts` with app-owned task mutations, Rock person/household link validation, and `tasks:manage` enforcement.
+- Added `docs/architecture/api-boundary.md` and `docs/architecture/auth0-user-management.md`.
+- Added tests in `tests/unit/graphql-auth.test.ts`, `tests/unit/tasks-service.test.ts`, and `tests/integration/graphql-api.test.ts`.
+- Review hardening added production introspection blocking, route-level Yoga coverage, stable bad-input errors, local-only task creation, assignee validation on task updates, a staff task list index migration, and staff API examples.
+- Remaining follow-on work after Unit 5: Unit 6 should add role-aware giving metrics and dashboard data, and future donor-facing GraphQL fields should remain deferred until payment/giving boundaries are verified.
 
 - [ ] **Unit 6: Build Staff Dashboards and Explainable Giving Metrics**
 
