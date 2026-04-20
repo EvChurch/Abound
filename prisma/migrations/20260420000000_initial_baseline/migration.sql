@@ -705,7 +705,7 @@ CREATE INDEX "GivingPledgeRecommendationDecision_decidedByUserId_idx" ON "Giving
 CREATE INDEX "GivingPledgeRecommendationDecision_personRockId_accountRock_idx" ON "GivingPledgeRecommendationDecision"("personRockId", "accountRockId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accou_key" ON "GivingPledgeRecommendationDecision"("personRockId", "accountRockId", "status");
+CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accountRock_key" ON "GivingPledgeRecommendationDecision"("personRockId", "accountRockId", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RockFinancialTransaction_rockGuid_key" ON "RockFinancialTransaction"("rockGuid");

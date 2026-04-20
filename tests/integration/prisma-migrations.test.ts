@@ -90,7 +90,7 @@ describe("synced data model migration", () => {
       'CREATE INDEX "GivingPledge_personRockId_accountRockId_status_idx"',
     );
     expect(migration).toContain(
-      'CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accou_key"',
+      'CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accountRock_key"',
     );
     expect(migration).toContain(
       'FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId")',
