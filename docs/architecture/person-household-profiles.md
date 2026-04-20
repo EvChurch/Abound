@@ -39,6 +39,7 @@ The pages and GraphQL fields read from local synced mirror rows:
 They also read app-owned workflow rows:
 
 - `StaffTask`
+- `GivingPledge`
 
 They do not edit Rock records, expose payment instruments, or manage recurring gift/payment setup. Profile reads use the local mirror. Person photos are the exception: the sync stores only Rock `Person.PhotoId`, and the staff UI loads the image through a protected app route that verifies local authorization before proxying Rock `GetImage.ashx?id=<PhotoId>` server-side.
 
@@ -53,10 +54,10 @@ Profile photo assumptions to verify against the live Rock instance:
 Auth0 proves identity only. Local `AppUser` role controls visibility.
 
 - Admin: can see profile context, local tasks, person giving summaries, and household giving summaries.
-- Finance: can see profile context and giving summaries needed to identify donors and reconcile giving data.
-- Pastoral Care: can see person/household care context and local tasks, but giving summaries are hidden.
+- Finance: can see profile context, giving summaries, and local pledge recommendations needed to identify donors and reconcile giving data.
+- Pastoral Care: can see person/household care context and local tasks, but giving summaries and pledge recommendations are hidden.
 
-Pastoral Care receives an explicit "Giving amounts hidden" UI state instead of blank summary data. GraphQL returns `givingSummary: null` and `amountsHidden: true`.
+Pastoral Care receives an explicit "Giving amounts hidden" UI state instead of blank summary data. GraphQL returns `givingSummary: null`, `pledgeEditor: null`, and `amountsHidden: true`.
 
 ## Giving Summary Contract
 
@@ -71,6 +72,32 @@ Giving summaries are derived only from `GivingFact`. They expose compact aggrega
 - `sourceExplanation`
 
 The slice does not expose raw transaction lists, payment method details, gateway identifiers, payment tokens, bank/card data, or recurring gift management controls.
+
+## Local Pledge Contract
+
+Person profiles include a local pledge editor for Admin and Finance users. Pledges are app-owned staff commitments by person and Rock financial account/fund. They are not donor-submitted intent, Rock scheduled transactions, recurring gift setup, payment instructions, or processor-managed state.
+
+Pledge recommendations are derived from the latest 12 months of local `GivingFact` rows grouped by person and fund. If a fund has no current-month giving yet, the analysis window ends at the previous month so the current month is not treated as a missing giving month. The first recommendation rule is intentionally conservative: it recommends a monthly pledge only when a fund has giving in at least eight of the latest twelve months and no active or draft local pledge already exists for that person/fund.
+
+The person pledge editor shows funds that have giving in the latest 12 months, plus funds with an existing active or draft local pledge. Active Rock funds with no recent giving and no pledge work are omitted so staff do not review empty recommendation rows.
+
+The pledge UI supports:
+
+- quick creation of an active pledge from a recommendation
+- creation of a persisted draft pledge from a recommendation
+- rejection of a recommendation when staff judgement says it should not become a pledge
+- editing draft or active pledge amount, period, status, and dates
+
+Rejected recommendations are stored as local recommendation decisions, not pledge records. The decision snapshots the recommendation evidence at the time of rejection and suppresses the same recommendation until confidence improves, giving continues after the rejection, or the recommended amount changes materially.
+
+Pledge mutations require local `pledges:manage` permission, currently granted to Admin and Finance. Mutations validate synced Rock person/fund links and reject a second active pledge for the same person/fund.
+
+Verification expectations for this contract:
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test -- tests/unit/giving-pledges.test.ts tests/unit/people-profiles.test.ts tests/unit/person-profile-page.test.tsx tests/integration/graphql-api.test.ts`
+- `pnpm build`
 
 ## Photo Contract
 

@@ -3,11 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  "prisma/migrations/20260417000000_initial_baseline/migration.sql",
-  "utf8",
-);
-const staffTaskIndexMigration = readFileSync(
-  "prisma/migrations/20260418000000_add_staff_task_list_index/migration.sql",
+  "prisma/migrations/20260420000000_initial_baseline/migration.sql",
   "utf8",
 );
 
@@ -30,6 +26,8 @@ describe("synced data model migration", () => {
       "RockFinancialScheduledTransaction",
       "RockFinancialScheduledTransactionDetail",
       "GivingFact",
+      "GivingPledge",
+      "GivingPledgeRecommendationDecision",
       "StaffTask",
       "CommunicationPrep",
     ]) {
@@ -70,8 +68,27 @@ describe("synced data model migration", () => {
   });
 
   it("indexes staff task list ordering", () => {
-    expect(staffTaskIndexMigration).toContain(
+    expect(migration).toContain(
       'CREATE INDEX "StaffTask_createdAt_id_idx" ON "StaffTask"("createdAt" DESC, "id")',
+    );
+  });
+
+  it("creates local person-fund pledge records without payment state", () => {
+    expect(migration).toContain('CREATE TABLE "GivingPledge"');
+    expect(migration).toContain(
+      'CREATE TABLE "GivingPledgeRecommendationDecision"',
+    );
+    expect(migration).toContain(
+      'CREATE INDEX "GivingPledge_personRockId_accountRockId_status_idx"',
+    );
+    expect(migration).toContain(
+      'CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accou_key"',
+    );
+    expect(migration).toContain(
+      'FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId")',
+    );
+    expect(migration).toContain(
+      'FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId")',
     );
   });
 });

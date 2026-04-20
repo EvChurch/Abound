@@ -20,6 +20,18 @@ CREATE TYPE "SyncIssueStatus" AS ENUM ('OPEN', 'ACKNOWLEDGED', 'RESOLVED');
 CREATE TYPE "GiftReliabilityKind" AS ENUM ('ONE_OFF', 'SCHEDULED_RECURRING', 'INFERRED_RECURRING', 'PLEDGE');
 
 -- CreateEnum
+CREATE TYPE "GivingPledgeStatus" AS ENUM ('DRAFT', 'ACTIVE', 'ENDED', 'CANCELED');
+
+-- CreateEnum
+CREATE TYPE "GivingPledgePeriod" AS ENUM ('WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY');
+
+-- CreateEnum
+CREATE TYPE "GivingPledgeSource" AS ENUM ('STAFF_ENTERED', 'PATTERN_RECOMMENDED');
+
+-- CreateEnum
+CREATE TYPE "GivingPledgeRecommendationDecisionStatus" AS ENUM ('REJECTED');
+
+-- CreateEnum
 CREATE TYPE "StaffTaskStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELED');
 
 -- CreateEnum
@@ -178,6 +190,7 @@ CREATE TABLE "RockPerson" (
     "givingLeaderRockId" INTEGER,
     "primaryFamilyRockId" INTEGER,
     "primaryCampusRockId" INTEGER,
+    "photoRockId" INTEGER,
     "firstName" TEXT,
     "nickName" TEXT,
     "lastName" TEXT,
@@ -198,7 +211,6 @@ CREATE TABLE "RockHousehold" (
     "rockId" INTEGER NOT NULL,
     "rockGuid" TEXT,
     "groupTypeRockId" INTEGER NOT NULL DEFAULT 10,
-    "givingId" TEXT,
     "campusRockId" INTEGER,
     "name" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL,
@@ -283,6 +295,45 @@ CREATE TABLE "RockFinancialAccount" (
     "lastSyncRunId" TEXT NOT NULL,
 
     CONSTRAINT "RockFinancialAccount_pkey" PRIMARY KEY ("rockId")
+);
+
+-- CreateTable
+CREATE TABLE "GivingPledge" (
+    "id" TEXT NOT NULL,
+    "personRockId" INTEGER NOT NULL,
+    "accountRockId" INTEGER NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "period" "GivingPledgePeriod" NOT NULL,
+    "status" "GivingPledgeStatus" NOT NULL DEFAULT 'DRAFT',
+    "source" "GivingPledgeSource" NOT NULL DEFAULT 'STAFF_ENTERED',
+    "startDate" TIMESTAMP(3),
+    "endDate" TIMESTAMP(3),
+    "createdByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GivingPledge_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "GivingPledgeRecommendationDecision" (
+    "id" TEXT NOT NULL,
+    "personRockId" INTEGER NOT NULL,
+    "accountRockId" INTEGER NOT NULL,
+    "status" "GivingPledgeRecommendationDecisionStatus" NOT NULL DEFAULT 'REJECTED',
+    "reason" TEXT,
+    "basisMonthsAtDecision" INTEGER NOT NULL,
+    "confidenceAtDecision" TEXT,
+    "recommendedAmountAtDecision" DECIMAL(12,2) NOT NULL,
+    "recommendedPeriodAtDecision" "GivingPledgePeriod" NOT NULL,
+    "lastGiftAtDecision" TIMESTAMP(3),
+    "lastTwelveMonthsTotalAtDecision" DECIMAL(12,2) NOT NULL,
+    "decidedByUserId" TEXT,
+    "decidedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GivingPledgeRecommendationDecision_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -534,6 +585,9 @@ CREATE INDEX "RockPerson_primaryCampusRockId_idx" ON "RockPerson"("primaryCampus
 CREATE INDEX "RockPerson_primaryFamilyRockId_idx" ON "RockPerson"("primaryFamilyRockId");
 
 -- CreateIndex
+CREATE INDEX "RockPerson_photoRockId_idx" ON "RockPerson"("photoRockId");
+
+-- CreateIndex
 CREATE INDEX "RockPerson_lastSyncRunId_idx" ON "RockPerson"("lastSyncRunId");
 
 -- CreateIndex
@@ -544,9 +598,6 @@ CREATE INDEX "RockHousehold_campusRockId_idx" ON "RockHousehold"("campusRockId")
 
 -- CreateIndex
 CREATE INDEX "RockHousehold_groupTypeRockId_idx" ON "RockHousehold"("groupTypeRockId");
-
--- CreateIndex
-CREATE INDEX "RockHousehold_givingId_idx" ON "RockHousehold"("givingId");
 
 -- CreateIndex
 CREATE INDEX "RockHousehold_active_idx" ON "RockHousehold"("active");
@@ -622,6 +673,39 @@ CREATE INDEX "RockFinancialAccount_active_idx" ON "RockFinancialAccount"("active
 
 -- CreateIndex
 CREATE INDEX "RockFinancialAccount_lastSyncRunId_idx" ON "RockFinancialAccount"("lastSyncRunId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledge_personRockId_idx" ON "GivingPledge"("personRockId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledge_accountRockId_idx" ON "GivingPledge"("accountRockId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledge_status_idx" ON "GivingPledge"("status");
+
+-- CreateIndex
+CREATE INDEX "GivingPledge_personRockId_accountRockId_status_idx" ON "GivingPledge"("personRockId", "accountRockId", "status");
+
+-- CreateIndex
+CREATE INDEX "GivingPledge_createdByUserId_idx" ON "GivingPledge"("createdByUserId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledgeRecommendationDecision_personRockId_idx" ON "GivingPledgeRecommendationDecision"("personRockId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledgeRecommendationDecision_accountRockId_idx" ON "GivingPledgeRecommendationDecision"("accountRockId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledgeRecommendationDecision_status_idx" ON "GivingPledgeRecommendationDecision"("status");
+
+-- CreateIndex
+CREATE INDEX "GivingPledgeRecommendationDecision_decidedByUserId_idx" ON "GivingPledgeRecommendationDecision"("decidedByUserId");
+
+-- CreateIndex
+CREATE INDEX "GivingPledgeRecommendationDecision_personRockId_accountRock_idx" ON "GivingPledgeRecommendationDecision"("personRockId", "accountRockId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GivingPledgeRecommendationDecision_personRockId_accou_key" ON "GivingPledgeRecommendationDecision"("personRockId", "accountRockId", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RockFinancialTransaction_rockGuid_key" ON "RockFinancialTransaction"("rockGuid");
@@ -715,6 +799,9 @@ CREATE INDEX "GivingFact_lastSyncRunId_idx" ON "GivingFact"("lastSyncRunId");
 
 -- CreateIndex
 CREATE INDEX "StaffTask_status_idx" ON "StaffTask"("status");
+
+-- CreateIndex
+CREATE INDEX "StaffTask_createdAt_id_idx" ON "StaffTask"("createdAt" DESC, "id");
 
 -- CreateIndex
 CREATE INDEX "StaffTask_assignedToUserId_idx" ON "StaffTask"("assignedToUserId");
@@ -841,6 +928,24 @@ ALTER TABLE "RockFinancialAccount" ADD CONSTRAINT "RockFinancialAccount_campusRo
 
 -- AddForeignKey
 ALTER TABLE "RockFinancialAccount" ADD CONSTRAINT "RockFinancialAccount_parentAccountRockId_fkey" FOREIGN KEY ("parentAccountRockId") REFERENCES "RockFinancialAccount"("rockId") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledge" ADD CONSTRAINT "GivingPledge_personRockId_fkey" FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledge" ADD CONSTRAINT "GivingPledge_accountRockId_fkey" FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledge" ADD CONSTRAINT "GivingPledge_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "AppUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledgeRecommendationDecision" ADD CONSTRAINT "GivingPledgeRecommendationDecision_personRockId_fkey" FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledgeRecommendationDecision" ADD CONSTRAINT "GivingPledgeRecommendationDecision_accountRockId_fkey" FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GivingPledgeRecommendationDecision" ADD CONSTRAINT "GivingPledgeRecommendationDecision_decidedByUserId_fkey" FOREIGN KEY ("decidedByUserId") REFERENCES "AppUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RockFinancialTransaction" ADD CONSTRAINT "RockFinancialTransaction_lastSyncRunId_fkey" FOREIGN KEY ("lastSyncRunId") REFERENCES "SyncRun"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

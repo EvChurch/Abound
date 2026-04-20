@@ -8,11 +8,16 @@ import type { LocalAppUser } from "@/lib/auth/types";
 
 const mocks = vi.hoisted(() => ({
   createGraphQLContext: vi.fn(),
+  createDraftGivingPledgeFromRecommendation: vi.fn(),
   createStaffTask: vi.fn(),
   getRockHouseholdProfile: vi.fn(),
   getRockPersonProfile: vi.fn(),
   getSyncStatusSummary: vi.fn(),
+  listPledgeCandidates: vi.fn(),
+  quickCreateGivingPledge: vi.fn(),
+  rejectGivingPledgeRecommendation: vi.fn(),
   listStaffTasks: vi.fn(),
+  updateGivingPledge: vi.fn(),
   updateStaffTask: vi.fn(),
 }));
 
@@ -35,6 +40,15 @@ vi.mock("@/lib/tasks/service", () => ({
   createStaffTask: mocks.createStaffTask,
   listStaffTasks: mocks.listStaffTasks,
   updateStaffTask: mocks.updateStaffTask,
+}));
+
+vi.mock("@/lib/giving/pledges", () => ({
+  createDraftGivingPledgeFromRecommendation:
+    mocks.createDraftGivingPledgeFromRecommendation,
+  listPledgeCandidates: mocks.listPledgeCandidates,
+  quickCreateGivingPledge: mocks.quickCreateGivingPledge,
+  rejectGivingPledgeRecommendation: mocks.rejectGivingPledgeRecommendation,
+  updateGivingPledge: mocks.updateGivingPledge,
 }));
 
 vi.mock("@/lib/people/profiles", () => ({
@@ -103,7 +117,7 @@ describe("GraphQL API schema", () => {
     });
   });
 
-  it("denies staff data to anonymous callers", async () => {
+  it("denies sensitive data to anonymous callers", async () => {
     const result = await graphql({
       contextValue: {
         accessState: {
@@ -328,6 +342,7 @@ describe("GraphQL API schema", () => {
       givingId: "G-910001",
       givingLeaderRockId: null,
       givingSummary: {
+        accountSummaries: [],
         firstGiftAt: new Date("2022-01-12T00:00:00.000Z"),
         lastGiftAmount: "250.00",
         lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
@@ -335,6 +350,7 @@ describe("GraphQL API schema", () => {
         monthlyGiving: [],
         monthsWithGiving: 38,
         reliabilityKinds: ["ONE_OFF"],
+        source: "PERSON",
         sourceExplanation:
           "Derived from local GivingFact rows synced from Rock.",
         totalGiven: "12450.00",
@@ -358,6 +374,31 @@ describe("GraphQL API schema", () => {
         name: "Donor Family",
         rockId: 920001,
       },
+      pledgeEditor: {
+        personRockId: 910001,
+        rows: [
+          {
+            account: {
+              active: true,
+              name: "General Fund",
+              rockId: 101,
+            },
+            activePledge: null,
+            basisMonths: 9,
+            confidence: "MEDIUM",
+            draftPledge: null,
+            explanation:
+              "9 of the latest 12 months include giving to this fund.",
+            lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
+            lastTwelveMonthsTotal: "3000.00",
+            recommendedAmount: "250.00",
+            recommendedPeriod: "MONTHLY",
+            sourceExplanation:
+              "Derived from local GivingFact rows synced from Rock.",
+            status: "RECOMMENDED",
+          },
+        ],
+      },
       recordStatus: "Active",
       rockId: 910001,
       staffTasks: [],
@@ -380,6 +421,15 @@ describe("GraphQL API schema", () => {
               totalGiven
               reliabilityKinds
             }
+            pledgeEditor {
+              rows {
+                status
+                recommendedAmount
+                account {
+                  name
+                }
+              }
+            }
           }
         }
       `,
@@ -396,6 +446,17 @@ describe("GraphQL API schema", () => {
           reliabilityKinds: ["ONE_OFF"],
           totalGiven: "12450.00",
         },
+        pledgeEditor: {
+          rows: [
+            {
+              account: {
+                name: "General Fund",
+              },
+              recommendedAmount: "250.00",
+              status: "RECOMMENDED",
+            },
+          ],
+        },
         primaryCampus: {
           name: "North Campus",
         },
@@ -407,6 +468,152 @@ describe("GraphQL API schema", () => {
         ? financeContext.accessState.user
         : null,
     );
+  });
+
+  it("creates quick and draft pledges and rejects recommendations through the staff API", async () => {
+    const pledge = {
+      accountName: "General Fund",
+      accountRockId: 101,
+      amount: "250.00",
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      endDate: null,
+      id: "pledge_1",
+      period: "MONTHLY",
+      personRockId: 910001,
+      source: "PATTERN_RECOMMENDED",
+      startDate: new Date("2026-04-20T10:00:00.000Z"),
+      status: "ACTIVE",
+      updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+    };
+
+    mocks.quickCreateGivingPledge.mockResolvedValueOnce(pledge);
+    mocks.createDraftGivingPledgeFromRecommendation.mockResolvedValueOnce({
+      ...pledge,
+      id: "pledge_2",
+      status: "DRAFT",
+    });
+    mocks.rejectGivingPledgeRecommendation.mockResolvedValueOnce({
+      id: "decision_1",
+    });
+
+    const quick = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        mutation QuickCreate {
+          quickCreateGivingPledge(personRockId: 910001, accountRockId: 101) {
+            id
+            amount
+            status
+          }
+        }
+      `,
+    });
+    const draft = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        mutation CreateDraft {
+          createDraftGivingPledgeFromRecommendation(
+            personRockId: 910001
+            accountRockId: 101
+          ) {
+            id
+            status
+          }
+        }
+      `,
+    });
+    const rejected = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        mutation RejectRecommendation {
+          rejectGivingPledgeRecommendation(
+            personRockId: 910001
+            accountRockId: 101
+            reason: "Staff judgement"
+          )
+        }
+      `,
+    });
+
+    expect(quick.errors).toBeUndefined();
+    expect(draft.errors).toBeUndefined();
+    expect(rejected.errors).toBeUndefined();
+    expect(quick.data).toEqual({
+      quickCreateGivingPledge: {
+        amount: "250.00",
+        id: "pledge_1",
+        status: "ACTIVE",
+      },
+    });
+    expect(draft.data).toEqual({
+      createDraftGivingPledgeFromRecommendation: {
+        id: "pledge_2",
+        status: "DRAFT",
+      },
+    });
+    expect(rejected.data).toEqual({
+      rejectGivingPledgeRecommendation: true,
+    });
+  });
+
+  it("returns pledge candidates for future bulk review", async () => {
+    mocks.listPledgeCandidates.mockResolvedValueOnce([
+      {
+        account: {
+          active: true,
+          name: "General Fund",
+          rockId: 101,
+        },
+        activePledge: null,
+        basisMonths: 9,
+        confidence: "MEDIUM",
+        draftPledge: null,
+        explanation: "9 of the latest 12 months include giving to this fund.",
+        lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
+        lastTwelveMonthsTotal: "3000.00",
+        personDisplayName: "Jane Donor",
+        personRockId: 910001,
+        recommendedAmount: "250.00",
+        recommendedPeriod: "MONTHLY",
+        sourceExplanation:
+          "Derived from local GivingFact rows synced from Rock.",
+        status: "RECOMMENDED",
+      },
+    ]);
+
+    const result = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        query PledgeCandidates {
+          pledgeCandidates(limit: 10) {
+            personRockId
+            personDisplayName
+            recommendedAmount
+            account {
+              name
+            }
+          }
+        }
+      `,
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({
+      pledgeCandidates: [
+        {
+          account: {
+            name: "General Fund",
+          },
+          personDisplayName: "Jane Donor",
+          personRockId: 910001,
+          recommendedAmount: "250.00",
+        },
+      ],
+    });
   });
 
   it("returns safe not found errors for missing Rock profiles", async () => {

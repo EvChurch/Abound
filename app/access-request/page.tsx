@@ -27,7 +27,7 @@ export default async function AccessRequestPage() {
         </h1>
         <p className="max-w-2xl text-lg leading-7 text-app-muted">
           You are signed in with Auth0, but this app requires a local user
-          profile and role before staff data is available.
+          profile and role before sensitive data is available.
         </p>
         <AccessRequestForm email={accessState.identity.email} />
       </section>

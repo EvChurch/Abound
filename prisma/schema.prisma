@@ -50,6 +50,30 @@ enum GiftReliabilityKind {
   PLEDGE
 }
 
+enum GivingPledgeStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+  CANCELED
+}
+
+enum GivingPledgePeriod {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum GivingPledgeSource {
+  STAFF_ENTERED
+  PATTERN_RECOMMENDED
+}
+
+enum GivingPledgeRecommendationDecisionStatus {
+  REJECTED
+}
+
 enum StaffTaskStatus {
   OPEN
   IN_PROGRESS
@@ -73,17 +97,19 @@ enum CommunicationPrepStatus {
 }
 
 model AppUser {
-  id                 String              @id @default(cuid())
-  auth0Subject       String              @unique
+  id                 String                               @id @default(cuid())
+  auth0Subject       String                               @unique
   email              String?
   name               String?
   role               AppRole
-  active             Boolean             @default(true)
+  active             Boolean                              @default(true)
   rockPersonId       String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime                             @default(now())
+  updatedAt          DateTime                             @updatedAt
   staffTasks         StaffTask[]
   communicationPreps CommunicationPrep[]
+  givingPledges      GivingPledge[]
+  pledgeDecisions    GivingPledgeRecommendationDecision[]
 
   @@index([email])
   @@index([rockPersonId])
@@ -291,15 +317,15 @@ model RockPerson {
   lastSyncedAt            DateTime  @updatedAt
   lastSyncRunId           String
 
-  lastSyncRun           SyncRun                             @relation(fields: [lastSyncRunId], references: [id])
-  primaryAlias          RockPersonAlias?                    @relation("PersonPrimaryAlias", fields: [primaryAliasRockId], references: [rockId])
-  primaryCampus         RockCampus?                         @relation(fields: [primaryCampusRockId], references: [rockId])
-  primaryHousehold      RockHousehold?                      @relation(fields: [primaryFamilyRockId], references: [rockId])
-  givingHousehold       RockHousehold?                      @relation("PersonGivingHousehold", fields: [givingGroupRockId], references: [rockId])
-  givingLeader          RockPerson?                         @relation("PersonGivingLeader", fields: [givingLeaderRockId], references: [rockId])
-  givingMembers         RockPerson[]                        @relation("PersonGivingLeader")
-  aliases               RockPersonAlias[]                   @relation("PersonAliases")
-  recordStatus          RockDefinedValue?                   @relation("PersonRecordStatus", fields: [recordStatusValueRockId], references: [rockId])
+  lastSyncRun           SyncRun                              @relation(fields: [lastSyncRunId], references: [id])
+  primaryAlias          RockPersonAlias?                     @relation("PersonPrimaryAlias", fields: [primaryAliasRockId], references: [rockId])
+  primaryCampus         RockCampus?                          @relation(fields: [primaryCampusRockId], references: [rockId])
+  primaryHousehold      RockHousehold?                       @relation(fields: [primaryFamilyRockId], references: [rockId])
+  givingHousehold       RockHousehold?                       @relation("PersonGivingHousehold", fields: [givingGroupRockId], references: [rockId])
+  givingLeader          RockPerson?                          @relation("PersonGivingLeader", fields: [givingLeaderRockId], references: [rockId])
+  givingMembers         RockPerson[]                         @relation("PersonGivingLeader")
+  aliases               RockPersonAlias[]                    @relation("PersonAliases")
+  recordStatus          RockDefinedValue?                    @relation("PersonRecordStatus", fields: [recordStatusValueRockId], references: [rockId])
   householdMembers      RockHouseholdMember[]
   groupMembers          RockGroupMember[]
   transactions          RockFinancialTransaction[]
@@ -307,6 +333,8 @@ model RockPerson {
   givingFacts           GivingFact[]
   staffTasks            StaffTask[]
   communicationPreps    CommunicationPrep[]
+  givingPledges         GivingPledge[]
+  pledgeDecisions       GivingPledgeRecommendationDecision[]
 
   @@index([email])
   @@index([primaryAliasRockId])
@@ -455,11 +483,67 @@ model RockFinancialAccount {
   childAccounts               RockFinancialAccount[]                    @relation("FinancialAccountHierarchy")
   transactionDetails          RockFinancialTransactionDetail[]
   scheduledTransactionDetails RockFinancialScheduledTransactionDetail[]
+  givingPledges               GivingPledge[]
+  pledgeDecisions             GivingPledgeRecommendationDecision[]
 
   @@index([campusRockId])
   @@index([parentAccountRockId])
   @@index([active])
   @@index([lastSyncRunId])
+}
+
+model GivingPledge {
+  id              String             @id @default(cuid())
+  personRockId    Int
+  accountRockId   Int
+  amount          Decimal            @db.Decimal(12, 2)
+  period          GivingPledgePeriod
+  status          GivingPledgeStatus @default(DRAFT)
+  source          GivingPledgeSource @default(STAFF_ENTERED)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdByUserId String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  person    RockPerson           @relation(fields: [personRockId], references: [rockId])
+  account   RockFinancialAccount @relation(fields: [accountRockId], references: [rockId])
+  createdBy AppUser?             @relation(fields: [createdByUserId], references: [id])
+
+  @@index([personRockId])
+  @@index([accountRockId])
+  @@index([status])
+  @@index([personRockId, accountRockId, status])
+  @@index([createdByUserId])
+}
+
+model GivingPledgeRecommendationDecision {
+  id                              String                                   @id @default(cuid())
+  personRockId                    Int
+  accountRockId                   Int
+  status                          GivingPledgeRecommendationDecisionStatus @default(REJECTED)
+  reason                          String?
+  basisMonthsAtDecision           Int
+  confidenceAtDecision            String?
+  recommendedAmountAtDecision     Decimal                                  @db.Decimal(12, 2)
+  recommendedPeriodAtDecision     GivingPledgePeriod
+  lastGiftAtDecision              DateTime?
+  lastTwelveMonthsTotalAtDecision Decimal                                  @db.Decimal(12, 2)
+  decidedByUserId                 String?
+  decidedAt                       DateTime                                 @default(now())
+  createdAt                       DateTime                                 @default(now())
+  updatedAt                       DateTime                                 @updatedAt
+
+  person    RockPerson           @relation(fields: [personRockId], references: [rockId])
+  account   RockFinancialAccount @relation(fields: [accountRockId], references: [rockId])
+  decidedBy AppUser?             @relation(fields: [decidedByUserId], references: [id])
+
+  @@unique([personRockId, accountRockId, status])
+  @@index([personRockId])
+  @@index([accountRockId])
+  @@index([status])
+  @@index([decidedByUserId])
+  @@index([personRockId, accountRockId])
 }
 
 model RockFinancialTransaction {

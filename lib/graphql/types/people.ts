@@ -15,6 +15,18 @@ import {
   type RockPersonProfile,
 } from "@/lib/people/profiles";
 import type { MonthlyGiving } from "@/lib/giving/metrics";
+import {
+  createDraftGivingPledgeFromRecommendation,
+  listPledgeCandidates,
+  quickCreateGivingPledge,
+  rejectGivingPledgeRecommendation,
+  updateGivingPledge,
+  type GivingPledgeRecord,
+  type PersonPledgeEditor,
+  type PledgeAnalysisRow,
+  type PledgeCandidate,
+  type PledgeFund,
+} from "@/lib/giving/pledges";
 
 const profileCampusType = builder
   .objectRef<ProfileCampus>("ProfileCampus")
@@ -133,6 +145,135 @@ const profileGivingSummaryType = builder
     }),
   });
 
+const pledgePeriodEnum = builder.enumType("GivingPledgePeriod", {
+  values: [
+    "WEEKLY",
+    "FORTNIGHTLY",
+    "MONTHLY",
+    "QUARTERLY",
+    "ANNUALLY",
+  ] as const,
+});
+
+const pledgeStatusEnum = builder.enumType("GivingPledgeStatus", {
+  values: ["DRAFT", "ACTIVE", "ENDED", "CANCELED"] as const,
+});
+
+const pledgeFundType = builder.objectRef<PledgeFund>("PledgeFund").implement({
+  fields: (t) => ({
+    active: t.exposeBoolean("active"),
+    name: t.exposeString("name"),
+    rockId: t.exposeInt("rockId"),
+  }),
+});
+
+const givingPledgeType = builder
+  .objectRef<GivingPledgeRecord>("GivingPledge")
+  .implement({
+    fields: (t) => ({
+      accountName: t.exposeString("accountName"),
+      accountRockId: t.exposeInt("accountRockId"),
+      amount: t.exposeString("amount"),
+      createdAt: t.string({
+        resolve: (pledge) => pledge.createdAt.toISOString(),
+      }),
+      endDate: t.string({
+        nullable: true,
+        resolve: (pledge) => pledge.endDate?.toISOString() ?? null,
+      }),
+      id: t.exposeString("id"),
+      period: t.exposeString("period"),
+      personRockId: t.exposeInt("personRockId"),
+      source: t.exposeString("source"),
+      startDate: t.string({
+        nullable: true,
+        resolve: (pledge) => pledge.startDate?.toISOString() ?? null,
+      }),
+      status: t.exposeString("status"),
+      updatedAt: t.string({
+        resolve: (pledge) => pledge.updatedAt.toISOString(),
+      }),
+    }),
+  });
+
+const pledgeAnalysisRowType = builder
+  .objectRef<PledgeAnalysisRow>("PledgeAnalysisRow")
+  .implement({
+    fields: (t) => ({
+      account: t.field({
+        type: pledgeFundType,
+        resolve: (row) => row.account,
+      }),
+      activePledge: t.field({
+        nullable: true,
+        type: givingPledgeType,
+        resolve: (row) => row.activePledge,
+      }),
+      basisMonths: t.exposeInt("basisMonths"),
+      confidence: t.exposeString("confidence", { nullable: true }),
+      draftPledge: t.field({
+        nullable: true,
+        type: givingPledgeType,
+        resolve: (row) => row.draftPledge,
+      }),
+      explanation: t.exposeString("explanation"),
+      lastGiftAt: t.string({
+        nullable: true,
+        resolve: (row) => row.lastGiftAt?.toISOString() ?? null,
+      }),
+      lastTwelveMonthsTotal: t.exposeString("lastTwelveMonthsTotal"),
+      recommendedAmount: t.exposeString("recommendedAmount", {
+        nullable: true,
+      }),
+      recommendedPeriod: t.exposeString("recommendedPeriod", {
+        nullable: true,
+      }),
+      sourceExplanation: t.exposeString("sourceExplanation"),
+      status: t.exposeString("status"),
+    }),
+  });
+
+const personPledgeEditorType = builder
+  .objectRef<PersonPledgeEditor>("PersonPledgeEditor")
+  .implement({
+    fields: (t) => ({
+      personRockId: t.exposeInt("personRockId"),
+      rows: t.field({
+        type: [pledgeAnalysisRowType],
+        resolve: (editor) => editor.rows,
+      }),
+    }),
+  });
+
+const pledgeCandidateType = builder
+  .objectRef<PledgeCandidate>("PledgeCandidate")
+  .implement({
+    fields: (t) => ({
+      account: t.field({
+        type: pledgeFundType,
+        resolve: (candidate) => candidate.account,
+      }),
+      basisMonths: t.exposeInt("basisMonths"),
+      confidence: t.exposeString("confidence", { nullable: true }),
+      explanation: t.exposeString("explanation"),
+      lastGiftAt: t.string({
+        nullable: true,
+        resolve: (candidate) => candidate.lastGiftAt?.toISOString() ?? null,
+      }),
+      lastTwelveMonthsTotal: t.exposeString("lastTwelveMonthsTotal"),
+      personDisplayName: t.exposeString("personDisplayName"),
+      personRockId: t.exposeInt("personRockId"),
+      recommendedAmount: t.exposeString("recommendedAmount", {
+        nullable: true,
+      }),
+      recommendedPeriod: t.exposeString("recommendedPeriod", {
+        nullable: true,
+      }),
+      sourceExplanation: t.exposeString("sourceExplanation"),
+      status: t.exposeString("status"),
+    }),
+  });
+
 const householdMembershipType = builder
   .objectRef<HouseholdMembershipProfile>("HouseholdMembershipProfile")
   .implement({
@@ -174,6 +315,11 @@ const rockPersonProfileType = builder
         nullable: true,
         type: profileGivingSummaryType,
         resolve: (person) => person.givingSummary,
+      }),
+      pledgeEditor: t.field({
+        nullable: true,
+        type: personPledgeEditorType,
+        resolve: (person) => person.pledgeEditor,
       }),
       householdMemberships: t.field({
         type: [householdMembershipType],
@@ -243,6 +389,20 @@ const rockHouseholdProfileType = builder
   });
 
 export function registerPeopleTypes() {
+  builder.queryField("pledgeCandidates", (t) =>
+    t.field({
+      args: {
+        limit: t.arg.int(),
+      },
+      type: [pledgeCandidateType],
+      resolve: (_root, args, context) => {
+        const actor = requireStaffUser(context);
+
+        return listPledgeCandidates({ limit: args.limit }, actor);
+      },
+    }),
+  );
+
   builder.queryField("rockPerson", (t) =>
     t.field({
       args: {
@@ -288,6 +448,112 @@ export function registerPeopleTypes() {
       },
     }),
   );
+
+  builder.mutationField("quickCreateGivingPledge", (t) =>
+    t.field({
+      args: {
+        accountRockId: t.arg.int({ required: true }),
+        personRockId: t.arg.int({ required: true }),
+        startDate: t.arg.string(),
+      },
+      type: givingPledgeType,
+      resolve: (_root, args, context) => {
+        const actor = requireStaffUser(context);
+
+        return quickCreateGivingPledge(
+          {
+            accountRockId: args.accountRockId,
+            personRockId: args.personRockId,
+            startDate: parseOptionalDate(args.startDate),
+          },
+          actor,
+        );
+      },
+    }),
+  );
+
+  builder.mutationField("createDraftGivingPledgeFromRecommendation", (t) =>
+    t.field({
+      args: {
+        accountRockId: t.arg.int({ required: true }),
+        personRockId: t.arg.int({ required: true }),
+        startDate: t.arg.string(),
+      },
+      type: givingPledgeType,
+      resolve: (_root, args, context) => {
+        const actor = requireStaffUser(context);
+
+        return createDraftGivingPledgeFromRecommendation(
+          {
+            accountRockId: args.accountRockId,
+            personRockId: args.personRockId,
+            startDate: parseOptionalDate(args.startDate),
+          },
+          actor,
+        );
+      },
+    }),
+  );
+
+  builder.mutationField("rejectGivingPledgeRecommendation", (t) =>
+    t.field({
+      args: {
+        accountRockId: t.arg.int({ required: true }),
+        personRockId: t.arg.int({ required: true }),
+        reason: t.arg.string(),
+      },
+      type: "Boolean",
+      resolve: async (_root, args, context) => {
+        const actor = requireStaffUser(context);
+
+        await rejectGivingPledgeRecommendation(
+          {
+            accountRockId: args.accountRockId,
+            personRockId: args.personRockId,
+            reason: args.reason,
+          },
+          actor,
+        );
+
+        return true;
+      },
+    }),
+  );
+
+  builder.mutationField("updateGivingPledge", (t) =>
+    t.field({
+      args: {
+        amount: t.arg.string(),
+        endDate: t.arg.string(),
+        id: t.arg.string({ required: true }),
+        period: t.arg({ required: false, type: pledgePeriodEnum }),
+        startDate: t.arg.string(),
+        status: t.arg({ required: false, type: pledgeStatusEnum }),
+      },
+      type: givingPledgeType,
+      resolve: (_root, args, context) => {
+        const actor = requireStaffUser(context);
+
+        return updateGivingPledge(
+          {
+            amount: args.amount,
+            endDate:
+              args.endDate === undefined
+                ? undefined
+                : parseOptionalDate(args.endDate),
+            id: args.id,
+            period: args.period,
+            startDate:
+              args.startDate === undefined
+                ? undefined
+                : parseOptionalDate(args.startDate),
+            status: args.status,
+          },
+          actor,
+        );
+      },
+    }),
+  );
 }
 
 function throwNotFound(label: string): never {
@@ -296,4 +562,22 @@ function throwNotFound(label: string): never {
       code: "NOT_FOUND",
     },
   });
+}
+
+function parseOptionalDate(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new GraphQLError("Date values must be valid ISO date strings.", {
+      extensions: {
+        code: "BAD_USER_INPUT",
+      },
+    });
+  }
+
+  return date;
 }

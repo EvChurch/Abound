@@ -66,6 +66,9 @@ describe.skipIf(!connectionString)("fixture-backed Rock sync", () => {
         "ONE_OFF",
         "SCHEDULED_RECURRING",
       ]);
+      expect(new Set(facts.map((fact) => fact.campusRockId))).toEqual(
+        new Set([970001]),
+      );
     } finally {
       await prisma.$disconnect();
     }

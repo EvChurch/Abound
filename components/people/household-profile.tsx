@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { GivingSummarySection } from "@/components/people/giving-summary-panel";
 import type {
   ProfilePersonSummary,
   ProfileTask,
@@ -5,9 +8,9 @@ import type {
 } from "@/lib/people/profiles";
 import {
   DefinitionGrid,
-  GivingPanel,
   HouseholdHeader,
   MemberTable,
+  MiniHouseholdAvatar,
   PermissionsPanel,
   ProfileRail,
   QuickFacts,
@@ -16,6 +19,7 @@ import {
   TasksTable,
   membershipToPersonRow,
   personSummaryToMemberRow,
+  serializeNullableGivingSummary,
 } from "@/components/people/person-profile";
 
 type HouseholdProfileProps = {
@@ -53,7 +57,6 @@ export function HouseholdProfile({
           archived={profile.archived}
           avatarPeople={householdAvatarPeople}
           campusName={profile.campus?.name ?? null}
-          lastSyncedAt={profile.lastSyncedAt}
           name={profile.name}
         />
       }
@@ -61,6 +64,12 @@ export function HouseholdProfile({
       householdName={profile.name}
       personHref={firstPerson ? `/people/${firstPerson.rockId}` : undefined}
       personName={firstPerson?.displayName}
+      stickySummary={
+        <HouseholdStickySummary
+          avatarPeople={householdAvatarPeople}
+          name={profile.name}
+        />
+      }
       title={profile.name}
     >
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -112,15 +121,16 @@ export function HouseholdProfile({
             />
           </Section>
 
-          <Section allowOverflow title="Household giving summary">
-            <GivingPanel
-              hidden={profile.amountsHidden}
-              summary={profile.givingSummary}
-            />
-          </Section>
+          <GivingSummarySection
+            emptyRecordLabel="household"
+            hidden={profile.amountsHidden}
+            showHouseholdSourceNote={false}
+            summary={serializeNullableGivingSummary(profile.givingSummary)}
+            title="Household giving summary"
+          />
         </div>
 
-        <ProfileRail>
+        <ProfileRail offset="belowStickySummary">
           <QuickFacts
             items={[
               ["Campus", profile.campus?.name],
@@ -137,18 +147,45 @@ export function HouseholdProfile({
             title="Quick facts"
           />
           <QuickFacts
-            items={profile.members
-              .slice(0, 6)
-              .map((membership) => [
-                membership.person?.displayName ?? "Unknown person",
-                membership.groupRole ?? "Unknown",
-              ])}
+            items={profile.members.slice(0, 6).map((membership) => [
+              membership.groupRole ?? "Unknown",
+              membership.person ? (
+                <Link
+                  className="border-b border-transparent text-app-accent hover:border-current"
+                  href={`/people/${membership.person.rockId}`}
+                  key={membership.person.rockId}
+                >
+                  {membership.person.displayName}
+                </Link>
+              ) : (
+                "Unknown person"
+              ),
+            ])}
             title="Members"
           />
-          <PermissionsPanel role={role} />
+          <PermissionsPanel lastSyncedAt={profile.lastSyncedAt} role={role} />
         </ProfileRail>
       </div>
     </RecordShell>
+  );
+}
+
+function HouseholdStickySummary({
+  avatarPeople,
+  name,
+}: {
+  avatarPeople: ProfilePersonSummary[];
+  name: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2">
+      <MiniHouseholdAvatar name={name} people={avatarPeople} />
+      <div className="flex min-w-0 flex-1 items-center">
+        <span className="truncate text-[13.5px] font-semibold text-app-foreground">
+          {name}
+        </span>
+      </div>
+    </div>
   );
 }
 

@@ -18,6 +18,7 @@ describe("role permissions", () => {
       "finance:read_amounts": true,
       "people:read_limited": true,
       "people:read_care_context": true,
+      "pledges:manage": true,
       "tasks:manage": true,
       "communications:manage": true,
       "settings:manage": true,
@@ -26,6 +27,7 @@ describe("role permissions", () => {
       "finance:read_amounts": true,
       "people:read_limited": true,
       "people:read_care_context": false,
+      "pledges:manage": true,
       "tasks:manage": false,
       "communications:manage": false,
       "settings:manage": false,
@@ -34,6 +36,7 @@ describe("role permissions", () => {
       "finance:read_amounts": false,
       "people:read_limited": false,
       "people:read_care_context": true,
+      "pledges:manage": false,
       "tasks:manage": true,
       "communications:manage": true,
       "settings:manage": false,
@@ -61,6 +64,7 @@ describe("role permissions", () => {
     expect(canSeeGivingAmounts("FINANCE")).toBe(true);
     expect(canSeeIndividualGivingAggregates("FINANCE")).toBe(true);
     expect(hasPermission("FINANCE", "people:read_limited")).toBe(true);
+    expect(hasPermission("FINANCE", "pledges:manage")).toBe(true);
     expect(canManageCareWorkflows("FINANCE")).toBe(false);
   });
 

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Giving Management",
-  description: "Staff tools for church giving management",
+  description: "Church giving management",
 };
 
 export default function RootLayout({

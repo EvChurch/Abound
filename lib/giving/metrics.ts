@@ -4,6 +4,24 @@ import { prisma } from "@/lib/db/prisma";
 
 export type GivingSummary = {
   totalGiven: string;
+  accountSummaries: GivingAccountSummary[];
+  firstGiftAt: Date | null;
+  lastGiftAt: Date | null;
+  lastGiftAmount: string | null;
+  lastTwelveMonthsTotal: string;
+  monthlyGiving: MonthlyGiving[];
+  monthsWithGiving: number;
+  reliabilityKinds: GiftReliabilityKind[];
+  sourceExplanation: string;
+};
+
+export type GivingAccountSummary = GivingSummaryBase & {
+  accountName: string;
+  accountRockId: number | null;
+};
+
+type GivingSummaryBase = {
+  totalGiven: string;
   firstGiftAt: Date | null;
   lastGiftAt: Date | null;
   lastGiftAmount: string | null;
@@ -23,32 +41,116 @@ export type MonthlyGiving = {
   totalGiven: string;
 };
 
+export type HouseholdDonorTrend = {
+  atRiskHouseholdDonors: number;
+  campusSeries: CampusHouseholdDonorSeries[];
+  movement: HouseholdMovementSummary;
+  months: MonthlyHouseholdDonorCount[];
+  sourceExplanation: string;
+  totalHouseholdDonors: number;
+};
+
+export type HouseholdMovementKind =
+  | "DROPPED"
+  | "NEW"
+  | "REACTIVATED"
+  | "RETAINED";
+
+export type HouseholdMovementSummary = {
+  campusSummaries: CampusHouseholdMovementSummary[];
+  counts: Record<HouseholdMovementKind, number>;
+  households: HouseholdMovementHousehold[];
+  latestMonth: string | null;
+  previousMonth: string | null;
+  sourceExplanation: string;
+};
+
+export type CampusHouseholdMovementSummary = {
+  campusName: string;
+  campusRockId: number | null;
+  campusShortCode: string | null;
+  counts: Record<HouseholdMovementKind, number>;
+};
+
+export type HouseholdMovementHousehold = {
+  campusName: string;
+  campusRockId: number | null;
+  campusShortCode: string | null;
+  householdName: string;
+  householdRockId: number;
+  lastActiveMonth: string | null;
+  movementKind: HouseholdMovementKind;
+};
+
+export type CampusHouseholdDonorSeries = {
+  atRiskHouseholdDonors: number;
+  campusName: string;
+  campusRockId: number | null;
+  campusShortCode: string | null;
+  months: MonthlyHouseholdDonorCount[];
+  totalHouseholdDonors: number;
+};
+
+export type MonthlyHouseholdDonorCount = {
+  householdDonorCount: number;
+  month: string;
+};
+
 type GivingFactForSummary = {
+  accountRockId: number | null;
   amount: unknown;
   occurredAt: Date | null;
   effectiveMonth: Date;
   reliabilityKind: GiftReliabilityKind;
 };
 
+type GivingFactForHouseholdDonorTrend = {
+  campusRockId: number | null;
+  effectiveMonth: Date;
+  household?: {
+    campusRockId: number | null;
+    name?: string | null;
+  } | null;
+  householdRockId: number | null;
+};
+
+type CampusName = {
+  name: string;
+  shortCode: string | null;
+};
+
 const SOURCE_EXPLANATION =
   "Derived from local GivingFact rows synced from Rock.";
+
+const HOUSEHOLD_DONOR_SOURCE_EXPLANATION =
+  "Each household is counted once per month, grouped by campus.";
+
+const HOUSEHOLD_MOVEMENT_SOURCE_EXPLANATION =
+  "Compares distinct household donors in the latest completed month with the prior completed month.";
+
+const emptyMovementCounts = (): Record<HouseholdMovementKind, number> => ({
+  DROPPED: 0,
+  NEW: 0,
+  REACTIVATED: 0,
+  RETAINED: 0,
+});
 
 export async function getPersonGivingSummary(
   personRockId: number,
   client: PrismaClient = prisma,
 ) {
+  const facts = await client.givingFact.findMany({
+    orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
+    select: givingFactSummarySelect,
+    where: {
+      personRockId,
+    },
+  });
+
   return summarizeGivingFacts(
-    await client.givingFact.findMany({
-      orderBy: [
-        { occurredAt: "asc" },
-        { effectiveMonth: "asc" },
-        { id: "asc" },
-      ],
-      select: givingFactSummarySelect,
-      where: {
-        personRockId,
-      },
-    }),
+    facts,
+    new Date(),
+    await accountNamesForFacts(facts, client),
   );
 }
 
@@ -56,25 +158,502 @@ export async function getHouseholdGivingSummary(
   householdRockId: number,
   client: PrismaClient = prisma,
 ) {
+  const facts = await client.givingFact.findMany({
+    orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
+    select: givingFactSummarySelect,
+    where: {
+      householdRockId,
+    },
+  });
+
   return summarizeGivingFacts(
-    await client.givingFact.findMany({
-      orderBy: [
-        { occurredAt: "asc" },
-        { effectiveMonth: "asc" },
-        { id: "asc" },
-      ],
-      select: givingFactSummarySelect,
-      where: {
-        householdRockId,
+    facts,
+    new Date(),
+    await accountNamesForFacts(facts, client),
+  );
+}
+
+export async function getHouseholdDonorTrend(
+  referenceDate = new Date(),
+  client: PrismaClient = prisma,
+) {
+  const monthKeys = lastTwentyFourCompletedMonthKeys(referenceDate);
+  const startMonth = parseMonthKey(monthKeys[0] ?? monthKey(referenceDate));
+  const endMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1),
+  );
+  const facts = await client.givingFact.findMany({
+    select: {
+      campusRockId: true,
+      effectiveMonth: true,
+      household: {
+        select: {
+          campusRockId: true,
+          name: true,
+        },
       },
-    }),
+      householdRockId: true,
+    },
+    where: {
+      effectiveMonth: {
+        gte: startMonth,
+        lt: endMonth,
+      },
+      householdRockId: {
+        not: null,
+      },
+    },
+  });
+
+  return summarizeHouseholdDonorTrend(
+    facts,
+    referenceDate,
+    await campusNamesForFacts(facts, client),
   );
 }
 
 export function summarizeGivingFacts(
   facts: GivingFactForSummary[],
   referenceDate = new Date(),
+  accountNames = new Map<number, string>(),
 ): GivingSummary {
+  const summary = summarizeGivingFactTotals(facts, referenceDate);
+
+  return {
+    ...summary,
+    accountSummaries: summarizeGivingFactsByAccount(
+      facts,
+      referenceDate,
+      accountNames,
+    ),
+  };
+}
+
+export function summarizeHouseholdDonorTrend(
+  facts: GivingFactForHouseholdDonorTrend[],
+  referenceDate = new Date(),
+  campusNames = new Map<number, CampusName>(),
+): HouseholdDonorTrend {
+  const monthKeys = lastTwentyFourCompletedMonthKeys(referenceDate);
+  const monthKeySet = new Set(monthKeys);
+  const householdIdsByMonth = new Map<string, Set<number>>();
+  const atRiskSummary = summarizeAtRiskHouseholds(facts, monthKeys);
+  const campusBuckets = new Map<
+    string,
+    {
+      campusRockId: number | null;
+      householdIds: Set<number>;
+      householdIdsByMonth: Map<string, Set<number>>;
+    }
+  >();
+  const totalHouseholdIds = new Set<number>();
+
+  for (const fact of facts) {
+    const householdRockId = fact.householdRockId;
+
+    if (
+      typeof householdRockId !== "number" ||
+      !Number.isInteger(householdRockId)
+    ) {
+      continue;
+    }
+
+    const factMonthKey = monthKey(fact.effectiveMonth);
+
+    if (!monthKeySet.has(factMonthKey)) {
+      continue;
+    }
+
+    const monthHouseholdIds =
+      householdIdsByMonth.get(factMonthKey) ?? new Set();
+
+    monthHouseholdIds.add(householdRockId);
+    householdIdsByMonth.set(factMonthKey, monthHouseholdIds);
+    totalHouseholdIds.add(householdRockId);
+
+    const campusRockId = resolveFactCampusRockId(fact);
+    const campusKey = String(campusRockId ?? "unassigned");
+    const campusBucket = campusBuckets.get(campusKey) ?? {
+      campusRockId,
+      householdIds: new Set<number>(),
+      householdIdsByMonth: new Map<string, Set<number>>(),
+    };
+    const campusMonthHouseholdIds =
+      campusBucket.householdIdsByMonth.get(factMonthKey) ?? new Set<number>();
+
+    campusBucket.householdIds.add(householdRockId);
+    campusMonthHouseholdIds.add(householdRockId);
+    campusBucket.householdIdsByMonth.set(factMonthKey, campusMonthHouseholdIds);
+    campusBuckets.set(campusKey, campusBucket);
+  }
+
+  return {
+    atRiskHouseholdDonors: atRiskSummary.totalHouseholds,
+    campusSeries: Array.from(campusBuckets.values())
+      .map((bucket) => {
+        const campusName =
+          bucket.campusRockId === null
+            ? "Unassigned campus"
+            : (campusNames.get(bucket.campusRockId)?.name ??
+              `Campus ${bucket.campusRockId}`);
+        const campusShortCode =
+          bucket.campusRockId === null
+            ? null
+            : (campusNames.get(bucket.campusRockId)?.shortCode ?? null);
+
+        return {
+          atRiskHouseholdDonors:
+            atRiskSummary.householdIdsByCampusKey.get(
+              String(bucket.campusRockId ?? "unassigned"),
+            )?.size ?? 0,
+          campusName,
+          campusRockId: bucket.campusRockId,
+          campusShortCode,
+          months: monthKeys.map((key) => ({
+            householdDonorCount: bucket.householdIdsByMonth.get(key)?.size ?? 0,
+            month: key,
+          })),
+          totalHouseholdDonors: bucket.householdIds.size,
+        };
+      })
+      .sort((left, right) => {
+        return (
+          right.totalHouseholdDonors - left.totalHouseholdDonors ||
+          left.campusName.localeCompare(right.campusName, "en-US", {
+            sensitivity: "base",
+          }) ||
+          (left.campusRockId ?? Number.MAX_SAFE_INTEGER) -
+            (right.campusRockId ?? Number.MAX_SAFE_INTEGER)
+        );
+      }),
+    movement: summarizeHouseholdMovement(facts, monthKeys, campusNames),
+    months: monthKeys.map((key) => ({
+      householdDonorCount: householdIdsByMonth.get(key)?.size ?? 0,
+      month: key,
+    })),
+    sourceExplanation: HOUSEHOLD_DONOR_SOURCE_EXPLANATION,
+    totalHouseholdDonors: totalHouseholdIds.size,
+  };
+}
+
+function summarizeAtRiskHouseholds(
+  facts: GivingFactForHouseholdDonorTrend[],
+  monthKeys: string[],
+) {
+  const latestMonth = monthKeys.at(-1) ?? null;
+  const recentBaseMonthKeys = monthKeys.slice(-4, -1);
+
+  if (!latestMonth || recentBaseMonthKeys.length === 0) {
+    return {
+      householdIdsByCampusKey: new Map<string, Set<number>>(),
+      totalHouseholds: 0,
+    };
+  }
+
+  const latestHouseholdIds = new Set<number>();
+  const recentBaseMonthKeySet = new Set(recentBaseMonthKeys);
+  const recentHouseholds = new Map<
+    number,
+    {
+      campusRockId: number | null;
+    }
+  >();
+
+  for (const fact of facts) {
+    const householdRockId = fact.householdRockId;
+
+    if (
+      typeof householdRockId !== "number" ||
+      !Number.isInteger(householdRockId)
+    ) {
+      continue;
+    }
+
+    const factMonthKey = monthKey(fact.effectiveMonth);
+
+    if (factMonthKey === latestMonth) {
+      latestHouseholdIds.add(householdRockId);
+      continue;
+    }
+
+    if (!recentBaseMonthKeySet.has(factMonthKey)) {
+      continue;
+    }
+
+    const campusRockId = resolveFactCampusRockId(fact);
+    const household = recentHouseholds.get(householdRockId) ?? {
+      campusRockId,
+    };
+
+    if (household.campusRockId === null && campusRockId !== null) {
+      household.campusRockId = campusRockId;
+    }
+
+    recentHouseholds.set(householdRockId, household);
+  }
+
+  const householdIdsByCampusKey = new Map<string, Set<number>>();
+  let totalHouseholds = 0;
+
+  for (const [householdRockId, household] of recentHouseholds) {
+    if (latestHouseholdIds.has(householdRockId)) {
+      continue;
+    }
+
+    const campusKey = String(household.campusRockId ?? "unassigned");
+    const campusHouseholds =
+      householdIdsByCampusKey.get(campusKey) ?? new Set<number>();
+
+    campusHouseholds.add(householdRockId);
+    householdIdsByCampusKey.set(campusKey, campusHouseholds);
+    totalHouseholds += 1;
+  }
+
+  return {
+    householdIdsByCampusKey,
+    totalHouseholds,
+  };
+}
+
+function summarizeHouseholdMovement(
+  facts: GivingFactForHouseholdDonorTrend[],
+  monthKeys: string[],
+  campusNames: Map<number, CampusName>,
+): HouseholdMovementSummary {
+  const latestMonth = monthKeys.at(-1) ?? null;
+  const previousMonth = monthKeys.at(-2) ?? null;
+
+  if (!latestMonth || !previousMonth) {
+    return {
+      campusSummaries: [],
+      counts: emptyMovementCounts(),
+      households: [],
+      latestMonth,
+      previousMonth,
+      sourceExplanation: HOUSEHOLD_MOVEMENT_SOURCE_EXPLANATION,
+    };
+  }
+
+  const monthKeySet = new Set(monthKeys);
+  const households = new Map<
+    number,
+    {
+      campusRockId: number | null;
+      householdName: string;
+      months: Set<string>;
+    }
+  >();
+
+  for (const fact of facts) {
+    const householdRockId = fact.householdRockId;
+
+    if (
+      typeof householdRockId !== "number" ||
+      !Number.isInteger(householdRockId)
+    ) {
+      continue;
+    }
+
+    const factMonthKey = monthKey(fact.effectiveMonth);
+
+    if (!monthKeySet.has(factMonthKey)) {
+      continue;
+    }
+
+    const existing = households.get(householdRockId);
+    const campusRockId = resolveFactCampusRockId(fact);
+    const householdName =
+      fact.household?.name ?? `Household ${householdRockId}`;
+    const household = existing ?? {
+      campusRockId,
+      householdName,
+      months: new Set<string>(),
+    };
+
+    household.months.add(factMonthKey);
+
+    if (household.campusRockId === null && campusRockId !== null) {
+      household.campusRockId = campusRockId;
+    }
+
+    if (household.householdName === `Household ${householdRockId}`) {
+      household.householdName = householdName;
+    }
+
+    households.set(householdRockId, household);
+  }
+
+  const counts = emptyMovementCounts();
+  const campusSummaries = new Map<
+    string,
+    {
+      campusRockId: number | null;
+      counts: Record<HouseholdMovementKind, number>;
+    }
+  >();
+  const movementHouseholds: HouseholdMovementHousehold[] = [];
+
+  for (const [householdRockId, household] of households) {
+    const movementKind = classifyHouseholdMovement(
+      household.months,
+      latestMonth,
+      previousMonth,
+    );
+
+    if (!movementKind) {
+      continue;
+    }
+
+    counts[movementKind] += 1;
+
+    const campusKey = String(household.campusRockId ?? "unassigned");
+    const campusSummary = campusSummaries.get(campusKey) ?? {
+      campusRockId: household.campusRockId,
+      counts: emptyMovementCounts(),
+    };
+
+    campusSummary.counts[movementKind] += 1;
+    campusSummaries.set(campusKey, campusSummary);
+
+    const campusDetails = campusDetailsForRockId(
+      household.campusRockId,
+      campusNames,
+    );
+
+    movementHouseholds.push({
+      campusName: campusDetails.campusName,
+      campusRockId: household.campusRockId,
+      campusShortCode: campusDetails.campusShortCode,
+      householdName: household.householdName,
+      householdRockId,
+      lastActiveMonth: latestActiveMonthBefore(
+        household.months,
+        movementKind === "DROPPED" || movementKind === "RETAINED"
+          ? latestMonth
+          : previousMonth,
+      ),
+      movementKind,
+    });
+  }
+
+  return {
+    campusSummaries: Array.from(campusSummaries.values())
+      .map((summary) => ({
+        ...campusDetailsForRockId(summary.campusRockId, campusNames),
+        campusRockId: summary.campusRockId,
+        counts: summary.counts,
+      }))
+      .sort(compareMovementCampusSummaries),
+    counts,
+    households: movementHouseholds.sort(compareMovementHouseholds),
+    latestMonth,
+    previousMonth,
+    sourceExplanation: HOUSEHOLD_MOVEMENT_SOURCE_EXPLANATION,
+  };
+}
+
+function classifyHouseholdMovement(
+  months: Set<string>,
+  latestMonth: string,
+  previousMonth: string,
+): HouseholdMovementKind | null {
+  const hasLatest = months.has(latestMonth);
+  const hasPrevious = months.has(previousMonth);
+
+  if (hasLatest && hasPrevious) {
+    return "RETAINED";
+  }
+
+  if (!hasLatest && hasPrevious) {
+    return "DROPPED";
+  }
+
+  if (!hasLatest) {
+    return null;
+  }
+
+  const hadEarlierActivity = Array.from(months).some(
+    (month) => month !== latestMonth && month !== previousMonth,
+  );
+
+  return hadEarlierActivity ? "REACTIVATED" : "NEW";
+}
+
+function latestActiveMonthBefore(months: Set<string>, beforeMonth: string) {
+  return (
+    Array.from(months)
+      .filter((month) => month < beforeMonth)
+      .sort()
+      .at(-1) ?? null
+  );
+}
+
+function campusDetailsForRockId(
+  campusRockId: number | null,
+  campusNames: Map<number, CampusName>,
+) {
+  if (campusRockId === null) {
+    return {
+      campusName: "Unassigned campus",
+      campusShortCode: null,
+    };
+  }
+
+  const campusName =
+    campusNames.get(campusRockId)?.name ?? `Campus ${campusRockId}`;
+  const campusShortCode = campusNames.get(campusRockId)?.shortCode ?? null;
+
+  return {
+    campusName,
+    campusShortCode,
+  };
+}
+
+function compareMovementCampusSummaries(
+  left: CampusHouseholdMovementSummary,
+  right: CampusHouseholdMovementSummary,
+) {
+  return (
+    right.counts.DROPPED - left.counts.DROPPED ||
+    right.counts.REACTIVATED - left.counts.REACTIVATED ||
+    left.campusName.localeCompare(right.campusName, "en-US", {
+      sensitivity: "base",
+    }) ||
+    (left.campusRockId ?? Number.MAX_SAFE_INTEGER) -
+      (right.campusRockId ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
+function compareMovementHouseholds(
+  left: HouseholdMovementHousehold,
+  right: HouseholdMovementHousehold,
+) {
+  return (
+    movementSortOrder(left.movementKind) -
+      movementSortOrder(right.movementKind) ||
+    left.campusName.localeCompare(right.campusName, "en-US", {
+      sensitivity: "base",
+    }) ||
+    left.householdName.localeCompare(right.householdName, "en-US", {
+      sensitivity: "base",
+    }) ||
+    left.householdRockId - right.householdRockId
+  );
+}
+
+function movementSortOrder(kind: HouseholdMovementKind) {
+  return {
+    DROPPED: 0,
+    REACTIVATED: 1,
+    NEW: 2,
+    RETAINED: 3,
+  }[kind];
+}
+
+function summarizeGivingFactTotals(
+  facts: GivingFactForSummary[],
+  referenceDate: Date,
+): GivingSummaryBase {
   let totalCents = 0n;
   let lastTwelveMonthsTotalCents = 0n;
   let lastFact: GivingFactForSummary | null = null;
@@ -168,12 +747,130 @@ export function summarizeGivingFacts(
 }
 
 const givingFactSummarySelect = {
+  accountRockId: true,
   amount: true,
   effectiveMonth: true,
   id: true,
   occurredAt: true,
   reliabilityKind: true,
 } as const;
+
+async function accountNamesForFacts(
+  facts: GivingFactForSummary[],
+  client: PrismaClient,
+) {
+  const accountIds = Array.from(
+    new Set(
+      facts
+        .map((fact) => fact.accountRockId)
+        .filter((accountRockId): accountRockId is number =>
+          Number.isInteger(accountRockId),
+        ),
+    ),
+  );
+
+  if (accountIds.length === 0) {
+    return new Map<number, string>();
+  }
+
+  const accounts = await client.rockFinancialAccount.findMany({
+    select: {
+      name: true,
+      rockId: true,
+    },
+    where: {
+      rockId: {
+        in: accountIds,
+      },
+    },
+  });
+
+  return new Map(
+    accounts.map((account) => [account.rockId, account.name] as const),
+  );
+}
+
+async function campusNamesForFacts(
+  facts: GivingFactForHouseholdDonorTrend[],
+  client: PrismaClient,
+) {
+  const campusIds = Array.from(
+    new Set(
+      facts
+        .map(resolveFactCampusRockId)
+        .filter(
+          (campusRockId): campusRockId is number =>
+            typeof campusRockId === "number" && Number.isInteger(campusRockId),
+        ),
+    ),
+  );
+
+  if (campusIds.length === 0) {
+    return new Map<number, CampusName>();
+  }
+
+  const campuses = await client.rockCampus.findMany({
+    select: {
+      name: true,
+      rockId: true,
+      shortCode: true,
+    },
+    where: {
+      rockId: {
+        in: campusIds,
+      },
+    },
+  });
+
+  return new Map(
+    campuses.map((campus) => [
+      campus.rockId,
+      { name: campus.name, shortCode: campus.shortCode },
+    ]),
+  );
+}
+
+function resolveFactCampusRockId(fact: GivingFactForHouseholdDonorTrend) {
+  return fact.campusRockId ?? fact.household?.campusRockId ?? null;
+}
+
+function summarizeGivingFactsByAccount(
+  facts: GivingFactForSummary[],
+  referenceDate: Date,
+  accountNames: Map<number, string>,
+): GivingAccountSummary[] {
+  const factsByAccount = new Map<string, GivingFactForSummary[]>();
+
+  for (const fact of facts) {
+    const key = String(fact.accountRockId ?? "unknown");
+    const accountFacts = factsByAccount.get(key) ?? [];
+
+    accountFacts.push(fact);
+    factsByAccount.set(key, accountFacts);
+  }
+
+  return Array.from(factsByAccount.values())
+    .map((accountFacts) => {
+      const accountRockId = accountFacts[0]?.accountRockId ?? null;
+      const summary = summarizeGivingFactTotals(accountFacts, referenceDate);
+
+      return {
+        ...summary,
+        accountName:
+          accountRockId === null
+            ? "Unknown account"
+            : (accountNames.get(accountRockId) ?? `Account ${accountRockId}`),
+        accountRockId,
+      };
+    })
+    .sort((left, right) => {
+      return (
+        left.accountName.localeCompare(right.accountName, "en-US", {
+          sensitivity: "base",
+        }) || (left.accountRockId ?? 0) - (right.accountRockId ?? 0)
+      );
+    });
+}
 
 function giftDate(fact: GivingFactForSummary) {
   return fact.occurredAt ?? fact.effectiveMonth;
@@ -184,21 +881,43 @@ function monthKey(value: Date) {
 }
 
 function lastTwelveMonthKeys(referenceDate: Date) {
-  const start = new Date(
+  return lastMonthKeys(referenceDate, 12);
+}
+
+function lastTwentyFourCompletedMonthKeys(referenceDate: Date) {
+  const completedReferenceDate = new Date(
     Date.UTC(
       referenceDate.getUTCFullYear(),
-      referenceDate.getUTCMonth() - 11,
+      referenceDate.getUTCMonth() - 1,
       1,
     ),
   );
 
-  return Array.from({ length: 12 }, (_, index) => {
+  return lastMonthKeys(completedReferenceDate, 24);
+}
+
+function lastMonthKeys(referenceDate: Date, count: number) {
+  const start = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth() - (count - 1),
+      1,
+    ),
+  );
+
+  return Array.from({ length: count }, (_, index) => {
     return monthKey(
       new Date(
         Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + index, 1),
       ),
     );
   });
+}
+
+function parseMonthKey(value: string) {
+  const [year, month] = value.split("-").map(Number);
+
+  return new Date(Date.UTC(year, month - 1, 1));
 }
 
 function offsetMonthKey(value: string, offset: number) {

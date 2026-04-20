@@ -11,9 +11,22 @@ import type {
   RockPersonProfile,
 } from "@/lib/people/profiles";
 import { DelayedStickySummary } from "@/components/people/delayed-sticky-summary";
+import {
+  GivingSummarySection,
+  type SerializedGivingSummary,
+} from "@/components/people/giving-summary-panel";
+import type { PledgeAnalysisRow } from "@/lib/giving/pledges";
 
 type PersonProfileProps = {
+  pledgeActions?: PersonPledgeActions;
   profile: RockPersonProfile;
+};
+
+type PersonPledgeActions = {
+  createDraft: (formData: FormData) => Promise<void>;
+  quickCreate: (formData: FormData) => Promise<void>;
+  reject: (formData: FormData) => Promise<void>;
+  update: (formData: FormData) => Promise<void>;
 };
 
 type RecordShellProps = {
@@ -40,7 +53,7 @@ type MemberRow = {
   status: string;
 };
 
-export function PersonProfile({ profile }: PersonProfileProps) {
+export function PersonProfile({ pledgeActions, profile }: PersonProfileProps) {
   const role = roleName(profile.amountsHidden);
   const primaryHousehold = profile.primaryHousehold;
   const givingHouseholdDiffers =
@@ -100,12 +113,20 @@ export function PersonProfile({ profile }: PersonProfileProps) {
             />
           </Section>
 
-          <Section allowOverflow title="Giving summary">
-            <GivingPanel
-              hidden={profile.amountsHidden}
-              summary={profile.givingSummary}
-            />
-          </Section>
+          <GivingSummarySection
+            emptyRecordLabel="person"
+            hidden={profile.amountsHidden}
+            showHouseholdSourceNote
+            summary={serializeNullableGivingSummary(profile.givingSummary)}
+            title="Giving summary"
+          />
+
+          <PledgeEditorSection
+            actions={pledgeActions}
+            hidden={profile.amountsHidden}
+            personRockId={profile.rockId}
+            rows={profile.pledgeEditor?.rows ?? null}
+          />
         </div>
 
         <ProfileRail offset="belowStickySummary">
@@ -147,7 +168,7 @@ export function PersonProfile({ profile }: PersonProfileProps) {
             ]}
             title="Quick facts"
           />
-          <PermissionsPanel role={role} />
+          <PermissionsPanel lastSyncedAt={profile.lastSyncedAt} role={role} />
         </ProfileRail>
       </div>
     </RecordShell>
@@ -183,7 +204,7 @@ export function RecordShell({
       ) : null}
 
       <div className="mx-auto max-w-[1280px] px-7 pb-20 pt-7">
-        <div className="mb-6" id="record-main-header">
+        <div className="mb-4" id="record-main-header">
           {header}
         </div>
 
@@ -200,36 +221,13 @@ export function RecordShell({
 }
 
 function PersonStickySummary({ profile }: { profile: RockPersonProfile }) {
-  const primaryHousehold = profile.primaryHousehold;
-
   return (
     <div className="flex items-center gap-3 px-3 py-2">
       <MiniPersonAvatar profile={profile} />
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-app-faint">
+      <div className="flex min-w-0 flex-1 items-center">
         <span className="truncate text-[13.5px] font-semibold text-app-foreground">
           {profile.displayName}
         </span>
-        <span>{profile.householdMemberships[0]?.groupRole ?? "Unknown"}</span>
-        {primaryHousehold ? (
-          <>
-            <Separator />
-            <RecordLink
-              href={householdHrefForPerson(
-                primaryHousehold.rockId,
-                profile.rockId,
-              )}
-            >
-              {primaryHousehold.name}
-            </RecordLink>
-          </>
-        ) : null}
-        <Separator />
-        <time
-          dateTime={profile.lastSyncedAt.toISOString()}
-          title={formatDateTime(profile.lastSyncedAt)}
-        >
-          Synced {formatTimeSince(profile.lastSyncedAt)}
-        </time>
       </div>
     </div>
   );
@@ -254,6 +252,39 @@ function MiniPersonAvatar({ profile }: { profile: RockPersonProfile }) {
         />
       ) : (
         initials
+      )}
+    </div>
+  );
+}
+
+export function MiniHouseholdAvatar({
+  name,
+  people,
+}: {
+  name: string;
+  people: ProfilePersonSummary[];
+}) {
+  const tiles = people.slice(0, 4);
+  const gridClass =
+    tiles.length <= 1
+      ? "grid-cols-1"
+      : tiles.length === 2
+        ? "grid-cols-2"
+        : "grid-cols-2 grid-rows-2";
+
+  return (
+    <div
+      aria-hidden
+      className={`grid h-7 w-7 shrink-0 overflow-hidden rounded-[6px] bg-app-soft ${gridClass}`}
+    >
+      {tiles.length > 0 ? (
+        tiles.map((person) => (
+          <HouseholdAvatarTile key={person.rockId} person={person} />
+        ))
+      ) : (
+        <div className="flex h-full w-full items-center justify-center font-mono text-[10px] font-semibold text-app-muted">
+          {householdInitials(name)}
+        </div>
       )}
     </div>
   );
@@ -323,8 +354,6 @@ function TopBar({
 }
 
 function PersonHeader({ profile }: { profile: RockPersonProfile }) {
-  const primaryHousehold = profile.primaryHousehold;
-
   return (
     <div className="flex items-start gap-4">
       <PersonAvatar profile={profile} />
@@ -353,34 +382,6 @@ function PersonHeader({ profile }: { profile: RockPersonProfile }) {
             ) : null}
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-[14px] gap-y-1 text-[12.5px] text-app-faint">
-          <span>
-            Role: {profile.householdMemberships[0]?.groupRole ?? "Unknown"}
-          </span>
-          {primaryHousehold ? (
-            <>
-              <Separator />
-              <span>
-                Household:{" "}
-                <RecordLink
-                  href={householdHrefForPerson(
-                    primaryHousehold.rockId,
-                    profile.rockId,
-                  )}
-                >
-                  {primaryHousehold.name}
-                </RecordLink>
-              </span>
-            </>
-          ) : null}
-          <Separator />
-          <time
-            dateTime={profile.lastSyncedAt.toISOString()}
-            title={formatDateTime(profile.lastSyncedAt)}
-          >
-            Synced {formatTimeSince(profile.lastSyncedAt)}
-          </time>
-        </div>
       </div>
     </div>
   );
@@ -392,7 +393,7 @@ function PersonAvatar({ profile }: { profile: RockPersonProfile }) {
   return (
     <div
       aria-label={`${profile.displayName} profile picture`}
-      className="mt-[18px] flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-app-border-strong bg-app-soft font-mono text-[15px] font-semibold text-app-muted shadow-[0_1px_2px_oklch(0.8_0.01_70_/_0.25)]"
+      className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-app-border-strong bg-app-soft font-mono text-[15px] font-semibold text-app-muted shadow-[0_1px_2px_oklch(0.8_0.01_70_/_0.25)]"
       role="img"
     >
       {profile.photoUrl ? (
@@ -415,13 +416,11 @@ export function HouseholdHeader({
   archived,
   avatarPeople = [],
   campusName,
-  lastSyncedAt,
   name,
 }: {
   archived: boolean;
   avatarPeople?: ProfilePersonSummary[];
   campusName: string | null;
-  lastSyncedAt: Date;
   name: string;
 }) {
   return (
@@ -446,14 +445,6 @@ export function HouseholdHeader({
             <Badge tone="neutral">Family</Badge>
           </div>
         </div>
-        <div className="mt-[10px] flex flex-wrap items-center gap-x-[14px] gap-y-1 text-[12.5px] text-app-faint">
-          <time
-            dateTime={lastSyncedAt.toISOString()}
-            title={formatDateTime(lastSyncedAt)}
-          >
-            Synced {formatTimeSince(lastSyncedAt)}
-          </time>
-        </div>
       </div>
     </div>
   );
@@ -477,7 +468,7 @@ function HouseholdAvatar({
   return (
     <div
       aria-label={`${name} household members`}
-      className={`mt-[18px] grid h-14 w-14 shrink-0 overflow-hidden rounded-[8px] border border-app-border-strong bg-app-soft shadow-[0_1px_2px_oklch(0.8_0.01_70_/_0.25)] ${gridClass}`}
+      className={`grid h-14 w-14 shrink-0 overflow-hidden rounded-[8px] bg-app-soft shadow-[0_1px_2px_oklch(0.8_0.01_70_/_0.25)] ${gridClass}`}
       role="img"
     >
       {tiles.length > 0 ? (
@@ -768,6 +759,251 @@ function IdentityDetails({ profile }: { profile: RockPersonProfile }) {
   );
 }
 
+function PledgeEditorSection({
+  actions,
+  hidden,
+  personRockId,
+  rows,
+}: {
+  actions?: PersonPledgeActions;
+  hidden: boolean;
+  personRockId: number;
+  rows: PledgeAnalysisRow[] | null;
+}) {
+  return (
+    <Section
+      subtitle="Reviewed commitments by Rock fund. These are local pledges, not payment setup."
+      title="Pledges"
+    >
+      {hidden ? (
+        <EmptyState>
+          Giving amounts and pledge recommendations are hidden for this role.
+        </EmptyState>
+      ) : !rows ? (
+        <EmptyState>
+          Pledge analysis is unavailable for this profile.
+        </EmptyState>
+      ) : rows.length === 0 ? (
+        <EmptyState>
+          No funds have recent giving or active pledge work to review.
+        </EmptyState>
+      ) : (
+        <div className="grid gap-3">
+          {rows.map((row) => (
+            <PledgeRow
+              actions={actions}
+              key={row.account.rockId}
+              personRockId={personRockId}
+              row={row}
+            />
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function PledgeRow({
+  actions,
+  personRockId,
+  row,
+}: {
+  actions?: PersonPledgeActions;
+  personRockId: number;
+  row: PledgeAnalysisRow;
+}) {
+  const visiblePledge = row.activePledge ?? row.draftPledge;
+
+  return (
+    <article className="rounded-[6px] border border-app-border-faint bg-app-surface px-4 py-4 transition-colors hover:border-app-border">
+      <div className="grid gap-4 xl:grid-cols-[minmax(220px,0.9fr)_minmax(260px,1fr)]">
+        <div className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Badge subtle tone={pledgeStatusTone(row.status)}>
+              {pledgeStatusLabel(row.status)}
+            </Badge>
+            {row.confidence ? (
+              <Badge subtle tone="neutral">
+                {formatEnum(row.confidence)} confidence
+              </Badge>
+            ) : null}
+          </div>
+          <h4 className="truncate text-[14px] font-semibold text-app-foreground">
+            {row.account.name}
+          </h4>
+          <div className="mt-1 text-[13px] text-app-muted tabular-nums">
+            {formatCurrency(row.lastTwelveMonthsTotal)} given in the last 12
+            months
+          </div>
+          <div className="mt-1 text-[12px] text-app-faint tabular-nums">
+            {row.basisMonths} active month{row.basisMonths === 1 ? "" : "s"}
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[12.5px] leading-[1.55] text-app-muted">
+            {row.explanation}
+          </p>
+          {row.status === "RECOMMENDED" &&
+          row.recommendedAmount &&
+          row.recommendedPeriod ? (
+            <div className="mt-2 text-[12.5px] font-medium text-app-foreground tabular-nums">
+              Recommend {formatCurrency(row.recommendedAmount)}{" "}
+              {periodPhrase(row.recommendedPeriod)}
+            </div>
+          ) : null}
+          {row.lastGiftAt ? (
+            <div className="mt-1 text-[12px] text-app-faint">
+              Last gift {formatDate(row.lastGiftAt)}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-4 border-t border-app-border-faint pt-3">
+        {visiblePledge ? (
+          <PledgeEditForm
+            action={actions?.update}
+            personRockId={personRockId}
+            pledge={visiblePledge}
+          />
+        ) : row.status === "RECOMMENDED" ? (
+          <RecommendationActions
+            actions={actions}
+            accountRockId={row.account.rockId}
+            personRockId={personRockId}
+          />
+        ) : (
+          <p className="text-[12.5px] text-app-faint">
+            No pledge is set for this fund.
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function RecommendationActions({
+  accountRockId,
+  actions,
+  personRockId,
+}: {
+  accountRockId: number;
+  actions?: PersonPledgeActions;
+  personRockId: number;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <form action={actions?.quickCreate}>
+        <input name="personRockId" type="hidden" value={personRockId} />
+        <input name="accountRockId" type="hidden" value={accountRockId} />
+        <button
+          className="rounded-[5px] border border-app-accent bg-app-accent px-3 py-1.5 text-[12.5px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!actions}
+          type="submit"
+        >
+          Quick create
+        </button>
+      </form>
+      <form action={actions?.createDraft}>
+        <input name="personRockId" type="hidden" value={personRockId} />
+        <input name="accountRockId" type="hidden" value={accountRockId} />
+        <button
+          className="rounded-[5px] border border-app-border bg-app-surface px-3 py-1.5 text-[12.5px] font-medium text-app-muted hover:text-app-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!actions}
+          type="submit"
+        >
+          Create draft
+        </button>
+      </form>
+      <form action={actions?.reject}>
+        <input name="personRockId" type="hidden" value={personRockId} />
+        <input name="accountRockId" type="hidden" value={accountRockId} />
+        <input
+          name="reason"
+          type="hidden"
+          value="Rejected from person profile"
+        />
+        <button
+          className="rounded-[5px] border border-app-border bg-app-surface px-3 py-1.5 text-[12.5px] font-medium text-app-faint hover:text-app-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!actions}
+          type="submit"
+        >
+          Reject
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function PledgeEditForm({
+  action,
+  personRockId,
+  pledge,
+}: {
+  action?: (formData: FormData) => Promise<void>;
+  personRockId: number;
+  pledge: NonNullable<PledgeAnalysisRow["activePledge"]>;
+}) {
+  return (
+    <form action={action} className="grid gap-2">
+      <input name="personRockId" type="hidden" value={personRockId} />
+      <input name="pledgeId" type="hidden" value={pledge.id} />
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_130px_110px]">
+        <label>
+          <span className="sr-only">Pledge amount</span>
+          <input
+            className="h-8 w-full rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground tabular-nums"
+            defaultValue={pledge.amount}
+            name="amount"
+          />
+        </label>
+        <label>
+          <span className="sr-only">Pledge period</span>
+          <select
+            className="h-8 w-full rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground"
+            defaultValue={pledge.period}
+            name="period"
+          >
+            {PLEDGE_PERIODS.map((period) => (
+              <option key={period} value={period}>
+                {formatEnum(period)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">Pledge status</span>
+          <select
+            className="h-8 w-full rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground"
+            defaultValue={pledge.status}
+            name="status"
+          >
+            {statusOptionsForPledge(pledge.status).map((status) => (
+              <option key={status} value={status}>
+                {formatEnum(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[12px] text-app-faint">
+          {formatEnum(pledge.status)} pledge from{" "}
+          {formatEnum(pledge.source).toLowerCase()}
+        </div>
+        <button
+          className="rounded-[5px] border border-app-border bg-app-surface px-3 py-1.5 text-[12.5px] font-medium text-app-muted hover:text-app-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!action}
+          type="submit"
+        >
+          Save
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function DefinitionGrid({
   columns,
   items,
@@ -1002,329 +1238,23 @@ function TaskRow({
   );
 }
 
-function GivingPanel({
-  hidden,
-  summary,
-}: {
-  hidden: boolean;
-  summary: ProfileGivingSummary | null;
-}) {
-  if (hidden) {
-    return <GivingHiddenState />;
+export function serializeNullableGivingSummary(
+  summary: ProfileGivingSummary | null,
+): SerializedGivingSummary | null {
+  if (!summary) {
+    return null;
   }
 
-  if (!summary || summary.monthsWithGiving === 0) {
-    return (
-      <p className="text-[13px] text-app-faint">
-        No gifts are linked to this record.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="grid items-end gap-6 md:grid-cols-4">
-        <GivingStat
-          big
-          label="Last 12 months"
-          value={formatCurrency(summary.lastTwelveMonthsTotal)}
-        />
-        <GivingStat
-          label="Last gift"
-          value={
-            summary.lastGiftAmount
-              ? formatCurrency(summary.lastGiftAmount)
-              : "-"
-          }
-        />
-        <GivingStat
-          label="Last gift date"
-          value={summary.lastGiftAt ? formatDate(summary.lastGiftAt) : "-"}
-        />
-        <GivingStat
-          label="Active months"
-          value={String(monthsWithRecentGiving(summary.monthlyGiving))}
-        />
-      </div>
-      <MonthlyGivingChart months={summary.monthlyGiving} />
-    </div>
-  );
-}
-
-function MonthlyGivingChart({
-  months,
-}: {
-  months: ProfileGivingSummary["monthlyGiving"];
-}) {
-  const rawMaxMonthAmount = Math.max(
-    ...months.flatMap((month) => [
-      Number(month.totalGiven),
-      Number(month.previousTotalGiven),
-    ]),
-    0,
-  );
-  const maxMonthAmount = niceChartMax(rawMaxMonthAmount);
-  const yAxisTicks = [
-    { label: formatCompactCurrency(maxMonthAmount), position: "top" },
-    { label: formatCompactCurrency(maxMonthAmount / 2), position: "middle" },
-    { label: formatCompactCurrency(0), position: "bottom" },
-  ] as const;
-
-  return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-4">
-        <div className="flex items-center gap-4 text-[12px] text-app-faint">
-          <ChartKey color="current" label="Current 12 months" />
-          <ChartKey color="previous" label="Previous 12 months" />
-        </div>
-      </div>
-      <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-2">
-        <div className="relative h-[156px] text-right text-[11px] text-app-faint tabular-nums">
-          {yAxisTicks.map((tick) => (
-            <ChartAxisTick
-              key={tick.position}
-              label={tick.label}
-              position={tick.position}
-            />
-          ))}
-        </div>
-        <div className="relative h-[180px] overflow-visible">
-          <ChartGridLine position="top" />
-          <ChartGridLine position="middle" />
-          <ChartGridLine position="bottom" />
-          <div className="relative z-10 grid h-full grid-cols-12 items-start gap-2">
-            {months.map((month) => (
-              <MonthlyGivingBar
-                key={month.month}
-                maxMonthAmount={maxMonthAmount}
-                month={month}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChartAxisTick({
-  label,
-  position,
-}: {
-  label: string;
-  position: "bottom" | "middle" | "top";
-}) {
-  const positionClass = chartScalePositionClass(position);
-
-  return (
-    <div
-      className={`absolute right-0 ${positionClass} ${
-        position === "bottom" ? "translate-y-1/2" : "-translate-y-1/2"
-      } leading-none`}
-    >
-      {label}
-    </div>
-  );
-}
-
-function ChartGridLine({
-  position,
-}: {
-  position: "bottom" | "middle" | "top";
-}) {
-  const positionClass = chartScalePositionClass(position);
-
-  return (
-    <div
-      aria-hidden
-      className={`pointer-events-none absolute inset-x-0 ${positionClass} border-t border-app-border-faint`}
-    />
-  );
-}
-
-function chartScalePositionClass(position: "bottom" | "middle" | "top") {
   return {
-    bottom: "top-[156px]",
-    middle: "top-[78px]",
-    top: "top-0",
-  }[position];
-}
-
-function ChartKey({
-  color,
-  label,
-}: {
-  color: "current" | "previous";
-  label: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span
-        className={
-          color === "current"
-            ? "h-2.5 w-2.5 rounded-[2px] bg-app-accent"
-            : "h-2.5 w-2.5 rounded-[2px] bg-app-border-strong"
-        }
-      />
-      {label}
-    </span>
-  );
-}
-
-function MonthlyGivingBar({
-  maxMonthAmount,
-  month,
-}: {
-  maxMonthAmount: number;
-  month: ProfileGivingSummary["monthlyGiving"][number];
-}) {
-  const amount = Number(month.totalGiven);
-  const previousAmount = Number(month.previousTotalGiven);
-  const currentHeight = barHeight(amount, maxMonthAmount);
-  const previousHeight = barHeight(previousAmount, maxMonthAmount);
-  const currentLabel = `${formatMonthLabel(month.month)}: ${formatCurrency(
-    month.totalGiven,
-  )}`;
-  const previousLabel = `${formatMonthLabel(
-    month.previousMonth,
-  )}: ${formatCurrency(month.previousTotalGiven)}`;
-
-  return (
-    <div
-      aria-label={`${formatMonthLabel(
-        month.month,
-      )} giving comparison. Current: ${formatCurrency(
-        month.totalGiven,
-      )} across ${month.giftCount} gift${
-        month.giftCount === 1 ? "" : "s"
-      }. Previous: ${formatCurrency(month.previousTotalGiven)} across ${
-        month.previousGiftCount
-      } gift${month.previousGiftCount === 1 ? "" : "s"}.`}
-      className="group relative flex h-full min-w-0 flex-col items-center gap-2 outline-none"
-      role="img"
-      tabIndex={0}
-    >
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[180px] -translate-x-1/2 rounded-[6px] border border-app-border bg-app-surface px-3 py-2 text-left opacity-0 shadow-[0_8px_24px_oklch(0.25_0.01_60_/_0.12)] transition-opacity group-focus:opacity-100 group-hover:opacity-100">
-        <div className="mb-1 text-[11px] font-semibold text-app-foreground">
-          {formatMonthLabel(month.month)}
-        </div>
-        <div className="flex items-center justify-between gap-4 text-[11.5px] text-app-muted">
-          <span>Current</span>
-          <span className="font-medium text-app-foreground tabular-nums">
-            {formatCurrency(month.totalGiven)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-4 text-[11.5px] text-app-faint">
-          <span>Previous</span>
-          <span className="font-medium tabular-nums">
-            {formatCurrency(month.previousTotalGiven)}
-          </span>
-        </div>
-      </div>
-      <div className="flex h-[156px] w-full items-end justify-center gap-1 border-b border-app-border">
-        <div
-          aria-hidden
-          className="relative w-[42%] rounded-t-[4px] bg-app-border-faint transition-colors group-hover:bg-app-border"
-          style={{ height: `${previousHeight}%` }}
-          title={previousLabel}
-        >
-          {previousAmount > 0 ? (
-            <div className="absolute inset-0 rounded-t-[4px] bg-app-border-strong" />
-          ) : null}
-        </div>
-        <div
-          aria-hidden
-          className="relative w-[42%] rounded-t-[4px] bg-app-accent/15 transition-colors group-hover:bg-app-accent/25"
-          style={{ height: `${currentHeight}%` }}
-          title={currentLabel}
-        >
-          {amount > 0 ? (
-            <div className="absolute inset-0 rounded-t-[4px] bg-app-accent" />
-          ) : null}
-        </div>
-      </div>
-      <div className="text-[11px] font-medium text-app-faint tabular-nums">
-        {formatMonthShort(month.month)}
-      </div>
-    </div>
-  );
-}
-
-function barHeight(amount: number, maxMonthAmount: number) {
-  if (amount <= 0 || maxMonthAmount <= 0) {
-    return 0;
-  }
-
-  return Math.max((amount / maxMonthAmount) * 100, 3);
-}
-
-function niceChartMax(value: number) {
-  if (value <= 0) {
-    return 0;
-  }
-
-  const magnitude = 10 ** Math.floor(Math.log10(value));
-  const normalized = value / magnitude;
-  const rounded =
-    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-
-  return rounded * magnitude;
-}
-
-function GivingHiddenState() {
-  return (
-    <div className="flex items-start gap-[14px] rounded-[6px] border border-dashed border-app-border-strong bg-app-soft px-[18px] py-4">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-app-border bg-app-surface text-app-faint">
-        <svg
-          fill="none"
-          height="14"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          viewBox="0 0 24 24"
-          width="14"
-        >
-          <rect height="10" rx="2" width="16" x="4" y="10" />
-          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-        </svg>
-      </div>
-      <div>
-        <h4 className="mb-[3px] text-[13.5px] font-semibold text-app-foreground">
-          Giving amounts hidden
-        </h4>
-        <p className="max-w-[560px] text-[12.5px] leading-[1.55] text-app-faint">
-          Your role can view care and household context, but not giving amounts
-          or individual giving aggregates.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function GivingStat({
-  big = false,
-  label,
-  value,
-}: {
-  big?: boolean;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div>
-      <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.3px] text-app-faint">
-        {label}
-      </div>
-      <div
-        className={
-          big
-            ? "text-[22px] font-semibold tracking-[-0.2px] text-app-foreground tabular-nums"
-            : "text-[14px] font-medium text-app-foreground tabular-nums"
-        }
-      >
-        {value}
-      </div>
-    </div>
-  );
+    ...summary,
+    accountSummaries: summary.accountSummaries.map((accountSummary) => ({
+      ...accountSummary,
+      firstGiftAt: accountSummary.firstGiftAt?.toISOString() ?? null,
+      lastGiftAt: accountSummary.lastGiftAt?.toISOString() ?? null,
+    })),
+    firstGiftAt: summary.firstGiftAt?.toISOString() ?? null,
+    lastGiftAt: summary.lastGiftAt?.toISOString() ?? null,
+  };
 }
 
 function ProfileRail({
@@ -1347,15 +1277,15 @@ function QuickFacts({
   items,
   title,
 }: {
-  items: Array<[string, React.ReactNode]>;
+  items: Array<[React.ReactNode, React.ReactNode]>;
   title: string;
 }) {
   return (
     <div className="rounded-[8px] border border-app-border bg-app-surface px-5 py-[18px]">
       <Label className="mb-[10px]">{title}</Label>
       <dl className="m-0 flex flex-col gap-[10px]">
-        {items.map(([key, value]) => (
-          <div className="flex justify-between gap-3" key={key}>
+        {items.map(([key, value], index) => (
+          <div className="flex justify-between gap-3" key={index}>
             <dt className="text-[12.5px] text-app-faint">{key}</dt>
             <dd className="m-0 text-right text-[12.5px] text-app-foreground">
               {value ?? <span className="text-app-border-strong">-</span>}
@@ -1367,7 +1297,13 @@ function QuickFacts({
   );
 }
 
-function PermissionsPanel({ role }: { role: string }) {
+function PermissionsPanel({
+  lastSyncedAt,
+  role,
+}: {
+  lastSyncedAt?: Date;
+  role: string;
+}) {
   return (
     <div className="rounded-[8px] border border-app-border bg-app-surface px-5 py-[18px]">
       <Label className="mb-[10px]">Permissions</Label>
@@ -1380,6 +1316,20 @@ function PermissionsPanel({ role }: { role: string }) {
           ? "Can see identity, household, and care tasks. Giving amounts intentionally hidden."
           : "Can see identity, household, tasks, and giving aggregates."}
       </p>
+      {lastSyncedAt ? (
+        <div className="mt-4 border-t border-app-border pt-3">
+          <p className="text-[11px] font-medium uppercase text-app-faint">
+            Rock sync
+          </p>
+          <time
+            className="mt-1 block text-[12px] leading-[1.55] text-app-muted"
+            dateTime={lastSyncedAt.toISOString()}
+            title={formatDateTime(lastSyncedAt)}
+          >
+            Synced {formatTimeSince(lastSyncedAt)}
+          </time>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1502,10 +1452,6 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Separator() {
-  return <span className="text-app-border-strong">.</span>;
-}
-
 function roleName(amountsHidden: boolean) {
   return amountsHidden ? "Pastoral Care" : "Admin";
 }
@@ -1607,7 +1553,6 @@ export function membershipToPersonRow(
 
 export {
   DefinitionGrid,
-  GivingPanel,
   PermissionsPanel,
   ProfileRail,
   QuickFacts,
@@ -1650,27 +1595,56 @@ function formatDate(value: Date) {
   }).format(value);
 }
 
-function formatMonthLabel(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    timeZone: "UTC",
-    year: "numeric",
-  }).format(monthStringToDate(value));
+const PLEDGE_PERIODS = [
+  "WEEKLY",
+  "FORTNIGHTLY",
+  "MONTHLY",
+  "QUARTERLY",
+  "ANNUALLY",
+] as const;
+
+function statusOptionsForPledge(status: string) {
+  if (status === "DRAFT") {
+    return ["DRAFT", "ACTIVE", "CANCELED"] as const;
+  }
+
+  if (status === "ACTIVE") {
+    return ["ACTIVE", "ENDED", "CANCELED"] as const;
+  }
+
+  return [status] as const;
 }
 
-function formatMonthShort(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    timeZone: "UTC",
-  }).format(monthStringToDate(value));
+function pledgeStatusLabel(status: PledgeAnalysisRow["status"]) {
+  return {
+    ACTIVE_PLEDGE_EXISTS: "Active pledge",
+    DRAFT_EXISTS: "Draft pledge",
+    INSUFFICIENT_HISTORY: "Insufficient history",
+    NO_CONSISTENT_PATTERN: "No recommendation",
+    RECOMMENDED: "Recommended",
+    REJECTED: "Rejected",
+  }[status];
 }
 
-function monthStringToDate(value: string) {
-  return new Date(`${value}-01T00:00:00.000Z`);
+function pledgeStatusTone(status: PledgeAnalysisRow["status"]) {
+  return {
+    ACTIVE_PLEDGE_EXISTS: "active",
+    DRAFT_EXISTS: "warn",
+    INSUFFICIENT_HISTORY: "inactive",
+    NO_CONSISTENT_PATTERN: "neutral",
+    RECOMMENDED: "accent",
+    REJECTED: "inactive",
+  }[status] as "accent" | "active" | "inactive" | "neutral" | "warn";
 }
 
-function monthsWithRecentGiving(months: ProfileGivingSummary["monthlyGiving"]) {
-  return months.filter((month) => Number(month.totalGiven) > 0).length;
+function periodPhrase(period: string) {
+  return {
+    ANNUALLY: "annually",
+    FORTNIGHTLY: "fortnightly",
+    MONTHLY: "monthly",
+    QUARTERLY: "quarterly",
+    WEEKLY: "weekly",
+  }[period];
 }
 
 function formatCurrency(value: string) {
@@ -1678,16 +1652,6 @@ function formatCurrency(value: string) {
     currency: "USD",
     style: "currency",
   }).format(Number(value));
-}
-
-function formatCompactCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    compactDisplay: "short",
-    currency: "USD",
-    maximumFractionDigits: value >= 1000 ? 1 : 0,
-    notation: "compact",
-    style: "currency",
-  }).format(value);
 }
 
 function formatEnum(value: string) {

@@ -58,6 +58,22 @@ function householdProfile(
       },
     ],
     givingSummary: {
+      accountSummaries: [
+        {
+          accountName: "General Fund",
+          accountRockId: 101,
+          firstGiftAt: new Date("2022-01-12T00:00:00.000Z"),
+          lastGiftAmount: "6000.00",
+          lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
+          lastTwelveMonthsTotal: "6000.00",
+          monthlyGiving,
+          monthsWithGiving: 4,
+          reliabilityKinds: ["SCHEDULED_RECURRING"],
+          sourceExplanation:
+            "Derived from local GivingFact rows synced from Rock.",
+          totalGiven: "6000.00",
+        },
+      ],
       firstGiftAt: new Date("2022-01-12T00:00:00.000Z"),
       lastGiftAmount: "500.00",
       lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
@@ -65,6 +81,7 @@ function householdProfile(
       monthlyGiving,
       monthsWithGiving: 61,
       reliabilityKinds: ["SCHEDULED_RECURRING"],
+      source: "HOUSEHOLD",
       sourceExplanation: "Derived from local GivingFact rows synced from Rock.",
       totalGiven: "34820.00",
     },
@@ -107,7 +124,9 @@ function householdProfile(
 
 describe("HouseholdProfile", () => {
   it("renders household members and household giving summary", () => {
-    render(<HouseholdProfile profile={householdProfile()} />);
+    const { container } = render(
+      <HouseholdProfile profile={householdProfile()} />,
+    );
 
     expect(
       screen.getByRole("heading", { name: "Donor Family" }),
@@ -118,6 +137,15 @@ describe("HouseholdProfile", () => {
     expect(screen.getAllByText("Jane Donor").length).toBeGreaterThan(0);
     expect(screen.getByText("$6,000.00")).toBeInTheDocument();
     expect(screen.getByText("Current 12 months")).toBeInTheDocument();
+    expect(screen.getByText("Rock sync")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Showing giving from this person's assigned giving household.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector("aside a[href='/people/910001']"),
+    ).toHaveTextContent("Jane Donor");
   });
 
   it("uses available member photos in the household avatar", () => {

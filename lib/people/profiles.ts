@@ -19,6 +19,10 @@ import {
   getPersonGivingSummary,
   type GivingSummary,
 } from "@/lib/giving/metrics";
+import {
+  getPersonPledgeEditor,
+  type PersonPledgeEditor,
+} from "@/lib/giving/pledges";
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 
 const PROFILE_TASK_LIMIT = 8;
@@ -76,6 +80,7 @@ export type ProfileTask = {
 
 export type ProfileGivingSummary = GivingSummary & {
   reliabilityKinds: GiftReliabilityKind[];
+  source: "HOUSEHOLD" | "PERSON";
 };
 
 export type RockPersonProfile = ProfilePersonSummary & {
@@ -87,6 +92,7 @@ export type RockPersonProfile = ProfilePersonSummary & {
   householdMemberships: HouseholdMembershipProfile[];
   staffTasks: ProfileTask[];
   givingSummary: ProfileGivingSummary | null;
+  pledgeEditor: PersonPledgeEditor | null;
   amountsHidden: boolean;
   lastSyncedAt: Date;
 };
@@ -102,7 +108,12 @@ export type RockHouseholdProfile = ProfileHouseholdSummary & {
 
 type ProfileClient = Pick<
   PrismaClient,
-  "givingFact" | "rockHousehold" | "rockPerson" | "staffTask"
+  | "givingFact"
+  | "givingPledge"
+  | "rockFinancialAccount"
+  | "rockHousehold"
+  | "rockPerson"
+  | "staffTask"
 >;
 
 type CampusRow = {
@@ -181,6 +192,10 @@ const personProfileSelect = {
   rockId: true,
 } satisfies Prisma.RockPersonSelect;
 
+type PersonProfileRow = Prisma.RockPersonGetPayload<{
+  select: typeof personProfileSelect;
+}>;
+
 const householdProfileSelect = {
   ...householdSummarySelect(),
   givingPeople: {
@@ -224,11 +239,10 @@ export async function getRockPersonProfile(
     return null;
   }
 
-  const [staffTasks, givingSummary] = await Promise.all([
+  const [staffTasks, givingSummary, pledgeEditor] = await Promise.all([
     findProfileTasks({ personRockId: input.rockId }, client),
-    canSeeIndividualGivingAggregates(actor.role)
-      ? getPersonGivingSummary(input.rockId, client as PrismaClient)
-      : null,
+    getVisiblePersonGivingSummary(person, actor, client),
+    getPersonPledgeEditor(input.rockId, actor, client as PrismaClient),
   ]);
 
   return {
@@ -239,6 +253,7 @@ export async function getRockPersonProfile(
     givingId: person.givingId,
     givingLeaderRockId: person.givingLeaderRockId,
     givingSummary,
+    pledgeEditor,
     householdMemberships: person.householdMembers.map((membership) => ({
       archived: membership.archived,
       groupRole: membership.groupRole?.name ?? null,
@@ -252,6 +267,56 @@ export async function getRockPersonProfile(
     recordStatus: person.recordStatus?.value ?? null,
     staffTasks,
   };
+}
+
+async function getVisiblePersonGivingSummary(
+  person: PersonProfileRow,
+  actor: LocalAppUser,
+  client: ProfileClient,
+) {
+  if (!canSeeIndividualGivingAggregates(actor.role)) {
+    return null;
+  }
+
+  const personSummary = await getPersonGivingSummary(
+    person.rockId,
+    client as PrismaClient,
+  );
+
+  if (
+    personSummary.monthsWithGiving > 0 ||
+    !person.givingHousehold ||
+    !hasAdultHouseholdMembership(person.householdMembers)
+  ) {
+    return withGivingSummarySource(personSummary, "PERSON");
+  }
+
+  const householdSummary = await getHouseholdGivingSummary(
+    person.givingHousehold.rockId,
+    client as PrismaClient,
+  );
+
+  return householdSummary.monthsWithGiving > 0
+    ? withGivingSummarySource(householdSummary, "HOUSEHOLD")
+    : withGivingSummarySource(personSummary, "PERSON");
+}
+
+function withGivingSummarySource(
+  summary: GivingSummary,
+  source: ProfileGivingSummary["source"],
+): ProfileGivingSummary {
+  return {
+    ...summary,
+    source,
+  };
+}
+
+function hasAdultHouseholdMembership(
+  memberships: Array<{ groupRole: { name: string } | null }>,
+) {
+  return memberships.some((membership) => {
+    return householdRoleRank(membership.groupRole?.name ?? null) === 0;
+  });
 }
 
 export async function getRockHouseholdProfile(
@@ -276,7 +341,9 @@ export async function getRockHouseholdProfile(
   const [staffTasks, givingSummary] = await Promise.all([
     findProfileTasks({ householdRockId: input.rockId }, client),
     canSeeGivingAmounts(actor.role)
-      ? getHouseholdGivingSummary(input.rockId, client as PrismaClient)
+      ? getHouseholdGivingSummary(input.rockId, client as PrismaClient).then(
+          (summary) => withGivingSummarySource(summary, "HOUSEHOLD"),
+        )
       : null,
   ]);
 

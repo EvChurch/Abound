@@ -571,6 +571,15 @@ flowchart LR
 
 - Staff can see whether data is fresh and understand the first meaningful giving trends without exporting spreadsheets.
 
+**Progress notes:**
+
+- Added the first Abound-style staff home dashboard slice on `/`, backed by `lib/giving/metrics.ts`.
+- The first dashboard metric is a 24-month distinct household donor count from local `GivingFact.householdRockId` values, grouped by `effectiveMonth` and `campusRockId`, with full 24-month zero-filled sequences and a source explanation.
+- The initial visualization is a full-width stacked campus line chart rather than a month table, with unassigned campus rows represented explicitly.
+- The dashboard now treats "at-risk households" as the main drop-off signal: households active in the prior three completed months that are absent from the latest completed month.
+- Household movement categories are useful as future People screen filters: dropped households, reactivated households, and new households. Keep the dashboard summary-level for now instead of listing households inline.
+- This slice intentionally shows household counts only, not giving amounts, transaction details, donor PII, recurring gift setup, or payment state. The broader Unit 6 dashboard surfaces remain open.
+
 - [ ] **Unit 7: Add Task and Communication Preparation Workflows**
 
 **Goal:** Support staff follow-up tasks and communication prep without sending email or mutating Rock-owned giving data.

@@ -154,7 +154,7 @@ export function SyncStatus({ summary }: SyncStatusProps) {
             ))}
           </div>
         ) : (
-          <EmptyPanel message="No open sync issues need staff review." />
+          <EmptyPanel message="No open sync issues need review." />
         )}
       </section>
 

@@ -14,9 +14,6 @@ export function LookupPage({ kind }: { kind: "person" | "household" }) {
             Ab
           </span>
           Abound
-          <span className="rounded-[3px] border border-app-border bg-app-chip px-[6px] py-[2px] font-mono text-[11px] font-normal text-app-muted">
-            STAFF
-          </span>
         </div>
 
         <div className="rounded-[10px] border border-app-border bg-app-surface p-6 shadow-[0_1px_2px_rgba(150,140,120,0.16)]">

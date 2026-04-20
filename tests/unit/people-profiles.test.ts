@@ -84,10 +84,31 @@ function profileClient() {
     givingFact: {
       findMany: vi.fn(async () => [
         {
+          accountRockId: 101,
           amount: "125.50",
           effectiveMonth: new Date("2026-04-01T00:00:00.000Z"),
           occurredAt: new Date("2026-04-07T00:00:00.000Z"),
           reliabilityKind: "ONE_OFF",
+        },
+      ]),
+    },
+    givingPledge: {
+      findMany: vi.fn(async () => []),
+    },
+    givingPledgeRecommendationDecision: {
+      findMany: vi.fn(async () => []),
+    },
+    rockFinancialAccount: {
+      findMany: vi.fn(async () => [
+        {
+          active: true,
+          name: "General Fund",
+          rockId: 101,
+        },
+        {
+          active: true,
+          name: "Missions",
+          rockId: 102,
         },
       ]),
     },
@@ -177,6 +198,17 @@ describe("people profile service", () => {
       givingSummary: {
         totalGiven: "125.50",
       },
+      pledgeEditor: {
+        rows: expect.arrayContaining([
+          expect.objectContaining({
+            account: {
+              active: true,
+              name: "General Fund",
+              rockId: 101,
+            },
+          }),
+        ]),
+      },
       primaryHousehold: {
         name: "Donor Family",
       },
@@ -197,6 +229,60 @@ describe("people profile service", () => {
 
     expect(profile?.amountsHidden).toBe(true);
     expect(profile?.givingSummary).toBeNull();
+    expect(profile?.pledgeEditor).toBeNull();
+  });
+
+  it("falls back to household giving for adult people with no direct gifts", async () => {
+    const givingFactFindMany = vi.fn(async (args: { where?: unknown }) => {
+      if (
+        args?.where &&
+        typeof args.where === "object" &&
+        "personRockId" in args.where
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          accountRockId: 102,
+          amount: "425.00",
+          effectiveMonth: new Date("2026-04-01T00:00:00.000Z"),
+          occurredAt: new Date("2026-04-07T00:00:00.000Z"),
+          reliabilityKind: "ONE_OFF",
+        },
+      ];
+    });
+    const client = {
+      ...profileClient(),
+      givingFact: {
+        findMany: givingFactFindMany,
+      },
+    } as unknown as PrismaClient;
+
+    const profile = await getRockPersonProfile(
+      { rockId: 910001 },
+      financeUser,
+      client,
+    );
+
+    expect(givingFactFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          personRockId: 910001,
+        },
+      }),
+    );
+    expect(givingFactFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          householdRockId: 920001,
+        },
+      }),
+    );
+    expect(profile?.givingSummary).toMatchObject({
+      source: "HOUSEHOLD",
+      totalGiven: "425.00",
+    });
   });
 
   it("returns household members and finance-visible household giving", async () => {
@@ -229,6 +315,7 @@ describe("people profile service", () => {
         },
       ],
       givingSummary: {
+        source: "HOUSEHOLD",
         totalGiven: "125.50",
       },
     });

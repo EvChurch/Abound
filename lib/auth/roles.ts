@@ -6,6 +6,7 @@ export type Permission =
   | "finance:read_amounts"
   | "people:read_limited"
   | "people:read_care_context"
+  | "pledges:manage"
   | "tasks:manage"
   | "communications:manage"
   | "settings:manage";
@@ -15,11 +16,12 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "finance:read_amounts",
     "people:read_limited",
     "people:read_care_context",
+    "pledges:manage",
     "tasks:manage",
     "communications:manage",
     "settings:manage",
   ],
-  FINANCE: ["finance:read_amounts", "people:read_limited"],
+  FINANCE: ["finance:read_amounts", "people:read_limited", "pledges:manage"],
   PASTORAL_CARE: [
     "people:read_care_context",
     "tasks:manage",

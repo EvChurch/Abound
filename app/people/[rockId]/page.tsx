@@ -4,6 +4,12 @@ import { PersonProfile } from "@/components/people/person-profile";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
 import { getRockPersonProfile } from "@/lib/people/profiles";
+import {
+  createDraftPersonPledgeAction,
+  quickCreatePersonPledgeAction,
+  rejectPersonPledgeRecommendationAction,
+  updatePersonPledgeAction,
+} from "@/app/people/[rockId]/actions";
 
 type PersonPageProps = {
   params: Promise<{
@@ -35,5 +41,15 @@ export default async function PersonPage({ params }: PersonPageProps) {
     notFound();
   }
 
-  return <PersonProfile profile={profile} />;
+  return (
+    <PersonProfile
+      pledgeActions={{
+        createDraft: createDraftPersonPledgeAction,
+        quickCreate: quickCreatePersonPledgeAction,
+        reject: rejectPersonPledgeRecommendationAction,
+        update: updatePersonPledgeAction,
+      }}
+      profile={profile}
+    />
+  );
 }

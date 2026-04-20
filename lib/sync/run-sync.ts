@@ -796,21 +796,27 @@ function fixtureToNormalized(
       const transaction = financialTransactions.find(
         (candidate) => candidate.rockId === detail.transactionRockId,
       );
+      const person = people.find(
+        (candidate) => candidate.rockId === transaction?.authorizedPersonRockId,
+      );
+      const householdRockId = person
+        ? resolveGivingHouseholdRockId(person)
+        : null;
 
       return {
         reliabilityKind: "ONE_OFF" as const,
         transactionRockId: detail.transactionRockId,
         transactionDetailRockId: detail.rockId,
         personRockId: transaction?.authorizedPersonRockId ?? null,
-        householdRockId: transaction?.authorizedPersonRockId
-          ? resolveGivingHouseholdRockId(
-              people.find(
-                (person) =>
-                  person.rockId === transaction.authorizedPersonRockId,
-              ) ?? {},
-            )
-          : null,
+        householdRockId,
         accountRockId: detail.accountRockId,
+        campusRockId: resolveGivingCampusRockId({
+          accountRockId: detail.accountRockId,
+          financialAccounts,
+          householdRockId,
+          households,
+          person,
+        }),
         amount: detail.amount,
         occurredAt: transaction?.transactionDate,
         effectiveMonth: monthStart(transaction?.transactionDate ?? new Date()),
@@ -822,21 +828,28 @@ function fixtureToNormalized(
       const scheduledTransaction = financialScheduledTransactions.find(
         (candidate) => candidate.rockId === detail.scheduledTransactionRockId,
       );
+      const person = people.find(
+        (candidate) =>
+          candidate.rockId === scheduledTransaction?.authorizedPersonRockId,
+      );
+      const householdRockId = person
+        ? resolveGivingHouseholdRockId(person)
+        : null;
 
       return {
         reliabilityKind: "SCHEDULED_RECURRING" as const,
         scheduledTransactionRockId: detail.scheduledTransactionRockId,
         scheduledTransactionDetailRockId: detail.rockId,
         personRockId: scheduledTransaction?.authorizedPersonRockId ?? null,
-        householdRockId: scheduledTransaction?.authorizedPersonRockId
-          ? resolveGivingHouseholdRockId(
-              people.find(
-                (person) =>
-                  person.rockId === scheduledTransaction.authorizedPersonRockId,
-              ) ?? {},
-            )
-          : null,
+        householdRockId,
         accountRockId: detail.accountRockId,
+        campusRockId: resolveGivingCampusRockId({
+          accountRockId: detail.accountRockId,
+          financialAccounts,
+          householdRockId,
+          households,
+          person,
+        }),
         amount: detail.amount,
         effectiveMonth: monthStart(new Date()),
         explanation:
@@ -1273,6 +1286,9 @@ function rockPersonSliceToNormalized(
       const person = people.find(
         (candidate) => candidate.rockId === transaction?.authorizedPersonRockId,
       );
+      const householdRockId = person
+        ? resolveGivingHouseholdRockId(person)
+        : null;
 
       return {
         reliabilityKind: classifyGiftReliability({
@@ -1282,8 +1298,15 @@ function rockPersonSliceToNormalized(
         transactionDetailRockId: detail.rockId,
         scheduledTransactionRockId: transaction?.scheduledTransactionRockId,
         personRockId: transaction?.authorizedPersonRockId,
-        householdRockId: person ? resolveGivingHouseholdRockId(person) : null,
+        householdRockId,
         accountRockId: detail.accountRockId,
+        campusRockId: resolveGivingCampusRockId({
+          accountRockId: detail.accountRockId,
+          financialAccounts,
+          householdRockId,
+          households,
+          person,
+        }),
         amount: detail.amount,
         occurredAt: transaction?.transactionDate,
         effectiveMonth: monthStart(transaction?.transactionDate ?? new Date()),
@@ -1300,14 +1323,24 @@ function rockPersonSliceToNormalized(
       const person = people.find(
         (candidate) => candidate.rockId === transaction?.authorizedPersonRockId,
       );
+      const householdRockId = person
+        ? resolveGivingHouseholdRockId(person)
+        : null;
 
       return {
         reliabilityKind: "SCHEDULED_RECURRING" as const,
         scheduledTransactionRockId: detail.scheduledTransactionRockId,
         scheduledTransactionDetailRockId: detail.rockId,
         personRockId: transaction?.authorizedPersonRockId,
-        householdRockId: person ? resolveGivingHouseholdRockId(person) : null,
+        householdRockId,
         accountRockId: detail.accountRockId,
+        campusRockId: resolveGivingCampusRockId({
+          accountRockId: detail.accountRockId,
+          financialAccounts,
+          householdRockId,
+          households,
+          person,
+        }),
         amount: detail.amount,
         effectiveMonth: monthStart(transaction?.nextPaymentDate ?? new Date()),
         explanation:
@@ -1373,6 +1406,40 @@ function toDecimal(value: number | string | null | undefined) {
 
 function monthStart(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function resolveGivingCampusRockId({
+  accountRockId,
+  financialAccounts,
+  householdRockId,
+  households,
+  person,
+}: {
+  accountRockId: number | null | undefined;
+  financialAccounts: Prisma.RockFinancialAccountCreateManyInput[];
+  householdRockId: number | null;
+  households: Prisma.RockHouseholdCreateManyInput[];
+  person?: Prisma.RockPersonCreateManyInput;
+}) {
+  const householdCampusRockId = householdRockId
+    ? households.find((household) => household.rockId === householdRockId)
+        ?.campusRockId
+    : null;
+
+  if (typeof householdCampusRockId === "number") {
+    return householdCampusRockId;
+  }
+
+  if (typeof person?.primaryCampusRockId === "number") {
+    return person.primaryCampusRockId;
+  }
+
+  const accountCampusRockId = accountRockId
+    ? financialAccounts.find((account) => account.rockId === accountRockId)
+        ?.campusRockId
+    : null;
+
+  return typeof accountCampusRockId === "number" ? accountCampusRockId : null;
 }
 
 function countRecords(data: NormalizedSyncData) {
