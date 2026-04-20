@@ -9,6 +9,7 @@ import {
   GROUP_MEMBER_STATUS,
   resolveGivingHouseholdRockId,
 } from "@/lib/giving/models";
+import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
 import { ROCK_SYNC_SOURCE } from "@/lib/sync/models";
 import type { SyncIssueInput } from "@/lib/sync/reconcile";
 import { redactForLog } from "@/lib/sync/redaction";
@@ -437,6 +438,8 @@ async function persistNormalizedSync(
         recordsSkipped: normalized.issues.length,
       },
     });
+
+    await refreshGivingLifecycleSnapshots({ syncRunId: syncRun.id }, prisma);
 
     return {
       syncRunId: syncRun.id,

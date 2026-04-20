@@ -40,7 +40,7 @@ export function DelayedStickySummary({
   return (
     <div
       aria-hidden={!visible}
-      className={`fixed inset-x-0 top-[43px] z-20 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.94)] backdrop-blur-md transition-transform duration-150 [backdrop-filter:saturate(1.35)_blur(8px)] ${
+      className={`fixed inset-x-0 top-12 z-20 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.94)] backdrop-blur-md transition-transform duration-150 [backdrop-filter:saturate(1.35)_blur(8px)] ${
         visible ? "translate-y-0" : "pointer-events-none -translate-y-full"
       }`}
     >

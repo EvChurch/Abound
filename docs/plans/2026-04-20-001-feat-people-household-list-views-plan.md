@@ -292,7 +292,7 @@ Advanced filter builder:
 
 ## Implementation Units
 
-- [ ] **Unit 1: Define Filter Schema and Lifecycle Semantics**
+- [x] **Unit 1: Define Filter Schema and Lifecycle Semantics**
 
 Goal: Create a typed filter definition and lifecycle definition layer that is shared by People and Households.
 
@@ -319,7 +319,14 @@ Test scenarios:
 - Lifecycle classification covers new, reactivated, at risk, dropped, and no-status cases.
 - Pastoral Care explanations contain no numeric amounts.
 
-- [ ] **Unit 2: Add Saved View and Lifecycle Snapshot Models**
+Progress note 2026-04-20:
+
+- Added `lib/list-views/filter-schema.ts` with grouped condition validation, typed operators, field-type value checks, relative date values, and safe forbidden-field errors for amount-like fields.
+- Added `lib/list-views/filter-catalog.ts` with role-aware People and Households filter catalogs that omit finance-only amount fields for Pastoral Care.
+- Added `lib/giving/lifecycle.ts` with default lifecycle window semantics and role-safe explanations for `NEW`, `REACTIVATED`, `AT_RISK`, and `DROPPED`.
+- Added `tests/unit/list-view-filter-schema.test.ts` and `tests/unit/giving-lifecycle.test.ts`.
+
+- [x] **Unit 2: Add Saved View and Lifecycle Snapshot Models**
 
 Goal: Persist app-owned saved views and derived lifecycle snapshots.
 
@@ -342,6 +349,14 @@ Test scenarios:
 - Migration creates expected tables, enums, indexes, and foreign keys.
 - Saved views cascade or restrict on local user deletion according to the app's auth data retention decision.
 - Snapshot rows can link to sync runs and Rock person/household IDs without making Rock rows locally owned.
+
+Progress note 2026-04-20:
+
+- Added `SavedListView` with owner, resource, visibility, filter/sort/column JSON definitions, density, page size, default flag, and private/team/global-ready indexing.
+- Added `GivingLifecycleSnapshot` with person/household Rock links, lifecycle kind, window bounds, role-safe summary, optional finance detail JSON, sync run traceability, and list-query indexes.
+- Added `prisma/migrations/20260420000100_add_list_views_and_lifecycle_snapshots/migration.sql`.
+- Regenerated Prisma/Pothos types in `lib/graphql/pothos-prisma-types.ts`.
+- Extended `tests/integration/prisma-migrations.test.ts` for saved view and lifecycle snapshot migration coverage.
 
 - [ ] **Unit 3: Build List Query Services**
 
@@ -375,6 +390,14 @@ Test scenarios:
 - Saved views are scoped to the current local app user.
 - A saved view created under Finance permissions is safely revalidated if the user later becomes Pastoral Care.
 
+Progress note 2026-04-20:
+
+- Added cursor helpers in `lib/list-views/cursors.ts`.
+- Added saved view service behavior in `lib/list-views/saved-views.ts`, including owner scoping, default view clearing, page-size validation, and role revalidation.
+- Added first People and Households list services in `lib/list-views/people-list.ts` and `lib/list-views/households-list.ts`.
+- Added `tests/unit/saved-list-views.test.ts`.
+- Lifecycle filter evaluation is intentionally not marked complete yet: the first relation-based query caused a runtime Prisma client mismatch in local dev, so the live list path now avoids selecting or filtering through the new lifecycle relation until migration/client refresh is fully verified.
+
 - [ ] **Unit 4: Expose GraphQL List View API**
 
 Goal: Add a list-view contract without leaking Prisma models or forbidden filter fields.
@@ -399,6 +422,12 @@ Test scenarios:
 - Manually submitting forbidden amount filters returns a safe `FORBIDDEN` or `BAD_USER_INPUT` error.
 - Saved views can be created, updated, deleted, and set as default by their owner.
 - Cursor pagination returns stable `endCursor` and `hasNextPage`.
+
+Progress note 2026-04-20:
+
+- Added `lib/graphql/types/list-views.ts` and registered it from `lib/graphql/schema.ts`.
+- Exposed filter catalog, People/Households list connections, and saved-list-view mutations.
+- Filter/view JSON currently crosses GraphQL as JSON strings while service-level validation owns the actual structured contract.
 
 - [ ] **Unit 5: Build People and Household List UI**
 
@@ -435,6 +464,12 @@ Test scenarios:
 - Infinite scroll fetches the next cursor without duplicating rows.
 - Pagination footer remains usable when infinite scroll is off.
 
+Progress note 2026-04-20:
+
+- Replaced Rock-ID-only lookup pages with People and Households list pages backed by the list services.
+- Added shared list components under `components/list-views/`.
+- Removed visible record-ID search and record-ID display from the People and Households list pages after stakeholder feedback. Internal route identifiers still power profile links, but the pages do not show or invite searching by those IDs.
+
 - [ ] **Unit 6: Add Lifecycle Snapshot Refresh**
 
 Goal: Keep lifecycle filters fast and explainable after sync.
@@ -460,6 +495,12 @@ Test scenarios:
 - Re-running refresh for the same window does not duplicate active snapshot rows.
 - Partial sync behavior is explicit and does not erase prior lifecycle evidence without replacement.
 - Snapshot explanations preserve role-safe and finance-only boundaries.
+
+Progress note 2026-04-20:
+
+- Added `lib/giving/lifecycle-snapshots.ts` and `tests/unit/lifecycle-snapshots.test.ts`.
+- Hooked snapshot refresh after successful/partial sync persistence in `lib/sync/run-sync.ts`.
+- Snapshot refresh is non-blocking when the target database has not applied the lifecycle snapshot migration yet or when tests use a narrow Prisma mock without the new delegate.
 
 ## Verification Plan
 

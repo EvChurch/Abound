@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
+import { AppTopNav } from "@/components/navigation/app-top-nav";
 import type { LocalAppUser } from "@/lib/auth/types";
 import type {
   HouseholdDonorTrend,
@@ -33,7 +32,7 @@ export function StaffDashboard({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <DashboardNav />
+      <AppTopNav active="dashboard" />
       <main className="grid w-full gap-6 px-7 py-7">
         <section className="grid gap-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -242,50 +241,6 @@ function movementTone(kind: MovementTone) {
   } satisfies Record<MovementTone, string>;
 
   return tones[kind];
-}
-
-function DashboardNav() {
-  const links = [
-    { href: "/", label: "Dashboard", active: true },
-    { href: "/people", label: "People", active: false },
-    { href: "/households", label: "Households", active: false },
-    { href: "/sync", label: "Sync", active: false },
-  ];
-
-  return (
-    <div className="sticky top-0 z-30 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.92)] backdrop-blur-md [backdrop-filter:saturate(1.4)_blur(8px)]">
-      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-5 px-7 py-[10px]">
-        <Link
-          className="flex items-center gap-[10px] text-[13.5px] font-semibold text-app-foreground"
-          href="/"
-        >
-          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-app-foreground font-mono text-[11px] font-semibold text-app-background">
-            Ab
-          </span>
-          <span>Abound</span>
-        </Link>
-        <nav
-          aria-label="Primary"
-          className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-[12.5px]"
-        >
-          {links.map((link) => (
-            <Link
-              aria-current={link.active ? "page" : undefined}
-              className={
-                link.active
-                  ? "rounded-[6px] bg-app-chip px-3 py-1.5 font-semibold text-app-foreground"
-                  : "rounded-[6px] px-3 py-1.5 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
-              }
-              href={link.href}
-              key={link.href}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </div>
-  );
 }
 
 function DashboardMetric({

@@ -15,6 +15,7 @@ import {
   GivingSummarySection,
   type SerializedGivingSummary,
 } from "@/components/people/giving-summary-panel";
+import { AppTopNav } from "@/components/navigation/app-top-nav";
 import type { PledgeAnalysisRow } from "@/lib/giving/pledges";
 
 type PersonProfileProps = {
@@ -180,22 +181,12 @@ export function RecordShell({
   children,
   header,
   householdHref,
-  householdName,
   personHref,
-  personName,
   stickySummary,
-  title,
 }: RecordShellProps) {
   return (
     <main className="min-h-screen bg-app-background text-app-foreground">
-      <TopBar
-        activeView={activeView}
-        householdHref={householdHref}
-        householdName={householdName}
-        personHref={personHref}
-        personName={personName}
-        title={title}
-      />
+      <AppTopNav active={activeView === "person" ? "people" : "households"} />
 
       {stickySummary ? (
         <DelayedStickySummary observeId="record-main-header">
@@ -286,69 +277,6 @@ export function MiniHouseholdAvatar({
           {householdInitials(name)}
         </div>
       )}
-    </div>
-  );
-}
-
-function TopBar({
-  activeView,
-  householdHref,
-  householdName,
-  personHref,
-  personName,
-  title,
-}: {
-  activeView: "person" | "household";
-  householdHref?: string;
-  householdName?: string;
-  personHref?: string;
-  personName?: string;
-  title: string;
-}) {
-  return (
-    <div className="sticky top-0 z-30 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.92)] backdrop-blur-md [backdrop-filter:saturate(1.4)_blur(8px)]">
-      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-5 px-7 py-[10px]">
-        <Link
-          className="flex items-center gap-[10px] text-[13.5px] font-semibold text-app-foreground"
-          href="/"
-        >
-          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-app-foreground font-mono text-[11px] font-semibold text-app-background">
-            Ab
-          </span>
-          <span>Abound</span>
-        </Link>
-
-        <nav className="flex min-w-0 flex-1 items-center gap-2 text-[12.5px] text-app-faint">
-          <Link
-            className="text-app-muted hover:text-app-foreground"
-            href="/people"
-          >
-            People
-          </Link>
-          <span>/</span>
-          {activeView === "household" && personHref ? (
-            <>
-              <Link
-                className="truncate text-app-muted hover:text-app-foreground"
-                href={personHref}
-              >
-                {personName}
-              </Link>
-              <span>/</span>
-            </>
-          ) : null}
-          {activeView === "person" || !householdHref ? (
-            <span className="truncate text-app-muted">{title}</span>
-          ) : (
-            <Link
-              className="truncate text-app-muted hover:text-app-foreground"
-              href={householdHref}
-            >
-              {householdName}
-            </Link>
-          )}
-        </nav>
-      </div>
     </div>
   );
 }

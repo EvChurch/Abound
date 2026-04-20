@@ -6,13 +6,13 @@
     sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 
-  --color-app-background: oklch(0.985 0.004 75);
-  --color-app-surface: oklch(0.995 0.002 75);
-  --color-app-soft: oklch(0.975 0.005 75);
-  --color-app-chip: oklch(0.965 0.006 75);
-  --color-app-border: oklch(0.91 0.006 70);
-  --color-app-border-faint: oklch(0.94 0.005 70);
-  --color-app-border-strong: oklch(0.86 0.007 70);
+  --color-app-background: oklch(0.976 0.009 76);
+  --color-app-surface: oklch(0.996 0.004 76);
+  --color-app-soft: oklch(0.966 0.01 76);
+  --color-app-chip: oklch(0.952 0.01 76);
+  --color-app-border: oklch(0.9 0.01 72);
+  --color-app-border-faint: oklch(0.932 0.008 74);
+  --color-app-border-strong: oklch(0.845 0.012 72);
   --color-app-foreground: oklch(0.25 0.008 60);
   --color-app-muted: oklch(0.42 0.008 60);
   --color-app-faint: oklch(0.58 0.008 60);

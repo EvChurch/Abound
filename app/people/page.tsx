@@ -1,13 +1,19 @@
 import { redirect } from "next/navigation";
 
-import { LookupPage } from "@/components/people/record-lookup";
+import { ListViewShell } from "@/components/list-views/list-view-shell";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
+import { listPeople } from "@/lib/list-views/people-list";
+import {
+  buildPeopleFilter,
+  parseColumns,
+  peopleFiltersFromParams,
+  type PeopleListQueryParams,
+} from "@/lib/list-views/page-params";
 
 type PeopleLookupPageProps = {
-  searchParams: Promise<{
-    rockId?: string;
-  }>;
+  searchParams: Promise<PeopleListQueryParams>;
 };
 
 export default async function PeopleLookupPage({
@@ -24,11 +30,27 @@ export default async function PeopleLookupPage({
     redirect("/access-request");
   }
 
-  const rockId = (await searchParams).rockId?.trim();
+  const params = await searchParams;
+  const filterDefinition = buildPeopleFilter(params);
+  const connection = await listPeople(
+    {
+      after: params.after,
+      filterDefinition,
+      first: 50,
+    },
+    accessState.user,
+  );
 
-  if (rockId) {
-    redirect(`/people/${rockId}`);
-  }
-
-  return <LookupPage kind="person" />;
+  return (
+    <ListViewShell
+      catalog={getListViewFilterCatalog("PEOPLE", accessState.user.role)}
+      columns={parseColumns(params)}
+      connection={connection}
+      ageGroup={params.ageGroup}
+      filters={peopleFiltersFromParams(params)}
+      kind="people"
+      lifecycle={params.lifecycle}
+      query={params.q}
+    />
+  );
 }

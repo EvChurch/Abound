@@ -1,13 +1,19 @@
 import { redirect } from "next/navigation";
 
-import { LookupPage } from "@/components/people/record-lookup";
+import { ListViewShell } from "@/components/list-views/list-view-shell";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import { listHouseholds } from "@/lib/list-views/households-list";
+import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
+import {
+  buildHouseholdFilter,
+  householdFiltersFromParams,
+  parseColumns,
+  type HouseholdListQueryParams,
+} from "@/lib/list-views/page-params";
 
 type HouseholdLookupPageProps = {
-  searchParams: Promise<{
-    rockId?: string;
-  }>;
+  searchParams: Promise<HouseholdListQueryParams>;
 };
 
 export default async function HouseholdLookupPage({
@@ -24,11 +30,26 @@ export default async function HouseholdLookupPage({
     redirect("/access-request");
   }
 
-  const rockId = (await searchParams).rockId?.trim();
+  const params = await searchParams;
+  const filterDefinition = buildHouseholdFilter(params);
+  const connection = await listHouseholds(
+    {
+      after: params.after,
+      filterDefinition,
+      first: 50,
+    },
+    accessState.user,
+  );
 
-  if (rockId) {
-    redirect(`/households/${rockId}`);
-  }
-
-  return <LookupPage kind="household" />;
+  return (
+    <ListViewShell
+      catalog={getListViewFilterCatalog("HOUSEHOLDS", accessState.user.role)}
+      columns={parseColumns(params)}
+      connection={connection}
+      filters={householdFiltersFromParams(params)}
+      kind="households"
+      lifecycle={params.lifecycle}
+      query={params.q}
+    />
+  );
 }

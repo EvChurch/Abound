@@ -6,6 +6,10 @@ const migration = readFileSync(
   "prisma/migrations/20260420000000_initial_baseline/migration.sql",
   "utf8",
 );
+const listViewsMigration = readFileSync(
+  "prisma/migrations/20260420000100_add_list_views_and_lifecycle_snapshots/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -89,6 +93,34 @@ describe("synced data model migration", () => {
     );
     expect(migration).toContain(
       'FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId")',
+    );
+  });
+
+  it("creates app-owned saved views and lifecycle snapshots", () => {
+    expect(listViewsMigration).toContain('CREATE TABLE "SavedListView"');
+    expect(listViewsMigration).toContain(
+      'CREATE TABLE "GivingLifecycleSnapshot"',
+    );
+    expect(listViewsMigration).toContain(
+      'CREATE TYPE "SavedListViewResource" AS ENUM',
+    );
+    expect(listViewsMigration).toContain(
+      'CREATE TYPE "GivingLifecycleKind" AS ENUM',
+    );
+    expect(listViewsMigration).toContain(
+      'CREATE INDEX "SavedListView_ownerUserId_resource_isDefault_idx"',
+    );
+    expect(listViewsMigration).toContain(
+      'CREATE INDEX "GivingLifecycleSnapshot_personRockId_lifecycle_windowEndedAt_idx"',
+    );
+    expect(listViewsMigration).toContain(
+      'FOREIGN KEY ("ownerUserId") REFERENCES "AppUser"("id") ON DELETE CASCADE',
+    );
+    expect(listViewsMigration).toContain(
+      'FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId")',
+    );
+    expect(listViewsMigration).toContain(
+      'FOREIGN KEY ("householdRockId") REFERENCES "RockHousehold"("rockId")',
     );
   });
 });
