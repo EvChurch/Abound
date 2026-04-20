@@ -123,9 +123,12 @@ function CommunicationPrepRow({
     >
       <td className="px-4 py-4 align-top">
         <div className="grid gap-1">
-          <span className="font-semibold text-app-foreground">
+          <Link
+            className="font-semibold text-app-accent"
+            href={`/communications/${prep.id}`}
+          >
             {prep.title}
-          </span>
+          </Link>
           <span className="text-[12px] leading-5 text-app-muted">
             {prep.segmentSummary}
           </span>

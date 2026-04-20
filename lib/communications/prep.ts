@@ -79,6 +79,28 @@ export async function listCommunicationPreps(
   });
 }
 
+export async function getCommunicationPrep(
+  id: string,
+  actor: LocalAppUser,
+  client: PrismaClient = prisma,
+): Promise<CommunicationPrepRecord> {
+  requireAppPermission(actor, "communications:manage");
+
+  const prep = await client.communicationPrep.findUnique({
+    where: { id },
+  });
+
+  if (!prep) {
+    throw new GraphQLError("Communication prep was not found.", {
+      extensions: {
+        code: "NOT_FOUND",
+      },
+    });
+  }
+
+  return prep;
+}
+
 export async function createCommunicationPrep(
   input: CreateCommunicationPrepInput,
   actor: LocalAppUser,
