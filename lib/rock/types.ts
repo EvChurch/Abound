@@ -17,6 +17,7 @@ export type RockFixturePerson = {
   email?: string | null;
   campusFixtureId?: string | null;
   householdFixtureId?: string | null;
+  photoId?: number | null;
   isActive: boolean;
 };
 

@@ -139,7 +139,7 @@ describe("data model guardrails", () => {
     expect(personBlock).toContain("givingLeaderRockId");
     expect(householdBlock).toContain("groupTypeRockId");
     expect(householdBlock).toContain("@default(10)");
-    expect(householdBlock).toContain("givingId");
+    expect(householdBlock).not.toContain("givingId");
   });
 
   it("rejects payment instrument and secret-like fields from sync payloads", () => {

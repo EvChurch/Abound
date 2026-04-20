@@ -37,6 +37,7 @@ describe.skipIf(!connectionString)("fixture-backed Rock sync", () => {
       ).resolves.toMatchObject({
         rockId: 910001,
         givingGroupRockId: 920001,
+        photoRockId: 990001,
         primaryFamilyRockId: 920001,
       });
       await expect(

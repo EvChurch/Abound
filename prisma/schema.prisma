@@ -277,6 +277,8 @@ model RockPerson {
   givingLeaderRockId      Int?
   primaryFamilyRockId     Int?
   primaryCampusRockId     Int?
+  /// Rock Person.PhotoId. Points to the Rock binary file used for the person's profile photo.
+  photoRockId             Int?
   firstName               String?
   nickName                String?
   lastName                String?
@@ -314,6 +316,7 @@ model RockPerson {
   @@index([recordStatusValueRockId])
   @@index([primaryCampusRockId])
   @@index([primaryFamilyRockId])
+  @@index([photoRockId])
   @@index([lastSyncRunId])
 }
 
@@ -324,7 +327,6 @@ model RockHousehold {
   rockId          Int       @id
   rockGuid        String?   @unique
   groupTypeRockId Int       @default(10)
-  givingId        String?
   campusRockId    Int?
   name            String
   active          Boolean
@@ -346,7 +348,6 @@ model RockHousehold {
 
   @@index([campusRockId])
   @@index([groupTypeRockId])
-  @@index([givingId])
   @@index([active])
   @@index([lastSyncRunId])
 }

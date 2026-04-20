@@ -50,6 +50,8 @@ Root query fields:
 - `viewer`: returns the active local app user's id, email, name, and role.
 - `syncStatus`: returns safe operational sync metadata from `lib/sync/status.ts`.
 - `staffTasks(limit, status)`: returns app-owned staff tasks for roles with `tasks:manage`.
+- `rockPerson(rockId)`: returns a role-aware synced Rock person profile.
+- `rockHousehold(rockId)`: returns a role-aware synced Rock household profile.
 
 Root mutation fields:
 
@@ -57,6 +59,8 @@ Root mutation fields:
 - `updateStaffTask`: updates local task fields and status.
 
 The sync API exposes operational metadata and issue summaries only. It does not expose raw donor payloads, payment details, access tokens, or unrestricted synced Rock records.
+
+Person and household profile fields are projected through `lib/people/profiles.ts` rather than exposing raw Prisma models. Admin and Finance can see derived giving summaries from `GivingFact`; Pastoral Care receives `amountsHidden: true` and `givingSummary: null`. Person `photoUrl` values point at the protected app-local Rock photo proxy, not directly at Rock.
 
 ## Staff API Usage
 

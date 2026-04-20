@@ -603,6 +603,7 @@ function fixtureToNormalized(
       primaryCampusRockId: person.campusFixtureId
         ? campusIds.get(person.campusFixtureId)
         : null,
+      photoRockId: person.photoId,
       firstName: person.givenName,
       lastName: person.familyName,
       email: person.email,
@@ -965,6 +966,7 @@ function rockPersonSliceToNormalized(
       person.PrimaryCampusId && campusIds.has(person.PrimaryCampusId)
         ? person.PrimaryCampusId
         : null,
+    photoRockId: person.PhotoId,
     firstName: person.FirstName,
     nickName: person.NickName,
     lastName: person.LastName,
