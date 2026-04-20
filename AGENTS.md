@@ -42,11 +42,13 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 
 ## Compound Engineering Workflow
 
-- Use `ce:brainstorm` for product discovery and requirements.
-- Use `ce:plan` before substantial implementation work.
-- Use `ce:work` for execution after a plan exists.
-- Use `ce:review` or a standard code-review pass before opening a PR.
-- Use repo-relative paths in docs and plans.
+- Compound Engineering is the default operating model for every agent step in this repo. Before acting, identify which Compound Engineering phase applies and use the matching skill or workflow.
+- Use `ce:brainstorm` for product discovery, requirements, ambiguity, and scope shaping.
+- Use `ce:plan` before substantial implementation work, architecture decisions, or multi-step changes.
+- Use `ce:work` for execution after a plan exists, including implementation, focused debugging, and verification.
+- Use `ce:review` or a standard code-review pass before opening a PR or asking for merge readiness.
+- For very small mechanical requests where a full skill would add no value, still follow Compound Engineering habits: inspect context first, keep the change scoped, verify the result, and report assumptions.
+- Keep Compound Engineering artifacts durable: use repo-relative paths, put plans in `docs/plans/`, keep research and architecture notes in `docs/research/` or `docs/architecture/`, and leave unresolved assumptions in the relevant document.
 
 ## Local Commands
 

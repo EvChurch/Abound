@@ -22,6 +22,7 @@
       "email": "demo.donor@example.test",
       "campusFixtureId": "campus_central",
       "householdFixtureId": "household_demo_001",
+      "photoId": 990001,
       "isActive": true
     },
     {

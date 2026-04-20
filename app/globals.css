@@ -1,14 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-app-background: #f7f8fa;
-  --color-app-foreground: #1d2430;
-  --color-app-muted: #5d6675;
-  --color-app-accent: #176b87;
-  --color-app-accent-strong: #0f4c63;
+  --font-sans:
+    Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --color-app-background: oklch(0.985 0.004 75);
+  --color-app-surface: oklch(0.995 0.002 75);
+  --color-app-soft: oklch(0.975 0.005 75);
+  --color-app-chip: oklch(0.965 0.006 75);
+  --color-app-border: oklch(0.91 0.006 70);
+  --color-app-border-faint: oklch(0.94 0.005 70);
+  --color-app-border-strong: oklch(0.86 0.007 70);
+  --color-app-foreground: oklch(0.25 0.008 60);
+  --color-app-muted: oklch(0.42 0.008 60);
+  --color-app-faint: oklch(0.58 0.008 60);
+  --color-app-accent: oklch(0.48 0.09 255);
+  --color-app-accent-strong: oklch(0.42 0.1 255);
+  --color-app-accent-soft: oklch(0.975 0.012 255);
 }
 
 body {
   background: var(--color-app-background);
   color: var(--color-app-foreground);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-feature-settings: "cv11", "ss01", "ss03";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

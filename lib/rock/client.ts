@@ -43,6 +43,7 @@ export type RockApiPerson = Record<string, unknown> & {
   GivingLeaderId?: number | null;
   PrimaryFamilyId?: number | null;
   PrimaryCampusId?: number | null;
+  PhotoId?: number | null;
   FirstName?: string | null;
   NickName?: string | null;
   LastName?: string | null;

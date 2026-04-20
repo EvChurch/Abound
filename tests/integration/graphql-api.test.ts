@@ -9,6 +9,8 @@ import type { LocalAppUser } from "@/lib/auth/types";
 const mocks = vi.hoisted(() => ({
   createGraphQLContext: vi.fn(),
   createStaffTask: vi.fn(),
+  getRockHouseholdProfile: vi.fn(),
+  getRockPersonProfile: vi.fn(),
   getSyncStatusSummary: vi.fn(),
   listStaffTasks: vi.fn(),
   updateStaffTask: vi.fn(),
@@ -33,6 +35,11 @@ vi.mock("@/lib/tasks/service", () => ({
   createStaffTask: mocks.createStaffTask,
   listStaffTasks: mocks.listStaffTasks,
   updateStaffTask: mocks.updateStaffTask,
+}));
+
+vi.mock("@/lib/people/profiles", () => ({
+  getRockHouseholdProfile: mocks.getRockHouseholdProfile,
+  getRockPersonProfile: mocks.getRockPersonProfile,
 }));
 
 import { schema } from "@/lib/graphql/schema";
@@ -298,6 +305,130 @@ describe("GraphQL API schema", () => {
       message: "Date values must be valid ISO date strings.",
       extensions: {
         code: "BAD_USER_INPUT",
+      },
+    });
+  });
+
+  it("returns role-aware Rock person profile data", async () => {
+    mocks.getRockPersonProfile.mockResolvedValueOnce({
+      amountsHidden: false,
+      deceased: false,
+      displayName: "Jane Donor",
+      email: "jane@example.com",
+      emailActive: true,
+      firstName: "Jane",
+      givingHousehold: {
+        active: true,
+        archived: false,
+        campus: null,
+        lastSyncedAt: new Date("2026-04-18T10:00:00.000Z"),
+        name: "Donor Family",
+        rockId: 920001,
+      },
+      givingId: "G-910001",
+      givingLeaderRockId: null,
+      givingSummary: {
+        firstGiftAt: new Date("2022-01-12T00:00:00.000Z"),
+        lastGiftAmount: "250.00",
+        lastGiftAt: new Date("2026-04-07T00:00:00.000Z"),
+        lastTwelveMonthsTotal: "3000.00",
+        monthlyGiving: [],
+        monthsWithGiving: 38,
+        reliabilityKinds: ["ONE_OFF"],
+        sourceExplanation:
+          "Derived from local GivingFact rows synced from Rock.",
+        totalGiven: "12450.00",
+      },
+      householdMemberships: [],
+      lastName: "Donor",
+      lastSyncedAt: new Date("2026-04-18T10:00:00.000Z"),
+      nickName: "Jane",
+      photoUrl: "/api/rock/person-photo/12345",
+      primaryAliasRockId: 1001,
+      primaryCampus: {
+        name: "North Campus",
+        rockId: 30,
+        shortCode: "N",
+      },
+      primaryHousehold: {
+        active: true,
+        archived: false,
+        campus: null,
+        lastSyncedAt: new Date("2026-04-18T10:00:00.000Z"),
+        name: "Donor Family",
+        rockId: 920001,
+      },
+      recordStatus: "Active",
+      rockId: 910001,
+      staffTasks: [],
+    });
+
+    const result = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        query PersonProfile {
+          rockPerson(rockId: 910001) {
+            displayName
+            email
+            photoUrl
+            amountsHidden
+            primaryCampus {
+              name
+            }
+            givingSummary {
+              totalGiven
+              reliabilityKinds
+            }
+          }
+        }
+      `,
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({
+      rockPerson: {
+        amountsHidden: false,
+        displayName: "Jane Donor",
+        email: "jane@example.com",
+        photoUrl: "/api/rock/person-photo/12345",
+        givingSummary: {
+          reliabilityKinds: ["ONE_OFF"],
+          totalGiven: "12450.00",
+        },
+        primaryCampus: {
+          name: "North Campus",
+        },
+      },
+    });
+    expect(mocks.getRockPersonProfile).toHaveBeenCalledWith(
+      { rockId: 910001 },
+      financeContext.accessState.status === "authorized"
+        ? financeContext.accessState.user
+        : null,
+    );
+  });
+
+  it("returns safe not found errors for missing Rock profiles", async () => {
+    mocks.getRockHouseholdProfile.mockResolvedValueOnce(null);
+
+    const result = await graphql({
+      contextValue: adminContext,
+      schema,
+      source: /* GraphQL */ `
+        query MissingHousehold {
+          rockHousehold(rockId: 999999) {
+            rockId
+          }
+        }
+      `,
+    });
+
+    expect(result.data).toEqual({ rockHousehold: null });
+    expect(result.errors?.[0]).toMatchObject({
+      message: "Rock household was not found.",
+      extensions: {
+        code: "NOT_FOUND",
       },
     });
   });

@@ -1,4 +1,5 @@
 import { builder } from "@/lib/graphql/builder";
+import { registerPeopleTypes } from "@/lib/graphql/types/people";
 import { registerSyncTypes } from "@/lib/graphql/types/sync";
 import { registerTaskTypes } from "@/lib/graphql/types/tasks";
 import { requireStaffUser } from "@/lib/graphql/context";
@@ -42,5 +43,6 @@ builder.mutationType({});
 
 registerSyncTypes();
 registerTaskTypes();
+registerPeopleTypes();
 
 export const schema = builder.toSchema();
