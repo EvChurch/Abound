@@ -46,6 +46,7 @@ export default async function HouseholdLookupPage({
       catalog={getListViewFilterCatalog("HOUSEHOLDS", accessState.user.role)}
       columns={parseColumns(params)}
       connection={connection}
+      filterDefinitionJson={JSON.stringify(filterDefinition)}
       filters={householdFiltersFromParams(params)}
       kind="households"
       lifecycle={params.lifecycle}

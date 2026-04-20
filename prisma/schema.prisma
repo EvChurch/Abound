@@ -756,25 +756,40 @@ model StaffTask {
 }
 
 model CommunicationPrep {
-  id              String                  @id @default(cuid())
-  title           String
-  status          CommunicationPrepStatus @default(DRAFT)
-  segmentSummary  String
-  handoffTarget   String?
-  createdByUserId String?
-  personRockId    Int?
-  householdRockId Int?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  id                String                  @id @default(cuid())
+  title             String
+  status            CommunicationPrepStatus @default(DRAFT)
+  segmentSummary    String
+  handoffTarget     String?
+  audienceResource  SavedListViewResource   @default(PEOPLE)
+  savedListViewId   String?
+  segmentDefinition Json
+  audienceSize      Int                     @default(0)
+  audienceTruncated Boolean                 @default(false)
+  audiencePreview   Json
+  reviewNotes       String?
+  createdByUserId   String?
+  personRockId      Int?
+  householdRockId   Int?
+  readyForReviewAt  DateTime?
+  approvedAt        DateTime?
+  handedOffAt       DateTime?
+  canceledAt        DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 
-  createdBy AppUser?       @relation(fields: [createdByUserId], references: [id])
-  person    RockPerson?    @relation(fields: [personRockId], references: [rockId])
-  household RockHousehold? @relation(fields: [householdRockId], references: [rockId])
+  createdBy     AppUser?       @relation(fields: [createdByUserId], references: [id])
+  savedListView SavedListView? @relation(fields: [savedListViewId], references: [id], onDelete: SetNull)
+  person        RockPerson?    @relation(fields: [personRockId], references: [rockId])
+  household     RockHousehold? @relation(fields: [householdRockId], references: [rockId])
 
   @@index([status])
+  @@index([audienceResource, status])
+  @@index([savedListViewId])
   @@index([createdByUserId])
   @@index([personRockId])
   @@index([householdRockId])
+  @@index([createdAt(sort: Desc), id])
 }
 
 model SavedListView {
@@ -793,7 +808,8 @@ model SavedListView {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  owner AppUser @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  owner              AppUser             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  communicationPreps CommunicationPrep[]
 
   @@index([ownerUserId, resource])
   @@index([ownerUserId, resource, isDefault])

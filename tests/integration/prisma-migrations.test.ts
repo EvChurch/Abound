@@ -10,6 +10,10 @@ const listViewsMigration = readFileSync(
   "prisma/migrations/20260420000100_add_list_views_and_lifecycle_snapshots/migration.sql",
   "utf8",
 );
+const communicationPrepMigration = readFileSync(
+  "prisma/migrations/20260420000200_expand_communication_prep/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -121,6 +125,30 @@ describe("synced data model migration", () => {
     );
     expect(listViewsMigration).toContain(
       'FOREIGN KEY ("householdRockId") REFERENCES "RockHousehold"("rockId")',
+    );
+  });
+
+  it("expands communication prep into an auditable audience workflow", () => {
+    expect(communicationPrepMigration).toContain(
+      'ADD COLUMN     "audienceResource" "SavedListViewResource"',
+    );
+    expect(communicationPrepMigration).toContain(
+      'ADD COLUMN     "segmentDefinition" JSONB',
+    );
+    expect(communicationPrepMigration).toContain(
+      'ADD COLUMN     "audiencePreview" JSONB',
+    );
+    expect(communicationPrepMigration).toContain(
+      'ADD COLUMN     "audienceSize" INTEGER',
+    );
+    expect(communicationPrepMigration).toContain(
+      'ADD COLUMN     "readyForReviewAt" TIMESTAMP(3)',
+    );
+    expect(communicationPrepMigration).toContain(
+      'CREATE INDEX "CommunicationPrep_savedListViewId_idx"',
+    );
+    expect(communicationPrepMigration).toContain(
+      'FOREIGN KEY ("savedListViewId") REFERENCES "SavedListView"("id") ON DELETE SET NULL',
     );
   });
 });

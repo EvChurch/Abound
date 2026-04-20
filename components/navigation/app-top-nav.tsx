@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 type AppTopNavProps = {
-  active: "dashboard" | "households" | "people" | "sync";
+  active: "communications" | "dashboard" | "households" | "people" | "sync";
 };
 
 const links: Array<{
@@ -12,6 +12,11 @@ const links: Array<{
   { active: "dashboard", href: "/", label: "Dashboard" },
   { active: "people", href: "/people", label: "People" },
   { active: "households", href: "/households", label: "Households" },
+  {
+    active: "communications",
+    href: "/communications",
+    label: "Communications",
+  },
   { active: "sync", href: "/sync", label: "Sync" },
 ];
 

@@ -1,4 +1,5 @@
 import { builder } from "@/lib/graphql/builder";
+import { registerCommunicationTypes } from "@/lib/graphql/types/communications";
 import { registerListViewTypes } from "@/lib/graphql/types/list-views";
 import { registerPeopleTypes } from "@/lib/graphql/types/people";
 import { registerSyncTypes } from "@/lib/graphql/types/sync";
@@ -46,5 +47,6 @@ registerSyncTypes();
 registerTaskTypes();
 registerPeopleTypes();
 registerListViewTypes();
+registerCommunicationTypes();
 
 export const schema = builder.toSchema();

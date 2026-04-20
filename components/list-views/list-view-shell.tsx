@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { createCommunicationPrepFromAudienceAction } from "@/app/communications/actions";
 import {
   AutoSubmitChoice,
   AutoSubmitInput,
@@ -23,6 +24,7 @@ type ListViewShellProps =
       catalog: FilterFieldDefinition[];
       columns: ListColumnKey[];
       connection: PeopleConnection;
+      filterDefinitionJson: string;
       filters?: ListViewShellFilters;
       kind: "people";
       lifecycle?: string | null;
@@ -32,6 +34,7 @@ type ListViewShellProps =
       catalog: FilterFieldDefinition[];
       columns: ListColumnKey[];
       connection: HouseholdsConnection;
+      filterDefinitionJson: string;
       filters?: ListViewShellFilters;
       kind: "households";
       lifecycle?: string | null;
@@ -169,6 +172,12 @@ export function ListViewShell(props: ListViewShellProps) {
             </aside>
 
             <div className="min-w-0 overflow-hidden">
+              <ListWorkspaceHeader
+                filterDefinitionJson={props.filterDefinitionJson}
+                kind={props.kind}
+                resultCount={props.connection.edges.length}
+                viewName={props.connection.appliedView.name}
+              />
               {props.kind === "people" ? (
                 <InfiniteListTable
                   columns={selectedColumns}
@@ -212,6 +221,49 @@ export function ListViewShell(props: ListViewShellProps) {
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+function ListWorkspaceHeader({
+  filterDefinitionJson,
+  kind,
+  resultCount,
+  viewName,
+}: {
+  filterDefinitionJson: string;
+  kind: "households" | "people";
+  resultCount: number;
+  viewName: string;
+}) {
+  const resource = kind === "people" ? "PEOPLE" : "HOUSEHOLDS";
+  const title = `${viewName} communication prep`;
+
+  return (
+    <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-app-border bg-app-background px-4 py-3">
+      <div className="grid gap-1">
+        <h1 className="text-[18px] font-semibold leading-tight text-app-foreground">
+          {kind === "people" ? "People" : "Households"}
+        </h1>
+        <p className="text-[12px] font-medium text-app-muted">
+          {viewName} · {resultCount} loaded
+        </p>
+      </div>
+      <form action={createCommunicationPrepFromAudienceAction}>
+        <input
+          name="filterDefinitionJson"
+          type="hidden"
+          value={filterDefinitionJson}
+        />
+        <input name="resource" type="hidden" value={resource} />
+        <input name="title" type="hidden" value={title} />
+        <button
+          className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-app-accent bg-app-accent px-3 text-[13px] font-semibold text-white shadow-[0_1px_2px_rgba(30,92,120,0.22)] hover:bg-app-accent-strong focus:outline-none focus:ring-2 focus:ring-app-accent/30"
+          type="submit"
+        >
+          Prepare communication
+        </button>
+      </form>
     </div>
   );
 }

@@ -629,6 +629,15 @@ flowchart LR
 
 - Staff can move from dashboard insight to trackable follow-up work and communication prep without leaving the system's permission boundaries.
 
+**Progress notes:**
+
+- Added external benchmark research in `docs/research/church-giving-communications-benchmark.md`, using Pushpay, Planning Center, Rock RMS, Simple Donation, Subsplash, and Breeze patterns to frame communication prep as audience review and handoff rather than direct sending.
+- Expanded `CommunicationPrep` into an auditable local workflow with saved-view linkage, structured segment definition, role-safe audience preview, audience size/truncation, review notes, and status timestamps.
+- Added `lib/communications/segments.ts` and `lib/communications/prep.ts` so communication prep can be created from the same role-aware People/Households list-view engine.
+- Added GraphQL communication prep queries/mutations and a `/communications` staff workspace.
+- Added a "Prepare communication" action from People and Households list views for the current filtered audience.
+- Documented the communication boundary in `docs/architecture/communications.md`: no email/SMS/push/Rock send or Rock mutation in this slice.
+
 - [ ] **Unit 8: Add AI Assistance Guardrails and First Staff-Reviewed Summaries**
 
 **Goal:** Introduce the AI assistance boundary, redaction policy, audit hooks, and one staff-reviewed summary use case.

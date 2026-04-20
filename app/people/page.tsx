@@ -47,6 +47,7 @@ export default async function PeopleLookupPage({
       columns={parseColumns(params)}
       connection={connection}
       ageGroup={params.ageGroup}
+      filterDefinitionJson={JSON.stringify(filterDefinition)}
       filters={peopleFiltersFromParams(params)}
       kind="people"
       lifecycle={params.lifecycle}

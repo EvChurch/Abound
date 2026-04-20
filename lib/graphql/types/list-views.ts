@@ -27,7 +27,7 @@ import {
 } from "@/lib/list-views/saved-views";
 import type { FilterFieldDefinition } from "@/lib/list-views/filter-schema";
 
-const listViewResourceEnum = builder.enumType("ListViewResource", {
+export const listViewResourceEnum = builder.enumType("ListViewResource", {
   values: ["PEOPLE", "HOUSEHOLDS"] as const,
 });
 

@@ -9,15 +9,18 @@ import type { LocalAppUser } from "@/lib/auth/types";
 const mocks = vi.hoisted(() => ({
   createGraphQLContext: vi.fn(),
   createDraftGivingPledgeFromRecommendation: vi.fn(),
+  createCommunicationPrep: vi.fn(),
   createStaffTask: vi.fn(),
   getRockHouseholdProfile: vi.fn(),
   getRockPersonProfile: vi.fn(),
   getSyncStatusSummary: vi.fn(),
   listPledgeCandidates: vi.fn(),
+  listCommunicationPreps: vi.fn(),
   quickCreateGivingPledge: vi.fn(),
   rejectGivingPledgeRecommendation: vi.fn(),
   listStaffTasks: vi.fn(),
   updateGivingPledge: vi.fn(),
+  updateCommunicationPrep: vi.fn(),
   updateStaffTask: vi.fn(),
 }));
 
@@ -40,6 +43,14 @@ vi.mock("@/lib/tasks/service", () => ({
   createStaffTask: mocks.createStaffTask,
   listStaffTasks: mocks.listStaffTasks,
   updateStaffTask: mocks.updateStaffTask,
+}));
+
+vi.mock("@/lib/communications/prep", () => ({
+  audiencePreviewFromRecord: (prep: { audiencePreview: unknown }) =>
+    prep.audiencePreview,
+  createCommunicationPrep: mocks.createCommunicationPrep,
+  listCommunicationPreps: mocks.listCommunicationPreps,
+  updateCommunicationPrep: mocks.updateCommunicationPrep,
 }));
 
 vi.mock("@/lib/giving/pledges", () => ({
@@ -319,6 +330,121 @@ describe("GraphQL API schema", () => {
       message: "Date values must be valid ISO date strings.",
       extensions: {
         code: "BAD_USER_INPUT",
+      },
+    });
+  });
+
+  it("creates communication prep records through the reviewed handoff API", async () => {
+    mocks.createCommunicationPrep.mockResolvedValueOnce({
+      id: "prep_1",
+      title: "At-risk giver encouragement",
+      status: "DRAFT",
+      segmentSummary: "Saved view: At-risk givers",
+      handoffTarget: "Rock communication handoff",
+      audienceResource: "PEOPLE",
+      savedListViewId: "view_1",
+      segmentDefinition: { conditions: [], mode: "all", type: "group" },
+      audienceSize: 3,
+      audienceTruncated: false,
+      audiencePreview: [
+        {
+          campusName: "North",
+          contactReady: true,
+          contactState: "Email-ready",
+          displayName: "Jane Donor",
+          email: "jane@example.com",
+          explanation: "Matches this audience's saved criteria.",
+          householdName: "Donor Household",
+          resource: "PERSON",
+          rockId: 910001,
+        },
+      ],
+      reviewNotes: null,
+      createdByUserId: "user_1",
+      personRockId: null,
+      householdRockId: null,
+      readyForReviewAt: null,
+      approvedAt: null,
+      handedOffAt: null,
+      canceledAt: null,
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+    });
+
+    const result = await graphql({
+      contextValue: adminContext,
+      schema,
+      source: /* GraphQL */ `
+        mutation CreateCommunicationPrep {
+          createCommunicationPrep(
+            title: "At-risk giver encouragement"
+            resource: PEOPLE
+            savedViewId: "view_1"
+            handoffTarget: "Rock communication handoff"
+          ) {
+            id
+            title
+            status
+            audienceResource
+            audienceSize
+            audiencePreview {
+              displayName
+              contactState
+              explanation
+            }
+          }
+        }
+      `,
+    });
+
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({
+      createCommunicationPrep: {
+        id: "prep_1",
+        title: "At-risk giver encouragement",
+        status: "DRAFT",
+        audienceResource: "PEOPLE",
+        audienceSize: 3,
+        audiencePreview: [
+          {
+            contactState: "Email-ready",
+            displayName: "Jane Donor",
+            explanation: "Matches this audience's saved criteria.",
+          },
+        ],
+      },
+    });
+    expect(mocks.createCommunicationPrep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handoffTarget: "Rock communication handoff",
+        resource: "PEOPLE",
+        savedViewId: "view_1",
+        title: "At-risk giver encouragement",
+      }),
+      adminContext.accessState.status === "authorized"
+        ? adminContext.accessState.user
+        : null,
+    );
+  });
+
+  it("denies communication prep mutations to finance users", async () => {
+    const result = await graphql({
+      contextValue: financeContext,
+      schema,
+      source: /* GraphQL */ `
+        mutation CreateCommunicationPrep {
+          createCommunicationPrep(title: "Finance comms", resource: PEOPLE) {
+            id
+          }
+        }
+      `,
+    });
+
+    expect(result.data).toEqual({ createCommunicationPrep: null });
+    expect(result.errors?.[0]).toMatchObject({
+      message: "You do not have permission to perform this action.",
+      extensions: {
+        code: "FORBIDDEN",
       },
     });
   });
