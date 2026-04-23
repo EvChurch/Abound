@@ -47,6 +47,15 @@ function monthlyFacts(accountRockId: number, months: string[]) {
   }));
 }
 
+function weeklyFacts(accountRockId: number, dates: string[]) {
+  return dates.map((date) => ({
+    accountRockId,
+    amount: "100.00",
+    effectiveMonth: new Date(`${date.slice(0, 7)}-01T00:00:00.000Z`),
+    occurredAt: new Date(`${date}T00:00:00.000Z`),
+  }));
+}
+
 function serviceClient(overrides: Partial<PrismaClient> = {}) {
   const facts = monthlyFacts(101, [
     "2025-05",
@@ -91,6 +100,12 @@ function serviceClient(overrides: Partial<PrismaClient> = {}) {
         updatedAt: new Date("2026-04-20T10:00:00.000Z"),
       })),
     },
+    platformFundSetting: {
+      findMany: vi.fn(async () => [
+        { accountRockId: 101, enabled: true },
+        { accountRockId: 102, enabled: true },
+      ]),
+    },
     rockFinancialAccount: {
       findMany: vi.fn(async () => [generalFund, missionsFund]),
       findUnique: vi.fn(async () => generalFund),
@@ -126,6 +141,62 @@ describe("giving pledge analysis", () => {
       basisMonths: 8,
       recommendedAmount: "275.00",
       recommendedPeriod: "MONTHLY",
+      status: "RECOMMENDED",
+    });
+  });
+
+  it("recommends a weekly pledge when gifts follow a weekly cadence", () => {
+    const rows = buildPledgeAnalysisRows({
+      facts: weeklyFacts(101, [
+        "2025-08-01",
+        "2025-08-08",
+        "2025-08-15",
+        "2025-08-22",
+        "2025-08-29",
+        "2025-09-05",
+        "2025-09-12",
+        "2025-09-19",
+        "2025-09-26",
+        "2025-10-03",
+        "2025-10-10",
+        "2025-10-17",
+        "2025-10-24",
+        "2025-10-31",
+        "2025-11-07",
+        "2025-11-14",
+        "2025-11-21",
+        "2025-11-28",
+        "2025-12-05",
+        "2025-12-12",
+        "2025-12-19",
+        "2025-12-29",
+        "2026-01-05",
+        "2026-01-09",
+        "2026-01-16",
+        "2026-01-23",
+        "2026-01-30",
+        "2026-02-09",
+        "2026-02-13",
+        "2026-02-20",
+        "2026-02-27",
+        "2026-03-06",
+        "2026-03-13",
+        "2026-03-20",
+        "2026-03-27",
+        "2026-04-07",
+        "2026-04-10",
+        "2026-04-17",
+      ]),
+      funds: [generalFund],
+      pledges: [],
+      referenceDate: new Date("2026-04-20T00:00:00.000Z"),
+    });
+
+    expect(rows[0]).toMatchObject({
+      account: generalFund,
+      basisMonths: 9,
+      recommendedAmount: "100.00",
+      recommendedPeriod: "WEEKLY",
       status: "RECOMMENDED",
     });
   });

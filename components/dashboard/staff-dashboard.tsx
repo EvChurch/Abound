@@ -1,5 +1,6 @@
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
+import { hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import type {
   HouseholdDonorTrend,
@@ -32,7 +33,10 @@ export function StaffDashboard({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav active="dashboard" />
+      <AppTopNav
+        active="dashboard"
+        canManageSettings={hasPermission(user.role, "settings:manage")}
+      />
       <main className="grid w-full gap-6 px-7 py-7">
         <section className="grid gap-5">
           <div className="flex flex-wrap items-center justify-between gap-4">

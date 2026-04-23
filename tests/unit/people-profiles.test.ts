@@ -98,6 +98,12 @@ function profileClient() {
     givingPledgeRecommendationDecision: {
       findMany: vi.fn(async () => []),
     },
+    platformFundSetting: {
+      findMany: vi.fn(async () => [
+        { accountRockId: 101, enabled: true },
+        { accountRockId: 102, enabled: true },
+      ]),
+    },
     rockFinancialAccount: {
       findMany: vi.fn(async () => [
         {
@@ -267,16 +273,16 @@ describe("people profile service", () => {
 
     expect(givingFactFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           personRockId: 910001,
-        },
+        }),
       }),
     );
     expect(givingFactFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           householdRockId: 920001,
-        },
+        }),
       }),
     );
     expect(profile?.givingSummary).toMatchObject({

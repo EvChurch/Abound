@@ -17,6 +17,7 @@ type CatalogFieldInput = {
 const BASE_FIELDS: CatalogFieldInput[] = [
   field("PEOPLE", "search", "Name or email", "STRING"),
   field("PEOPLE", "recordStatus", "Record status", "ENUM"),
+  field("PEOPLE", "connectionStatus", "Connection status", "ENUM"),
   field("PEOPLE", "deceased", "Deceased", "BOOLEAN"),
   field("PEOPLE", "emailPresent", "Email present", "BOOLEAN"),
   field("PEOPLE", "emailActive", "Email active", "BOOLEAN"),
@@ -33,7 +34,7 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("PEOPLE", "givingRecency", "Giving recency", "DATE"),
   field("PEOPLE", "reliabilityKind", "Giving reliability", "ENUM"),
   field("PEOPLE", "accountRockId", "Fund/account", "ID"),
-  field("PEOPLE", "pledgeStatus", "Pledge state", "ENUM"),
+  field("PEOPLE", "pledgeState", "Pledge", "ENUM", "pledges:manage"),
   field("HOUSEHOLDS", "search", "Household name", "STRING"),
   field("HOUSEHOLDS", "active", "Active", "BOOLEAN"),
   field("HOUSEHOLDS", "archived", "Archived", "BOOLEAN"),
@@ -59,7 +60,6 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("HOUSEHOLDS", "givingRecency", "Giving recency", "DATE"),
   field("HOUSEHOLDS", "reliabilityKind", "Giving reliability", "ENUM"),
   field("HOUSEHOLDS", "accountRockId", "Fund/account", "ID"),
-  field("HOUSEHOLDS", "pledgeStatus", "Pledge state", "ENUM"),
   field("PEOPLE", "totalGiven", "Total given", "MONEY", "finance:read_amounts"),
   field(
     "PEOPLE",

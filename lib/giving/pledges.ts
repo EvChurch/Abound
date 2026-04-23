@@ -12,12 +12,17 @@ import { requireAppPermission } from "@/lib/auth/permissions";
 import { hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
+import {
+  getPlatformFundScope,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 const ACTIVE_MONTH_THRESHOLD = 8;
 const INSUFFICIENT_HISTORY_THRESHOLD = 4;
 const DEFAULT_CANDIDATE_LIMIT = 50;
 const MAX_CANDIDATE_LIMIT = 200;
 const MATERIAL_RECOMMENDATION_CHANGE_RATIO = 0.2;
+const MIN_CADENCE_GIFT_COUNT = 6;
 const SOURCE_EXPLANATION =
   "Derived from local GivingFact rows synced from Rock. This is a review recommendation, not donor-submitted intent or payment setup.";
 
@@ -103,6 +108,7 @@ type PledgeClient = Pick<
   | "givingFact"
   | "givingPledge"
   | "givingPledgeRecommendationDecision"
+  | "platformFundSetting"
   | "rockFinancialAccount"
   | "rockPerson"
 >;
@@ -645,14 +651,17 @@ function analyzeFundPledge({
   }
 
   if (basisMonths >= ACTIVE_MONTH_THRESHOLD) {
+    const recommendation = recommendationFromGivingPattern({
+      facts,
+      monthlyTotals: nonZeroMonths,
+      referenceDate,
+    });
     const row = {
       ...base,
       confidence: basisMonths >= 10 ? "HIGH" : "MEDIUM",
-      explanation: `${basisMonths} of the latest 12 months include giving to this fund, so a monthly pledge recommendation can be reviewed.`,
-      recommendedAmount: centsToDecimalString(
-        medianCents(nonZeroMonths.map((month) => month.totalCents)),
-      ),
-      recommendedPeriod: "MONTHLY",
+      explanation: `${basisMonths} of the latest 12 months include giving to this fund, so a ${periodPhrase(recommendation.period)} pledge recommendation can be reviewed.`,
+      recommendedAmount: centsToDecimalString(recommendation.amountCents),
+      recommendedPeriod: recommendation.period,
       status: "RECOMMENDED",
     } satisfies PledgeAnalysisRow;
 
@@ -687,6 +696,7 @@ async function validatePersonAndFund(
   assertPositiveRockId(input.personRockId, "Pledge personRockId");
   assertPositiveRockId(input.accountRockId, "Pledge accountRockId");
 
+  const fundScope = await getPlatformFundScope(client);
   const [person, account] = await Promise.all([
     client.rockPerson.findUnique({
       select: { rockId: true },
@@ -708,6 +718,15 @@ async function validatePersonAndFund(
     throw new GraphQLError("Pledge fund was not found or is inactive.", {
       extensions: { code: "BAD_USER_INPUT" },
     });
+  }
+
+  if (!fundScope.enabledAccountRockIds.includes(input.accountRockId)) {
+    throw new GraphQLError(
+      "Pledge fund is not enabled for platform calculations.",
+      {
+        extensions: { code: "BAD_USER_INPUT" },
+      },
+    );
   }
 }
 
@@ -739,6 +758,8 @@ async function assertNoActivePledge(
 async function findPledgeableFunds(
   client: PledgeClient,
 ): Promise<PledgeFund[]> {
+  const fundScope = await getPlatformFundScope(client);
+
   return client.rockFinancialAccount.findMany({
     orderBy: [{ name: "asc" }, { rockId: "asc" }],
     select: {
@@ -748,6 +769,9 @@ async function findPledgeableFunds(
     },
     where: {
       active: true,
+      rockId: {
+        in: fundScope.enabledAccountRockIds,
+      },
     },
   });
 }
@@ -761,6 +785,7 @@ async function findRecentPersonGivingFacts(
     orderBy: [{ effectiveMonth: "asc" }, { occurredAt: "asc" }, { id: "asc" }],
     select: givingFactSelect,
     where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
       effectiveMonth: {
         gte: firstRecentMonthDate(referenceDate),
       },
@@ -785,7 +810,7 @@ async function findRecentGivingFactsForCandidates(
       personRockId: true,
     },
     where: {
-      accountRockId: { not: null },
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
       effectiveMonth: {
         gte: firstRecentMonthDate(referenceDate),
       },
@@ -798,6 +823,8 @@ async function findVisiblePersonPledges(
   personRockId: number,
   client: PledgeClient,
 ) {
+  const fundScope = await getPlatformFundScope(client);
+
   return client.givingPledge.findMany({
     include: {
       account: {
@@ -809,6 +836,9 @@ async function findVisiblePersonPledges(
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }, { id: "asc" }],
     where: {
+      accountRockId: {
+        in: fundScope.enabledAccountRockIds,
+      },
       personRockId,
       status: {
         in: ["ACTIVE", "DRAFT"],
@@ -951,6 +981,91 @@ function monthlyTotalsForRecentMonths(
   return Array.from(totals.values());
 }
 
+function recommendationFromGivingPattern({
+  facts,
+  monthlyTotals,
+  referenceDate,
+}: {
+  facts: GivingFactForPledge[];
+  monthlyTotals: Array<{ month: string; totalCents: bigint }>;
+  referenceDate: Date;
+}): { amountCents: bigint; period: GivingPledgePeriod } {
+  const cadence = giftCadenceFromFacts(facts, referenceDate);
+
+  if (cadence) {
+    return cadence;
+  }
+
+  return {
+    amountCents: medianCents(monthlyTotals.map((month) => month.totalCents)),
+    period: "MONTHLY",
+  };
+}
+
+function giftCadenceFromFacts(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+): { amountCents: bigint; period: GivingPledgePeriod } | null {
+  const analysisMonths = new Set(recentAnalysisMonthKeys(facts, referenceDate));
+  const giftFacts = facts
+    .filter((fact) => {
+      return (
+        analysisMonths.has(monthKey(fact.effectiveMonth)) &&
+        decimalToCents(fact.amount) > 0n
+      );
+    })
+    .sort(
+      (left, right) => giftDate(left).getTime() - giftDate(right).getTime(),
+    );
+
+  if (giftFacts.length < MIN_CADENCE_GIFT_COUNT) {
+    return null;
+  }
+
+  const intervals = giftFacts
+    .slice(1)
+    .map((fact, index) =>
+      daysBetween(giftDate(giftFacts[index]!), giftDate(fact)),
+    )
+    .filter((days) => days > 0);
+
+  if (intervals.length < MIN_CADENCE_GIFT_COUNT - 1) {
+    return null;
+  }
+
+  const medianInterval = Number(medianBigInts(intervals.map(BigInt)));
+
+  if (medianInterval >= 5 && medianInterval <= 9) {
+    return {
+      amountCents: medianCents(
+        giftFacts.map((fact) => decimalToCents(fact.amount)),
+      ),
+      period: "WEEKLY",
+    };
+  }
+
+  if (medianInterval >= 11 && medianInterval <= 17) {
+    return {
+      amountCents: medianCents(
+        giftFacts.map((fact) => decimalToCents(fact.amount)),
+      ),
+      period: "FORTNIGHTLY",
+    };
+  }
+
+  return null;
+}
+
+function giftDate(fact: GivingFactForPledge) {
+  return fact.occurredAt ?? fact.effectiveMonth;
+}
+
+function daysBetween(left: Date, right: Date) {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+  return Math.round((right.getTime() - left.getTime()) / millisecondsPerDay);
+}
+
 function latestGiftDate(facts: GivingFactForPledge[]) {
   return facts.reduce<Date | null>((latest, fact) => {
     const date = fact.occurredAt ?? fact.effectiveMonth;
@@ -964,6 +1079,10 @@ function latestGiftDate(facts: GivingFactForPledge[]) {
 }
 
 function medianCents(values: bigint[]) {
+  return medianBigInts(values);
+}
+
+function medianBigInts(values: bigint[]) {
   const sorted = [...values].sort((left, right) =>
     left < right ? -1 : left > right ? 1 : 0,
   );
@@ -974,6 +1093,18 @@ function medianCents(values: bigint[]) {
   }
 
   return ((sorted[middle - 1] ?? 0n) + (sorted[middle] ?? 0n)) / 2n;
+}
+
+function periodPhrase(period: GivingPledgePeriod) {
+  const labels: Record<GivingPledgePeriod, string> = {
+    ANNUALLY: "annual",
+    FORTNIGHTLY: "fortnightly",
+    MONTHLY: "monthly",
+    QUARTERLY: "quarterly",
+    WEEKLY: "weekly",
+  };
+
+  return labels[period];
 }
 
 function mapPledge(pledge: PledgeRow): GivingPledgeRecord {

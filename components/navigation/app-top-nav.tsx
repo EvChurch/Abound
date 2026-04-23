@@ -1,7 +1,14 @@
 import Link from "next/link";
 
 type AppTopNavProps = {
-  active: "communications" | "dashboard" | "households" | "people" | "sync";
+  active:
+    | "communications"
+    | "dashboard"
+    | "households"
+    | "people"
+    | "settings"
+    | "sync";
+  canManageSettings?: boolean;
 };
 
 const links: Array<{
@@ -20,7 +27,21 @@ const links: Array<{
   { active: "sync", href: "/sync", label: "Sync" },
 ];
 
-export function AppTopNav({ active }: AppTopNavProps) {
+export function AppTopNav({
+  active,
+  canManageSettings = false,
+}: AppTopNavProps) {
+  const visibleLinks = canManageSettings
+    ? [
+        ...links,
+        {
+          active: "settings" as const,
+          href: "/settings/funds",
+          label: "Settings",
+        },
+      ]
+    : links;
+
   return (
     <>
       <div className="fixed inset-x-0 top-0 z-30 h-12 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.92)] backdrop-blur-md [backdrop-filter:saturate(1.4)_blur(8px)]">
@@ -38,7 +59,7 @@ export function AppTopNav({ active }: AppTopNavProps) {
             aria-label="Primary"
             className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-[12.5px]"
           >
-            {links.map((link) => {
+            {visibleLinks.map((link) => {
               const current = link.active === active;
 
               return (

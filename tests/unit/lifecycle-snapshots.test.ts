@@ -29,6 +29,9 @@ describe("lifecycle snapshots", () => {
         ]),
       },
       givingLifecycleSnapshot: {},
+      platformFundSetting: {
+        findMany: vi.fn(async () => [{ accountRockId: 101, enabled: true }]),
+      },
     } as unknown as PrismaClient;
 
     await expect(
@@ -45,11 +48,16 @@ describe("lifecycle snapshots", () => {
       totalSnapshots: 2,
     });
 
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: {
-        lastSyncRunId: "sync_1",
-      },
-    });
+    expect(client.givingFact.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          accountRockId: {
+            in: [101],
+          },
+        },
+      }),
+    );
+    expect(deleteMany).toHaveBeenCalledWith({});
     expect(createMany).toHaveBeenCalledWith({
       data: expect.arrayContaining([
         expect.objectContaining({

@@ -26,12 +26,13 @@ describe("RockClient", () => {
     expect(slice.groupTypes.map((groupType) => groupType.Id)).toEqual([10, 25]);
     expect(slice.groupRoles.map((groupRole) => groupRole.Id)).toEqual([1000]);
     expect(slice.definedValues.map((definedValue) => definedValue.Id)).toEqual([
-      2000,
+      2000, 2001,
     ]);
     expect(slice.personAliases.map((alias) => alias.Id)).toEqual([
       1001, 1002, 1003,
     ]);
     expect(slice.people).toHaveLength(3);
+    expect(slice.people[0]?.ConnectionStatusValueId).toBe(2001);
     expect(slice.familyGroups.map((group) => group.Id)).toEqual([10]);
     expect(slice.familyMembers.map((member) => member.Id)).toEqual([100]);
     expect(requests.every((request) => request.method === "GET")).toBe(true);
@@ -73,7 +74,13 @@ function responseFor(url: URL) {
     case "/api/GroupTypeRoles":
       return page([{ Id: 1000, GroupTypeId: 25, Name: "Member" }], skip);
     case "/api/DefinedValues":
-      return page([{ Id: 2000, DefinedTypeId: 1, Value: "Active" }], skip);
+      return page(
+        [
+          { Id: 2000, DefinedTypeId: 1, Value: "Active" },
+          { Id: 2001, DefinedTypeId: 2, Value: "Member" },
+        ],
+        skip,
+      );
     case "/api/PersonAlias":
       return page(
         [
@@ -86,7 +93,12 @@ function responseFor(url: URL) {
     case "/api/People":
       return page(
         [
-          { Id: 1, PrimaryAliasId: 1001, PrimaryFamilyId: 10 },
+          {
+            ConnectionStatusValueId: 2001,
+            Id: 1,
+            PrimaryAliasId: 1001,
+            PrimaryFamilyId: 10,
+          },
           { Id: 2, PrimaryAliasId: 1002, PrimaryFamilyId: 10 },
           { Id: 3, PrimaryAliasId: 1003 },
         ],

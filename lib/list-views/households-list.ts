@@ -27,10 +27,19 @@ import type {
   ListViewInput,
   PageInfo,
 } from "@/lib/list-views/people-list";
+import { assertPlatformFundFiltersAllowed } from "@/lib/list-views/people-list";
+import {
+  getPlatformFundScope,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 type HouseholdsListClient = Pick<
   PrismaClient,
-  "givingFact" | "givingLifecycleSnapshot" | "rockHousehold" | "savedListView"
+  | "givingFact"
+  | "givingLifecycleSnapshot"
+  | "platformFundSetting"
+  | "rockHousehold"
+  | "savedListView"
 >;
 
 export type HouseholdListRow = {
@@ -152,6 +161,7 @@ export async function listHouseholds(
       },
     });
   }
+  await assertPlatformFundFiltersAllowed(validation.definition, client);
 
   const limit = clampListLimit(input.first ?? savedView?.pageSize ?? null);
   const cursor = decodeRockIdCursor(input.after);
@@ -178,6 +188,10 @@ export async function listHouseholds(
         client,
       )
     : new Map<number, GivingSummary>();
+  const lifecycleLabels = await lifecycleLabelsByHousehold(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
 
   return {
     appliedView: {
@@ -187,7 +201,7 @@ export async function listHouseholds(
     },
     edges: pageRecords.map((record) => ({
       cursor: encodeRockIdCursor({ rockId: record.rockId }),
-      node: mapHouseholdRow(record, actor, givingSummaries),
+      node: mapHouseholdRow(record, actor, givingSummaries, lifecycleLabels),
     })),
     pageInfo: {
       endCursor: pageRecords.at(-1)
@@ -202,7 +216,11 @@ function filterToHouseholdWhere(
   filter: FilterDefinition,
   actor: LocalAppUser,
 ): Prisma.RockHouseholdWhereInput {
-  return nodeToHouseholdWhere(filter, actor) ?? {};
+  const where = nodeToHouseholdWhere(filter, actor) ?? {};
+
+  return filterIncludesRockStatus(filter)
+    ? where
+    : { AND: [{ active: true, archived: false }, where] };
 }
 
 function withRockIdFilter(
@@ -244,6 +262,14 @@ function groupToHouseholdWhere(
   return group.mode === "any" ? { OR: conditions } : { AND: conditions };
 }
 
+function filterIncludesRockStatus(node: FilterNode): boolean {
+  if (node.type === "condition") {
+    return node.field === "active" || node.field === "archived";
+  }
+
+  return node.conditions.some(filterIncludesRockStatus);
+}
+
 function conditionToHouseholdWhere(
   condition: FilterCondition,
   actor: LocalAppUser,
@@ -254,8 +280,16 @@ function conditionToHouseholdWhere(
         name: { contains: stringValue(condition), mode: "insensitive" },
       };
     case "active":
+      if (condition.operator === "EXISTS") {
+        return {};
+      }
+
       return { active: Boolean(condition.value) };
     case "archived":
+      if (condition.operator === "EXISTS") {
+        return {};
+      }
+
       return { archived: Boolean(condition.value) };
     case "campusRockId":
       return { campusRockId: numericNullableWhere(condition) };
@@ -371,6 +405,7 @@ async function givingSummariesByHousehold(
       reliabilityKind: true,
     },
     where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
       householdRockId: { in: householdRockIds },
     },
   });
@@ -392,10 +427,53 @@ async function givingSummariesByHousehold(
   );
 }
 
+async function lifecycleLabelsByHousehold(
+  householdRockIds: number[],
+  client: HouseholdsListClient,
+) {
+  if (householdRockIds.length === 0 || !client.givingLifecycleSnapshot) {
+    return new Map<number, HouseholdListRow["lifecycle"]>();
+  }
+
+  const rows = await client.givingLifecycleSnapshot.findMany({
+    orderBy: [{ windowEndedAt: "desc" }, { lifecycle: "asc" }],
+    select: {
+      householdRockId: true,
+      lifecycle: true,
+      summary: true,
+      windowEndedAt: true,
+    },
+    where: {
+      householdRockId: { in: householdRockIds },
+      resource: "HOUSEHOLD",
+    },
+  });
+  const labelsByHousehold = new Map<number, HouseholdListRow["lifecycle"]>();
+
+  for (const row of rows) {
+    if (!row.householdRockId) continue;
+
+    const group = labelsByHousehold.get(row.householdRockId) ?? [];
+    if (group.some((label) => label.lifecycle === row.lifecycle)) {
+      continue;
+    }
+
+    group.push({
+      lifecycle: row.lifecycle,
+      summary: row.summary,
+      windowEndedAt: row.windowEndedAt,
+    });
+    labelsByHousehold.set(row.householdRockId, group);
+  }
+
+  return labelsByHousehold;
+}
+
 function mapHouseholdRow(
   record: HouseholdListRecord,
   actor: LocalAppUser,
   givingSummaries: Map<number, GivingSummary>,
+  lifecycleLabels: Map<number, HouseholdListRow["lifecycle"]>,
 ): HouseholdListRow {
   return {
     active: record.active,
@@ -406,7 +484,7 @@ function mapHouseholdRow(
       ? (givingSummaries.get(record.rockId) ?? null)
       : null,
     lastSyncedAt: record.lastSyncedAt,
-    lifecycle: [],
+    lifecycle: lifecycleLabels.get(record.rockId) ?? [],
     memberCount: record._count.members,
     name: record.name,
     openTaskCount: record._count.staffTasks,

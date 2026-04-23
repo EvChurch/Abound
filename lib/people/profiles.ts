@@ -110,6 +110,8 @@ type ProfileClient = Pick<
   PrismaClient,
   | "givingFact"
   | "givingPledge"
+  | "givingPledgeRecommendationDecision"
+  | "platformFundSetting"
   | "rockFinancialAccount"
   | "rockHousehold"
   | "rockPerson"

@@ -50,6 +50,7 @@ export type RockApiPerson = Record<string, unknown> & {
   Email?: string | null;
   IsEmailActive?: boolean | null;
   RecordStatusValueId?: number | null;
+  ConnectionStatusValueId?: number | null;
   IsDeceased?: boolean | null;
   ModifiedDateTime?: string | null;
 };

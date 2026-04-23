@@ -10,6 +10,10 @@ import type {
   FilterCondition,
   FilterNode,
 } from "@/lib/list-views/filter-schema";
+import {
+  getPlatformFundScope,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 type LifecycleSnapshotDelegate = PrismaClient["givingLifecycleSnapshot"];
 type GivingFactDelegate = PrismaClient["givingFact"];
@@ -19,6 +23,7 @@ export type LifecycleFilterResource = "PERSON" | "HOUSEHOLD";
 export type LifecycleFilterClient = {
   givingFact: GivingFactDelegate;
   givingLifecycleSnapshot?: LifecycleSnapshotDelegate;
+  platformFundSetting?: PrismaClient["platformFundSetting"];
 };
 
 export async function resolveLifecycleFilteredRockIds(
@@ -42,7 +47,12 @@ export async function resolveLifecycleFilteredRockIds(
     return snapshotIds;
   }
 
-  return resolveFactLifecycleIds(lifecycles, resource, client.givingFact);
+  return resolveFactLifecycleIds(
+    lifecycles,
+    resource,
+    client.givingFact,
+    client,
+  );
 }
 
 function lifecycleValuesFromFilter(node: FilterNode): GivingLifecycleKind[] {
@@ -120,7 +130,11 @@ async function resolveFactLifecycleIds(
   lifecycles: GivingLifecycleKind[],
   resource: LifecycleFilterResource,
   delegate: GivingFactDelegate,
+  client?: LifecycleFilterClient,
 ) {
+  const fundScope = client?.platformFundSetting
+    ? await getPlatformFundScope(client)
+    : { enabledAccountRockIds: [], mode: "UNCONFIGURED" as const };
   const facts = await delegate.findMany({
     orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
     select: {
@@ -133,8 +147,14 @@ async function resolveFactLifecycleIds(
     },
     where:
       resource === "PERSON"
-        ? { personRockId: { not: null } }
-        : { householdRockId: { not: null } },
+        ? {
+            ...whereForEnabledPlatformFunds(fundScope),
+            personRockId: { not: null },
+          }
+        : {
+            ...whereForEnabledPlatformFunds(fundScope),
+            householdRockId: { not: null },
+          },
   });
   const lifecycleSet = new Set(lifecycles);
   const factsByRockId = new Map<number, GivingLifecycleFact[]>();

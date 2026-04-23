@@ -4,6 +4,12 @@ import { RockClient } from "@/lib/rock/client";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import {
+  performFundScopedGivingRefresh,
+  type FundScopedGivingRefreshJobData,
+} from "@/lib/giving/derived-refresh";
+
+export type { FundScopedGivingRefreshJobData } from "@/lib/giving/derived-refresh";
+import {
   syncRockPersonSlice,
   syncRockSlice,
   type SyncRunOptions,
@@ -14,6 +20,7 @@ export const ROCK_FULL_SYNC_QUEUE = "rock-full-sync";
 export const ROCK_FULL_SYNC_SCHEDULE_KEY = "default-rock-full-sync";
 export const ROCK_PERSON_SYNC_QUEUE = "rock-person-sync";
 export const ROCK_PERSON_SYNC_SCHEDULE_KEY = "default-rock-person-sync";
+export const GIVING_DERIVED_REFRESH_QUEUE = "giving-derived-refresh";
 
 export type RockFullSyncJobData = {
   requestedBy?: "manual" | "schedule";
@@ -25,6 +32,9 @@ export type RockPersonSyncJobData = {
 };
 
 export type RockSyncJobResult = SyncSummary;
+export type FundScopedGivingRefreshJobResult = Awaited<
+  ReturnType<typeof performFundScopedGivingRefresh>
+>;
 
 export type RockFullSyncDependencies = {
   prisma?: PrismaClient;
@@ -69,6 +79,16 @@ export async function ensureSyncQueues(boss: PgBoss) {
     retentionSeconds: 60 * 60 * 24 * 14,
     deleteAfterSeconds: 60 * 60 * 24 * 7,
   });
+
+  await boss.createQueue(GIVING_DERIVED_REFRESH_QUEUE, {
+    policy: "singleton",
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInSeconds: 60 * 30,
+    retentionSeconds: 60 * 60 * 24 * 14,
+    deleteAfterSeconds: 60 * 60 * 24 * 7,
+  });
 }
 
 export async function enqueueRockFullSync(
@@ -88,6 +108,17 @@ export async function enqueueRockPersonSync(
 
   return boss.send(ROCK_PERSON_SYNC_QUEUE, data, {
     singletonKey: String(data.personId),
+  });
+}
+
+export async function enqueueFundScopedGivingRefresh(
+  boss: PgBoss,
+  data: FundScopedGivingRefreshJobData,
+) {
+  assertValidFundScopedGivingRefreshJobData(data);
+
+  return boss.send(GIVING_DERIVED_REFRESH_QUEUE, data, {
+    singletonKey: "fund-scoped-giving",
   });
 }
 
@@ -160,10 +191,27 @@ export async function performRockFullSyncJob(
   );
 }
 
+export async function performFundScopedGivingRefreshJob(
+  data: FundScopedGivingRefreshJobData,
+  dependencies: { prisma?: PrismaClient } = {},
+): Promise<FundScopedGivingRefreshJobResult> {
+  assertValidFundScopedGivingRefreshJobData(data);
+
+  return performFundScopedGivingRefresh(data, dependencies.prisma ?? prisma);
+}
+
 export function assertValidRockPersonSyncJobData(data: RockPersonSyncJobData) {
   if (!Number.isInteger(data.personId) || data.personId <= 0) {
     throw new Error(
       "Rock person sync jobs require a positive integer personId.",
     );
+  }
+}
+
+export function assertValidFundScopedGivingRefreshJobData(
+  data: FundScopedGivingRefreshJobData,
+) {
+  if (!data.refreshId || typeof data.refreshId !== "string") {
+    throw new Error("Fund-scoped giving refresh jobs require a refreshId.");
   }
 }

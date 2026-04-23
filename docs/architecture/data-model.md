@@ -19,6 +19,8 @@ Locally owned records are limited to:
 - `GivingFact`
 - `StaffTask`
 - `CommunicationPrep`
+- `PlatformFundSetting`
+- `DerivedCalculationRefresh`
 - app auth tables from the auth foundation
 
 ## Sync Traceability
@@ -32,7 +34,15 @@ Every synced Rock table has:
 - `lastSyncedAt`
 - `lastSyncRunId`
 
-`rockId` is the primary key on each synced Rock mirror table so duplicate upstream IDs reconcile into one local row instead of creating ambiguous records. Locally owned tables such as `SyncRun`, `SyncIssue`, `GivingFact`, `StaffTask`, `CommunicationPrep`, and app auth tables keep local generated IDs because they are not Rock source records.
+`rockId` is the primary key on each synced Rock mirror table so duplicate upstream IDs reconcile into one local row instead of creating ambiguous records. Locally owned tables such as `SyncRun`, `SyncIssue`, `GivingFact`, `StaffTask`, `CommunicationPrep`, `PlatformFundSetting`, `DerivedCalculationRefresh`, and app auth tables keep local generated IDs because they are not Rock source records.
+
+## Platform Fund Boundary
+
+Rock remains authoritative for the full `RockFinancialAccount` catalog. The app syncs every available Rock financial account so administrators can review and reconfigure the local platform boundary without another Rock import.
+
+`PlatformFundSetting` is the app-owned overlay that decides which Rock funds are available to staff-facing calculations, pledge recommendations, dashboards, list filters, and APIs. Disabled funds remain synced from Rock, but normal staff-facing services must not expose disabled-fund giving values or offer a caller-level override. If no platform fund settings exist yet, fund-scoped giving surfaces fail closed until an Admin saves the enabled fund set.
+
+`DerivedCalculationRefresh` tracks app-owned recalculation work after the enabled fund set changes. Rock data is still valid when the setting changes; only stored app-derived rows such as lifecycle snapshots need to be rebuilt against the new fund boundary.
 
 Because the app is not deployed yet, the early migration history was squashed into `prisma/migrations/20260417000000_initial_baseline/migration.sql`. The local development database was reset from that baseline after the Rock mirror tables were changed to use `rockId` as their primary key.
 

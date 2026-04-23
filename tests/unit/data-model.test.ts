@@ -137,9 +137,23 @@ describe("data model guardrails", () => {
     expect(personBlock).toContain("givingGroupRockId");
     expect(personBlock).toContain("givingId");
     expect(personBlock).toContain("givingLeaderRockId");
+    expect(personBlock).toContain("connectionStatusValueRockId");
+    expect(personBlock).toContain("PersonConnectionStatus");
     expect(householdBlock).toContain("groupTypeRockId");
     expect(householdBlock).toContain("@default(10)");
     expect(householdBlock).not.toContain("givingId");
+  });
+
+  it("keeps platform fund settings app-owned over the Rock account mirror", () => {
+    const accountBlock = modelBlock("RockFinancialAccount");
+    const settingBlock = modelBlock("PlatformFundSetting");
+
+    expect(accountBlock).toContain("platformFundSetting");
+    expect(accountBlock).not.toContain("enabledForPlatform");
+    expect(settingBlock).toContain("accountRockId");
+    expect(settingBlock).toContain("@unique");
+    expect(settingBlock).toContain("RockFinancialAccount");
+    expect(settingBlock).toContain("updatedByUserId");
   });
 
   it("rejects payment instrument and secret-like fields from sync payloads", () => {

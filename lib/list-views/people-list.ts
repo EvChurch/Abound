@@ -1,9 +1,14 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { GivingPledgePeriod, Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
 import { canSeeGivingAmounts, hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
+import {
+  buildPledgeAnalysisRows,
+  type PledgeAnalysisRow,
+  type PledgeFund,
+} from "@/lib/giving/pledges";
 import { summarizeGivingFacts, type GivingSummary } from "@/lib/giving/metrics";
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 import {
@@ -22,10 +27,21 @@ import {
 } from "@/lib/list-views/filter-schema";
 import { getSavedListView } from "@/lib/list-views/saved-views";
 import { resolveLifecycleFilteredRockIds } from "@/lib/list-views/lifecycle-filtering";
+import {
+  getPlatformFundScope,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 type PeopleListClient = Pick<
   PrismaClient,
-  "givingFact" | "givingLifecycleSnapshot" | "rockPerson" | "savedListView"
+  | "givingFact"
+  | "givingLifecycleSnapshot"
+  | "givingPledge"
+  | "givingPledgeRecommendationDecision"
+  | "platformFundSetting"
+  | "rockFinancialAccount"
+  | "rockPerson"
+  | "savedListView"
 >;
 
 export type ListViewInput = {
@@ -52,6 +68,8 @@ export type PersonListRow = {
   email: string | null;
   emailActive: boolean | null;
   deceased: boolean;
+  recordStatus: string | null;
+  connectionStatus: string | null;
   photoUrl: string | null;
   primaryCampus: ListCampus | null;
   primaryHousehold: ListHouseholdSummary | null;
@@ -59,7 +77,20 @@ export type PersonListRow = {
   openTaskCount: number;
   lastSyncedAt: Date;
   givingSummary: GivingSummary | null;
+  pledgeSummary: PledgeListSummary | null;
   amountsHidden: boolean;
+};
+
+export type PledgeListSummary = {
+  active: PledgeListItem[];
+  draft: PledgeListItem[];
+  review: PledgeListItem[];
+};
+
+export type PledgeListItem = {
+  accountName: string;
+  amount: string;
+  period: GivingPledgePeriod;
 };
 
 export type PeopleConnection = {
@@ -125,6 +156,16 @@ const personListSelect = {
       rockId: true,
     },
   },
+  recordStatus: {
+    select: {
+      value: true,
+    },
+  },
+  connectionStatus: {
+    select: {
+      value: true,
+    },
+  },
   rockId: true,
 } satisfies Prisma.RockPersonSelect;
 
@@ -156,12 +197,18 @@ export async function listPeople(
       },
     });
   }
+  await assertPlatformFundFiltersAllowed(validation.definition, client);
 
   const limit = clampListLimit(input.first ?? savedView?.pageSize ?? null);
   const cursor = decodeRockIdCursor(input.after);
   const lifecycleRockIds = await resolveLifecycleFilteredRockIds(
     validation.definition,
     "PERSON",
+    client,
+  );
+  const pledgeStateRockIds = await resolvePledgeStateFilteredRockIds(
+    validation.definition,
+    actor,
     client,
   );
   const records = await client.rockPerson.findMany({
@@ -172,7 +219,7 @@ export async function listPeople(
     take: limit + 1,
     where: withRockIdFilter(
       filterToPersonWhere(validation.definition, actor),
-      lifecycleRockIds,
+      intersectRockIds(lifecycleRockIds, pledgeStateRockIds),
     ),
   });
   const pageRecords = records.slice(0, limit);
@@ -182,6 +229,16 @@ export async function listPeople(
         client,
       )
     : new Map<number, GivingSummary>();
+  const lifecycleLabels = await lifecycleLabelsByPerson(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
+  const pledgeSummaries = hasPermission(actor.role, "pledges:manage")
+    ? await pledgeSummariesByPerson(
+        pageRecords.map((record) => record.rockId),
+        client,
+      )
+    : new Map<number, PledgeListSummary>();
 
   return {
     appliedView: {
@@ -191,7 +248,13 @@ export async function listPeople(
     },
     edges: pageRecords.map((record) => ({
       cursor: encodeRockIdCursor({ rockId: record.rockId }),
-      node: mapPersonRow(record, actor, givingSummaries),
+      node: mapPersonRow(
+        record,
+        actor,
+        givingSummaries,
+        pledgeSummaries,
+        lifecycleLabels,
+      ),
     })),
     pageInfo: {
       endCursor: pageRecords.at(-1)
@@ -217,9 +280,11 @@ function filterToPersonWhere(
 ): Prisma.RockPersonWhereInput {
   const where = nodeToPersonWhere(filter, actor) ?? {};
 
-  return filterIncludesAgeGroup(filter)
-    ? where
-    : { AND: [adultWhere(), where] };
+  const demographicWhere = filterIncludesAgeGroup(filter)
+    ? currentHouseholdMembershipWhere()
+    : adultWhere();
+
+  return { AND: [demographicWhere, where] };
 }
 
 function withRockIdFilter(
@@ -231,6 +296,15 @@ function withRockIdFilter(
   }
 
   return { AND: [where, { rockId: { in: rockIds } }] };
+}
+
+function intersectRockIds(left: number[] | null, right: number[] | null) {
+  if (!left) return right;
+  if (!right) return left;
+
+  const rightSet = new Set(right);
+
+  return left.filter((rockId) => rightSet.has(rockId));
 }
 
 function nodeToPersonWhere(
@@ -290,6 +364,10 @@ function conditionToPersonWhere(
       return { email: condition.value ? { not: null } : null };
     case "emailActive":
       return { emailActive: nullableBooleanWhere(condition) };
+    case "recordStatus":
+      return { recordStatus: { value: enumWhere(condition) } };
+    case "connectionStatus":
+      return { connectionStatus: { value: enumWhere(condition) } };
     case "primaryCampusRockId":
       return { primaryCampusRockId: numericNullableWhere(condition) };
     case "primaryHouseholdRockId":
@@ -329,6 +407,8 @@ function conditionToPersonWhere(
     case "taskDueAt":
       return { staffTasks: { some: { dueAt: dateWhere(condition) } } };
     case "lifecycle":
+      return null;
+    case "pledgeState":
       return null;
     case "givingRecency":
       return { givingFacts: { some: { occurredAt: dateWhere(condition) } } };
@@ -382,6 +462,7 @@ async function givingSummariesByPerson(
       reliabilityKind: true,
     },
     where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
       personRockId: { in: personRockIds },
     },
   });
@@ -403,10 +484,416 @@ async function givingSummariesByPerson(
   );
 }
 
+async function lifecycleLabelsByPerson(
+  personRockIds: number[],
+  client: PeopleListClient,
+) {
+  if (personRockIds.length === 0 || !client.givingLifecycleSnapshot) {
+    return new Map<number, ListLifecycleLabel[]>();
+  }
+
+  const rows = await client.givingLifecycleSnapshot.findMany({
+    orderBy: [{ windowEndedAt: "desc" }, { lifecycle: "asc" }],
+    select: {
+      lifecycle: true,
+      personRockId: true,
+      summary: true,
+      windowEndedAt: true,
+    },
+    where: {
+      personRockId: { in: personRockIds },
+      resource: "PERSON",
+    },
+  });
+  const labelsByPerson = new Map<number, ListLifecycleLabel[]>();
+
+  for (const row of rows) {
+    if (!row.personRockId) continue;
+
+    const group = labelsByPerson.get(row.personRockId) ?? [];
+    if (group.some((label) => label.lifecycle === row.lifecycle)) {
+      continue;
+    }
+
+    group.push({
+      lifecycle: row.lifecycle,
+      summary: row.summary,
+      windowEndedAt: row.windowEndedAt,
+    });
+    labelsByPerson.set(row.personRockId, group);
+  }
+
+  return labelsByPerson;
+}
+
+async function pledgeSummariesByPerson(
+  personRockIds: number[],
+  client: PeopleListClient,
+) {
+  if (personRockIds.length === 0) {
+    return new Map<number, PledgeListSummary>();
+  }
+
+  const referenceDate = new Date();
+  const fundScope = await getPlatformFundScope(client);
+  const [funds, facts, pledges, decisions] = await Promise.all([
+    client.rockFinancialAccount.findMany({
+      orderBy: [{ name: "asc" }, { rockId: "asc" }],
+      select: {
+        active: true,
+        name: true,
+        rockId: true,
+      },
+      where: {
+        active: true,
+        rockId: { in: fundScope.enabledAccountRockIds },
+      },
+    }),
+    client.givingFact.findMany({
+      orderBy: [
+        { personRockId: "asc" },
+        { accountRockId: "asc" },
+        { effectiveMonth: "asc" },
+        { id: "asc" },
+      ],
+      select: {
+        accountRockId: true,
+        amount: true,
+        effectiveMonth: true,
+        occurredAt: true,
+        personRockId: true,
+      },
+      where: {
+        ...whereForEnabledPlatformFunds(fundScope),
+        effectiveMonth: {
+          gte: firstRecentMonthDate(referenceDate),
+        },
+        personRockId: { in: personRockIds },
+      },
+    }),
+    client.givingPledge.findMany({
+      include: {
+        account: {
+          select: {
+            name: true,
+            rockId: true,
+          },
+        },
+      },
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }, { id: "asc" }],
+      where: {
+        accountRockId: { in: fundScope.enabledAccountRockIds },
+        personRockId: { in: personRockIds },
+        status: {
+          in: ["ACTIVE", "DRAFT"],
+        },
+      },
+    }),
+    client.givingPledgeRecommendationDecision.findMany({
+      orderBy: [{ decidedAt: "desc" }, { id: "asc" }],
+      where: {
+        personRockId: { in: personRockIds },
+        status: "REJECTED",
+      },
+    }),
+  ]);
+
+  const factsByPerson = groupByPerson(facts);
+  const pledgesByPerson = groupByPerson(pledges);
+  const decisionsByPerson = groupByPerson(decisions);
+  const fundRows = funds.map((fund) => ({
+    active: fund.active,
+    name: fund.name,
+    rockId: fund.rockId,
+  })) satisfies PledgeFund[];
+
+  return new Map(
+    personRockIds.map((personRockId) => [
+      personRockId,
+      summarizePledgeRows(
+        buildPledgeAnalysisRows({
+          decisions: decisionsByPerson.get(personRockId) ?? [],
+          facts: factsByPerson.get(personRockId) ?? [],
+          funds: fundRows,
+          pledges: pledgesByPerson.get(personRockId) ?? [],
+          referenceDate,
+        }),
+      ),
+    ]),
+  );
+}
+
+async function resolvePledgeStateFilteredRockIds(
+  filter: FilterNode,
+  actor: LocalAppUser,
+  client: PeopleListClient,
+) {
+  const requestedStates = pledgeStatesFromFilter(filter);
+
+  if (requestedStates.length === 0) {
+    return null;
+  }
+
+  if (!hasPermission(actor.role, "pledges:manage")) {
+    throw new GraphQLError("Pledge filters require pledge permission.", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+
+  const referenceDate = new Date();
+  const fundScope = await getPlatformFundScope(client);
+  const [funds, facts, pledges, decisions] = await Promise.all([
+    client.rockFinancialAccount.findMany({
+      orderBy: [{ name: "asc" }, { rockId: "asc" }],
+      select: {
+        active: true,
+        name: true,
+        rockId: true,
+      },
+      where: {
+        active: true,
+        rockId: { in: fundScope.enabledAccountRockIds },
+      },
+    }),
+    client.givingFact.findMany({
+      orderBy: [
+        { personRockId: "asc" },
+        { accountRockId: "asc" },
+        { effectiveMonth: "asc" },
+        { id: "asc" },
+      ],
+      select: {
+        accountRockId: true,
+        amount: true,
+        effectiveMonth: true,
+        occurredAt: true,
+        personRockId: true,
+      },
+      where: {
+        ...whereForEnabledPlatformFunds(fundScope),
+        effectiveMonth: {
+          gte: firstRecentMonthDate(referenceDate),
+        },
+        personRockId: { not: null },
+      },
+    }),
+    client.givingPledge.findMany({
+      include: {
+        account: {
+          select: {
+            name: true,
+            rockId: true,
+          },
+        },
+      },
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }, { id: "asc" }],
+      where: {
+        accountRockId: { in: fundScope.enabledAccountRockIds },
+        status: {
+          in: ["ACTIVE", "DRAFT"],
+        },
+      },
+    }),
+    client.givingPledgeRecommendationDecision.findMany({
+      orderBy: [{ decidedAt: "desc" }, { id: "asc" }],
+      where: {
+        status: "REJECTED",
+      },
+    }),
+  ]);
+  const factsByPerson = groupByPerson(facts);
+  const pledgesByPerson = groupByPerson(pledges);
+  const decisionsByPerson = groupByPerson(decisions);
+  const personRockIds = new Set([
+    ...factsByPerson.keys(),
+    ...pledgesByPerson.keys(),
+    ...decisionsByPerson.keys(),
+  ]);
+  const fundRows = funds.map((fund) => ({
+    active: fund.active,
+    name: fund.name,
+    rockId: fund.rockId,
+  })) satisfies PledgeFund[];
+  const requested = new Set(requestedStates);
+
+  return [...personRockIds].filter((personRockId) =>
+    buildPledgeAnalysisRows({
+      decisions: decisionsByPerson.get(personRockId) ?? [],
+      facts: factsByPerson.get(personRockId) ?? [],
+      funds: fundRows,
+      pledges: pledgesByPerson.get(personRockId) ?? [],
+      referenceDate,
+    }).some((row) => pledgeRowMatchesStates(row, requested)),
+  );
+}
+
+type PledgeFilterState = "ACTIVE" | "DRAFT" | "REVIEW";
+
+function pledgeStatesFromFilter(node: FilterNode): PledgeFilterState[] {
+  if (node.type === "group") {
+    return node.conditions.flatMap(pledgeStatesFromFilter);
+  }
+
+  if (node.field !== "pledgeState") {
+    return [];
+  }
+
+  return valuesFromCondition(node)
+    .map(normalizePledgeFilterState)
+    .filter((value): value is PledgeFilterState => Boolean(value));
+}
+
+function normalizePledgeFilterState(value: unknown): PledgeFilterState | null {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    normalized === "ACTIVE" ||
+    normalized === "DRAFT" ||
+    normalized === "REVIEW"
+  ) {
+    return normalized;
+  }
+
+  return null;
+}
+
+function pledgeRowMatchesStates(
+  row: PledgeAnalysisRow,
+  states: Set<PledgeFilterState>,
+) {
+  if (states.has("ACTIVE") && row.status === "ACTIVE_PLEDGE_EXISTS") {
+    return true;
+  }
+
+  if (states.has("DRAFT") && row.status === "DRAFT_EXISTS") {
+    return true;
+  }
+
+  if (states.has("REVIEW") && row.status === "RECOMMENDED") {
+    return true;
+  }
+
+  return false;
+}
+
+function valuesFromCondition(condition: FilterCondition) {
+  if (condition.operator === "IN" && Array.isArray(condition.value)) {
+    return condition.value;
+  }
+
+  return [condition.value];
+}
+
+export async function assertPlatformFundFiltersAllowed(
+  filter: FilterNode,
+  client: Pick<PrismaClient, "platformFundSetting">,
+) {
+  const scope = await getPlatformFundScope(client);
+
+  if (scope.mode !== "CONFIGURED") {
+    return;
+  }
+
+  const enabled = new Set(scope.enabledAccountRockIds);
+  const requested = accountRockIdsFromFilter(filter);
+  const disabled = requested.filter(
+    (accountRockId) => !enabled.has(accountRockId),
+  );
+
+  if (disabled.length > 0) {
+    throw new GraphQLError("Fund filters must use enabled platform funds.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+}
+
+function accountRockIdsFromFilter(node: FilterNode): number[] {
+  if (node.type === "group") {
+    return node.conditions.flatMap(accountRockIdsFromFilter);
+  }
+
+  if (node.field !== "accountRockId") {
+    return [];
+  }
+
+  return valuesFromCondition(node)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+}
+
+function summarizePledgeRows(rows: PledgeAnalysisRow[]): PledgeListSummary {
+  return {
+    active: rows
+      .filter((row) => row.status === "ACTIVE_PLEDGE_EXISTS")
+      .map((row) => pledgeItemFromExisting(row.activePledge))
+      .filter((item): item is PledgeListItem => Boolean(item)),
+    draft: rows
+      .filter((row) => row.status === "DRAFT_EXISTS")
+      .map((row) => pledgeItemFromExisting(row.draftPledge))
+      .filter((item): item is PledgeListItem => Boolean(item)),
+    review: rows
+      .filter((row) => row.status === "RECOMMENDED")
+      .map((row) => pledgeItemFromRecommendation(row))
+      .filter((item): item is PledgeListItem => Boolean(item)),
+  };
+}
+
+function pledgeItemFromExisting(
+  pledge: PledgeAnalysisRow["activePledge"] | PledgeAnalysisRow["draftPledge"],
+): PledgeListItem | null {
+  if (!pledge) {
+    return null;
+  }
+
+  return {
+    accountName: pledge.accountName,
+    amount: pledge.amount,
+    period: pledge.period,
+  };
+}
+
+function pledgeItemFromRecommendation(
+  row: PledgeAnalysisRow,
+): PledgeListItem | null {
+  if (!row.recommendedAmount || !row.recommendedPeriod) {
+    return null;
+  }
+
+  return {
+    accountName: row.account.name,
+    amount: row.recommendedAmount,
+    period: row.recommendedPeriod,
+  };
+}
+
+function groupByPerson<T extends { personRockId: number | null }>(items: T[]) {
+  const groups = new Map<number, T[]>();
+
+  for (const item of items) {
+    if (!item.personRockId) continue;
+
+    const group = groups.get(item.personRockId) ?? [];
+    group.push(item);
+    groups.set(item.personRockId, group);
+  }
+
+  return groups;
+}
+
+function firstRecentMonthDate(referenceDate: Date) {
+  return new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() - 11),
+  );
+}
+
 function mapPersonRow(
   record: PersonListRecord,
   actor: LocalAppUser,
   givingSummaries: Map<number, GivingSummary>,
+  pledgeSummaries: Map<number, PledgeListSummary>,
+  lifecycleLabels: Map<number, ListLifecycleLabel[]>,
 ): PersonListRow {
   return {
     amountsHidden: !canSeeGivingAmounts(actor.role),
@@ -417,12 +904,17 @@ function mapPersonRow(
     givingSummary: canSeeGivingAmounts(actor.role)
       ? (givingSummaries.get(record.rockId) ?? null)
       : null,
+    pledgeSummary: hasPermission(actor.role, "pledges:manage")
+      ? (pledgeSummaries.get(record.rockId) ?? null)
+      : null,
     lastSyncedAt: record.lastSyncedAt,
-    lifecycle: [],
+    lifecycle: lifecycleLabels.get(record.rockId) ?? [],
     openTaskCount: record._count.staffTasks,
     photoUrl: rockPersonPhotoPath(record.photoRockId),
     primaryCampus: record.primaryCampus,
     primaryHousehold: record.primaryHousehold,
+    recordStatus: record.recordStatus?.value ?? null,
+    connectionStatus: record.connectionStatus?.value ?? null,
     rockId: record.rockId,
   };
 }
@@ -463,6 +955,10 @@ function adultWhere(): Prisma.RockPersonWhereInput {
     householdMembers: {
       some: {
         archived: false,
+        household: {
+          active: true,
+          archived: false,
+        },
         groupRole: {
           name: {
             equals: "Adult",
@@ -479,11 +975,29 @@ function childWhere(): Prisma.RockPersonWhereInput {
     householdMembers: {
       some: {
         archived: false,
+        household: {
+          active: true,
+          archived: false,
+        },
         groupRole: {
           name: {
             equals: "Child",
             mode: "insensitive",
           },
+        },
+      },
+    },
+  };
+}
+
+function currentHouseholdMembershipWhere(): Prisma.RockPersonWhereInput {
+  return {
+    householdMembers: {
+      some: {
+        archived: false,
+        household: {
+          active: true,
+          archived: false,
         },
       },
     },

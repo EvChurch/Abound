@@ -993,6 +993,11 @@ function rockPersonSliceToNormalized(
       definedValueIds.has(person.RecordStatusValueId)
         ? person.RecordStatusValueId
         : null,
+    connectionStatusValueRockId:
+      person.ConnectionStatusValueId &&
+      definedValueIds.has(person.ConnectionStatusValueId)
+        ? person.ConnectionStatusValueId
+        : null,
     deceased: person.IsDeceased ?? false,
     sourceUpdatedAt: toDate(person.ModifiedDateTime),
     lastSyncRunId: "pending",

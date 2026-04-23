@@ -124,6 +124,17 @@ enum GivingLifecycleKind {
   DROPPED
 }
 
+enum DerivedCalculationKind {
+  FUND_SCOPED_GIVING
+}
+
+enum DerivedCalculationRefreshStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 model AppUser {
   id                 String                               @id @default(cuid())
   auth0Subject       String                               @unique
@@ -139,6 +150,8 @@ model AppUser {
   givingPledges      GivingPledge[]
   pledgeDecisions    GivingPledgeRecommendationDecision[]
   savedListViews     SavedListView[]
+  platformFundUpdates PlatformFundSetting[]
+  derivedRefreshes    DerivedCalculationRefresh[]
 
   @@index([email])
   @@index([rockPersonId])
@@ -272,6 +285,7 @@ model RockDefinedValue {
 
   lastSyncRun                     SyncRun                             @relation(fields: [lastSyncRunId], references: [id])
   peopleRecordStatuses            RockPerson[]                        @relation("PersonRecordStatus")
+  peopleConnectionStatuses        RockPerson[]                        @relation("PersonConnectionStatus")
   transactionSources              RockFinancialTransaction[]          @relation("FinancialTransactionSource")
   transactionTypes                RockFinancialTransaction[]          @relation("FinancialTransactionType")
   scheduledTransactionFrequencies RockFinancialScheduledTransaction[] @relation("ScheduledTransactionFrequency")
@@ -322,30 +336,31 @@ model RockCampus {
 }
 
 model RockPerson {
-  rockId                  Int       @id
-  rockGuid                String?   @unique
-  primaryAliasRockId      Int?      @unique
-  primaryAliasGuid        String?
+  rockId                      Int       @id
+  rockGuid                    String?   @unique
+  primaryAliasRockId          Int?      @unique
+  primaryAliasGuid            String?
   /// Rock Person.GivingGroupId. Usually points at the family/giving group used for giving rollups.
-  givingGroupRockId       Int?
+  givingGroupRockId           Int?
   /// Rock Person.GivingId. Preserved for grouping donor/giving identity exactly as Rock reports it.
-  givingId                String?
-  givingLeaderRockId      Int?
-  primaryFamilyRockId     Int?
-  primaryCampusRockId     Int?
+  givingId                    String?
+  givingLeaderRockId          Int?
+  primaryFamilyRockId         Int?
+  primaryCampusRockId         Int?
   /// Rock Person.PhotoId. Points to the Rock binary file used for the person's profile photo.
-  photoRockId             Int?
-  firstName               String?
-  nickName                String?
-  lastName                String?
-  email                   String?
-  emailActive             Boolean?
-  recordStatusValueRockId Int?
-  deceased                Boolean   @default(false)
-  sourceUpdatedAt         DateTime?
-  firstSyncedAt           DateTime  @default(now())
-  lastSyncedAt            DateTime  @updatedAt
-  lastSyncRunId           String
+  photoRockId                 Int?
+  firstName                   String?
+  nickName                    String?
+  lastName                    String?
+  email                       String?
+  emailActive                 Boolean?
+  recordStatusValueRockId     Int?
+  connectionStatusValueRockId Int?
+  deceased                    Boolean   @default(false)
+  sourceUpdatedAt             DateTime?
+  firstSyncedAt               DateTime  @default(now())
+  lastSyncedAt                DateTime  @updatedAt
+  lastSyncRunId               String
 
   lastSyncRun              SyncRun                              @relation(fields: [lastSyncRunId], references: [id])
   primaryAlias             RockPersonAlias?                     @relation("PersonPrimaryAlias", fields: [primaryAliasRockId], references: [rockId])
@@ -356,6 +371,7 @@ model RockPerson {
   givingMembers            RockPerson[]                         @relation("PersonGivingLeader")
   aliases                  RockPersonAlias[]                    @relation("PersonAliases")
   recordStatus             RockDefinedValue?                    @relation("PersonRecordStatus", fields: [recordStatusValueRockId], references: [rockId])
+  connectionStatus         RockDefinedValue?                    @relation("PersonConnectionStatus", fields: [connectionStatusValueRockId], references: [rockId])
   householdMembers         RockHouseholdMember[]
   groupMembers             RockGroupMember[]
   transactions             RockFinancialTransaction[]
@@ -373,6 +389,7 @@ model RockPerson {
   @@index([givingId])
   @@index([givingLeaderRockId])
   @@index([recordStatusValueRockId])
+  @@index([connectionStatusValueRockId])
   @@index([primaryCampusRockId])
   @@index([primaryFamilyRockId])
   @@index([photoRockId])
@@ -517,11 +534,48 @@ model RockFinancialAccount {
   scheduledTransactionDetails RockFinancialScheduledTransactionDetail[]
   givingPledges               GivingPledge[]
   pledgeDecisions             GivingPledgeRecommendationDecision[]
+  platformFundSetting         PlatformFundSetting?
 
   @@index([campusRockId])
   @@index([parentAccountRockId])
   @@index([active])
   @@index([lastSyncRunId])
+}
+
+model PlatformFundSetting {
+  id              String   @id @default(cuid())
+  accountRockId   Int      @unique
+  enabled         Boolean  @default(false)
+  notes           String?
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account   RockFinancialAccount @relation(fields: [accountRockId], references: [rockId], onDelete: Cascade)
+  updatedBy AppUser?             @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([enabled])
+  @@index([updatedByUserId])
+}
+
+model DerivedCalculationRefresh {
+  id                 String                           @id @default(cuid())
+  kind               DerivedCalculationKind
+  status             DerivedCalculationRefreshStatus  @default(PENDING)
+  requestedByUserId  String?
+  requestedAt        DateTime                         @default(now())
+  startedAt          DateTime?
+  completedAt        DateTime?
+  errorMessage       String?
+  metadata           Json?
+  createdAt          DateTime                         @default(now())
+  updatedAt          DateTime                         @updatedAt
+
+  requestedBy AppUser? @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([kind, status])
+  @@index([requestedAt])
+  @@index([requestedByUserId])
 }
 
 model GivingPledge {

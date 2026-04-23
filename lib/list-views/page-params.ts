@@ -17,10 +17,13 @@ export type PeopleListQueryParams = {
   campus?: string;
   column?: PageParamValue;
   columns?: string;
+  connectionStatus?: PageParamValue;
   connectGroup?: string;
   emailStatus?: string;
   lifecycle?: string;
+  pledgeState?: PageParamValue;
   q?: string;
+  recordStatus?: PageParamValue;
   taskPriority?: string;
   taskStatus?: string;
 };
@@ -36,6 +39,7 @@ export type HouseholdListQueryParams = {
   emailCapable?: string;
   lifecycle?: string;
   q?: string;
+  rockStatus?: string;
   taskPriority?: string;
   taskStatus?: string;
 };
@@ -44,9 +48,13 @@ export type ListViewShellFilters = {
   active?: string | null;
   archived?: string | null;
   campus?: string | null;
+  connectionStatus?: PageParamValue | null;
   connectGroup?: string | null;
   emailCapable?: string | null;
   emailStatus?: string | null;
+  recordStatus?: PageParamValue | null;
+  pledgeState?: PageParamValue | null;
+  rockStatus?: string | null;
   taskPriority?: string | null;
   taskStatus?: string | null;
 };
@@ -56,8 +64,11 @@ export function peopleFiltersFromParams(
 ): ListViewShellFilters {
   return {
     campus: params.campus,
+    connectionStatus: params.connectionStatus,
     connectGroup: params.connectGroup,
     emailStatus: params.emailStatus,
+    pledgeState: params.pledgeState,
+    recordStatus: params.recordStatus,
     taskPriority: params.taskPriority,
     taskStatus: params.taskStatus,
   };
@@ -72,6 +83,7 @@ export function householdFiltersFromParams(
     campus: params.campus,
     connectGroup: params.connectGroup,
     emailCapable: params.emailCapable,
+    rockStatus: params.rockStatus,
     taskPriority: params.taskPriority,
     taskStatus: params.taskStatus,
   };
@@ -100,6 +112,24 @@ export function buildPeopleFilter(
     );
   }
 
+  const connectionStatuses = valuesFromParam(params.connectionStatus);
+
+  if (connectionStatuses.length === 1) {
+    conditions.push(
+      condition("connectionStatus", "EQUALS", connectionStatuses[0]),
+    );
+  } else if (connectionStatuses.length > 1) {
+    conditions.push(condition("connectionStatus", "IN", connectionStatuses));
+  }
+
+  const recordStatuses = valuesFromParam(params.recordStatus);
+
+  if (recordStatuses.length === 1) {
+    conditions.push(condition("recordStatus", "EQUALS", recordStatuses[0]));
+  } else if (recordStatuses.length > 1) {
+    conditions.push(condition("recordStatus", "IN", recordStatuses));
+  }
+
   if (params.emailStatus === "active") {
     conditions.push(condition("emailActive", "EQUALS", true));
   }
@@ -116,6 +146,16 @@ export function buildPeopleFilter(
     conditions.push(
       condition("activeConnectGroup", "EQUALS", params.connectGroup === "true"),
     );
+  }
+
+  const pledgeStates = valuesFromParam(params.pledgeState)
+    .map(pledgeStateValue)
+    .filter((value): value is PledgeStateValue => Boolean(value));
+
+  if (pledgeStates.length === 1) {
+    conditions.push(condition("pledgeState", "EQUALS", pledgeStates[0]));
+  } else if (pledgeStates.length > 1) {
+    conditions.push(condition("pledgeState", "IN", pledgeStates));
   }
 
   if (params.taskStatus?.trim()) {
@@ -148,6 +188,19 @@ export function buildHouseholdFilter(
 
   if (params.campus?.trim()) {
     conditions.push(condition("campusRockId", "EQUALS", params.campus.trim()));
+  }
+
+  if (params.rockStatus === "archived") {
+    conditions.push(condition("archived", "EQUALS", true));
+  }
+
+  if (params.rockStatus === "inactive") {
+    conditions.push(condition("active", "EQUALS", false));
+    conditions.push(condition("archived", "EQUALS", false));
+  }
+
+  if (params.rockStatus === "any") {
+    conditions.push(condition("active", "EXISTS", true));
   }
 
   if (params.active === "true" || params.active === "false") {
@@ -220,11 +273,15 @@ export function paramsFromSearch(searchParams: URLSearchParams) {
     campus: valueFromSearch(searchParams, "campus"),
     column: searchParams.getAll("column"),
     columns: valueFromSearch(searchParams, "columns"),
+    connectionStatus: valuesFromSearch(searchParams, "connectionStatus"),
     connectGroup: valueFromSearch(searchParams, "connectGroup"),
     emailCapable: valueFromSearch(searchParams, "emailCapable"),
     emailStatus: valueFromSearch(searchParams, "emailStatus"),
     lifecycle: valueFromSearch(searchParams, "lifecycle"),
+    pledgeState: valuesFromSearch(searchParams, "pledgeState"),
     q: valueFromSearch(searchParams, "q"),
+    recordStatus: valuesFromSearch(searchParams, "recordStatus"),
+    rockStatus: valueFromSearch(searchParams, "rockStatus"),
     taskPriority: valueFromSearch(searchParams, "taskPriority"),
     taskStatus: valueFromSearch(searchParams, "taskStatus"),
   };
@@ -253,4 +310,36 @@ function condition(
 
 function valueFromSearch(searchParams: URLSearchParams, key: string) {
   return searchParams.get(key) ?? undefined;
+}
+
+function valuesFromSearch(searchParams: URLSearchParams, key: string) {
+  const values = searchParams.getAll(key).filter(Boolean);
+
+  if (values.length === 0) {
+    return undefined;
+  }
+
+  return values.length === 1 ? values[0] : values;
+}
+
+function valuesFromParam(value: PageParamValue | null) {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+
+  return values.map((item) => item.trim()).filter(Boolean);
+}
+
+type PledgeStateValue = "ACTIVE" | "DRAFT" | "REVIEW";
+
+function pledgeStateValue(value: string): PledgeStateValue | null {
+  const normalized = value.trim().toUpperCase();
+
+  if (
+    normalized === "REVIEW" ||
+    normalized === "ACTIVE" ||
+    normalized === "DRAFT"
+  ) {
+    return normalized;
+  }
+
+  return null;
 }

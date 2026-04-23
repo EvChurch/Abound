@@ -14,6 +14,14 @@ const communicationPrepMigration = readFileSync(
   "prisma/migrations/20260420000200_expand_communication_prep/migration.sql",
   "utf8",
 );
+const personConnectionStatusMigration = readFileSync(
+  "prisma/migrations/20260422000100_add_person_connection_status/migration.sql",
+  "utf8",
+);
+const platformFundSettingsMigration = readFileSync(
+  "prisma/migrations/20260423000100_add_platform_fund_settings/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -149,6 +157,36 @@ describe("synced data model migration", () => {
     );
     expect(communicationPrepMigration).toContain(
       'FOREIGN KEY ("savedListViewId") REFERENCES "SavedListView"("id") ON DELETE SET NULL',
+    );
+  });
+
+  it("mirrors Rock person connection status as a defined value relation", () => {
+    expect(personConnectionStatusMigration).toContain(
+      'ADD COLUMN "connectionStatusValueRockId" INTEGER',
+    );
+    expect(personConnectionStatusMigration).toContain(
+      'CREATE INDEX "RockPerson_connectionStatusValueRockId_idx"',
+    );
+    expect(personConnectionStatusMigration).toContain(
+      'FOREIGN KEY ("connectionStatusValueRockId") REFERENCES "RockDefinedValue"("rockId")',
+    );
+  });
+
+  it("creates app-owned platform fund settings and refresh status", () => {
+    expect(platformFundSettingsMigration).toContain(
+      'CREATE TABLE "PlatformFundSetting"',
+    );
+    expect(platformFundSettingsMigration).toContain(
+      'CREATE TABLE "DerivedCalculationRefresh"',
+    );
+    expect(platformFundSettingsMigration).toContain(
+      'CREATE UNIQUE INDEX "PlatformFundSetting_accountRockId_key"',
+    );
+    expect(platformFundSettingsMigration).toContain(
+      'FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId")',
+    );
+    expect(platformFundSettingsMigration).toContain(
+      'CREATE TYPE "DerivedCalculationKind" AS ENUM',
     );
   });
 });

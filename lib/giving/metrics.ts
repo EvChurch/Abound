@@ -1,6 +1,11 @@
 import type { GiftReliabilityKind, PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import {
+  getPlatformFundScope,
+  platformFundScopeSourceExplanation,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 export type GivingSummary = {
   totalGiven: string;
@@ -139,18 +144,23 @@ export async function getPersonGivingSummary(
   personRockId: number,
   client: PrismaClient = prisma,
 ) {
+  const fundScope = await getPlatformFundScope(client);
   const facts = await client.givingFact.findMany({
     orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
     select: givingFactSummarySelect,
     where: {
       personRockId,
+      ...whereForEnabledPlatformFunds(fundScope),
     },
   });
 
-  return summarizeGivingFacts(
-    facts,
-    new Date(),
-    await accountNamesForFacts(facts, client),
+  return withPlatformFundSourceExplanation(
+    summarizeGivingFacts(
+      facts,
+      new Date(),
+      await accountNamesForFacts(facts, client),
+    ),
+    fundScope,
   );
 }
 
@@ -158,18 +168,23 @@ export async function getHouseholdGivingSummary(
   householdRockId: number,
   client: PrismaClient = prisma,
 ) {
+  const fundScope = await getPlatformFundScope(client);
   const facts = await client.givingFact.findMany({
     orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
     select: givingFactSummarySelect,
     where: {
       householdRockId,
+      ...whereForEnabledPlatformFunds(fundScope),
     },
   });
 
-  return summarizeGivingFacts(
-    facts,
-    new Date(),
-    await accountNamesForFacts(facts, client),
+  return withPlatformFundSourceExplanation(
+    summarizeGivingFacts(
+      facts,
+      new Date(),
+      await accountNamesForFacts(facts, client),
+    ),
+    fundScope,
   );
 }
 
@@ -177,6 +192,7 @@ export async function getHouseholdDonorTrend(
   referenceDate = new Date(),
   client: PrismaClient = prisma,
 ) {
+  const fundScope = await getPlatformFundScope(client);
   const monthKeys = lastTwentyFourCompletedMonthKeys(referenceDate);
   const startMonth = parseMonthKey(monthKeys[0] ?? monthKey(referenceDate));
   const endMonth = new Date(
@@ -195,6 +211,7 @@ export async function getHouseholdDonorTrend(
       householdRockId: true,
     },
     where: {
+      ...whereForEnabledPlatformFunds(fundScope),
       effectiveMonth: {
         gte: startMonth,
         lt: endMonth,
@@ -205,10 +222,13 @@ export async function getHouseholdDonorTrend(
     },
   });
 
-  return summarizeHouseholdDonorTrend(
-    facts,
-    referenceDate,
-    await campusNamesForFacts(facts, client),
+  return withPlatformFundTrendSourceExplanation(
+    summarizeHouseholdDonorTrend(
+      facts,
+      referenceDate,
+      await campusNamesForFacts(facts, client),
+    ),
+    fundScope,
   );
 }
 
@@ -226,6 +246,34 @@ export function summarizeGivingFacts(
       referenceDate,
       accountNames,
     ),
+  };
+}
+
+function withPlatformFundSourceExplanation(
+  summary: GivingSummary,
+  scope: Awaited<ReturnType<typeof getPlatformFundScope>>,
+) {
+  return {
+    ...summary,
+    sourceExplanation:
+      summary.sourceExplanation + platformFundScopeSourceExplanation(scope),
+    accountSummaries: summary.accountSummaries.map((accountSummary) => ({
+      ...accountSummary,
+      sourceExplanation:
+        accountSummary.sourceExplanation +
+        platformFundScopeSourceExplanation(scope),
+    })),
+  };
+}
+
+function withPlatformFundTrendSourceExplanation(
+  trend: HouseholdDonorTrend,
+  scope: Awaited<ReturnType<typeof getPlatformFundScope>>,
+) {
+  return {
+    ...trend,
+    sourceExplanation:
+      trend.sourceExplanation + platformFundScopeSourceExplanation(scope),
   };
 }
 

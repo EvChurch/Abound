@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { ListViewShell } from "@/components/list-views/list-view-shell";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import { hasPermission } from "@/lib/auth/roles";
 import { listHouseholds } from "@/lib/list-views/households-list";
+import { getCampusFilterOptions } from "@/lib/list-views/campus-options";
 import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
 import {
   buildHouseholdFilter,
@@ -32,21 +34,28 @@ export default async function HouseholdLookupPage({
 
   const params = await searchParams;
   const filterDefinition = buildHouseholdFilter(params);
-  const connection = await listHouseholds(
-    {
-      after: params.after,
-      filterDefinition,
-      first: 50,
-    },
-    accessState.user,
-  );
+  const [campusOptions, connection] = await Promise.all([
+    getCampusFilterOptions(),
+    listHouseholds(
+      {
+        after: params.after,
+        filterDefinition,
+        first: 50,
+      },
+      accessState.user,
+    ),
+  ]);
 
   return (
     <ListViewShell
+      campusOptions={campusOptions}
       catalog={getListViewFilterCatalog("HOUSEHOLDS", accessState.user.role)}
       columns={parseColumns(params)}
       connection={connection}
-      filterDefinitionJson={JSON.stringify(filterDefinition)}
+      canManageSettings={hasPermission(
+        accessState.user.role,
+        "settings:manage",
+      )}
       filters={householdFiltersFromParams(params)}
       kind="households"
       lifecycle={params.lifecycle}

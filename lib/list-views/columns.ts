@@ -1,8 +1,8 @@
-export type ListColumnKey = "campus" | "lifecycle" | "tasks" | "giving";
+export type ListColumnKey = "campus" | "lifecycle" | "tasks" | "pledges";
 
 export const defaultListColumns: ListColumnKey[] = [
   "campus",
   "lifecycle",
   "tasks",
-  "giving",
+  "pledges",
 ];

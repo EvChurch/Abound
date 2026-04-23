@@ -8,8 +8,11 @@ import type { SyncProgressEvent } from "@/lib/sync/run-sync";
 import {
   createSyncBoss,
   ensureSyncQueues,
+  GIVING_DERIVED_REFRESH_QUEUE,
+  performFundScopedGivingRefreshJob,
   performRockFullSyncJob,
   performRockPersonSyncJob,
+  type FundScopedGivingRefreshJobData,
   ROCK_FULL_SYNC_QUEUE,
   type RockFullSyncJobData,
   ROCK_PERSON_SYNC_QUEUE,
@@ -89,6 +92,39 @@ async function main() {
         });
         processed += 1;
         logSyncResult(ROCK_PERSON_SYNC_QUEUE, job.id, result);
+      }
+
+      if (once && resolveOnce) {
+        resolveOnce();
+      }
+    },
+  );
+
+  await boss.work<FundScopedGivingRefreshJobData>(
+    GIVING_DERIVED_REFRESH_QUEUE,
+    {
+      batchSize: 1,
+      pollingIntervalSeconds: 1,
+    },
+    async (jobs: Job<FundScopedGivingRefreshJobData>[]) => {
+      for (const job of jobs) {
+        console.log(
+          `queue=${GIVING_DERIVED_REFRESH_QUEUE} jobId=${job.id} started`,
+        );
+        const result = await performFundScopedGivingRefreshJob(job.data, {
+          prisma,
+        });
+        processed += 1;
+        console.log(
+          [
+            `queue=${GIVING_DERIVED_REFRESH_QUEUE}`,
+            `jobId=${job.id}`,
+            `refreshId=${job.data.refreshId}`,
+            `totalSnapshots=${result.totalSnapshots}`,
+            `personSnapshots=${result.personSnapshots}`,
+            `householdSnapshots=${result.householdSnapshots}`,
+          ].join(" "),
+        );
       }
 
       if (once && resolveOnce) {

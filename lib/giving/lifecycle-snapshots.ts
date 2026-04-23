@@ -6,10 +6,17 @@ import {
   lifecycleExplanationForRole,
   type GivingLifecycleFact,
 } from "@/lib/giving/lifecycle";
+import {
+  getPlatformFundScope,
+  whereForEnabledPlatformFunds,
+} from "@/lib/settings/funds";
 
 type LifecycleSnapshotClient = Pick<
   PrismaClient,
-  "$transaction" | "givingFact" | "givingLifecycleSnapshot"
+  | "$transaction"
+  | "givingFact"
+  | "givingLifecycleSnapshot"
+  | "platformFundSetting"
 >;
 
 export type RefreshLifecycleSnapshotsInput = {
@@ -31,6 +38,7 @@ export async function refreshGivingLifecycleSnapshots(
   }
 
   const referenceDate = input.referenceDate ?? new Date();
+  const fundScope = await getPlatformFundScope(client);
   const facts = await client.givingFact.findMany({
     orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
     select: {
@@ -41,6 +49,7 @@ export async function refreshGivingLifecycleSnapshots(
       personRockId: true,
       reliabilityKind: true,
     },
+    where: whereForEnabledPlatformFunds(fundScope),
   });
   const personRows = buildSnapshotRows({
     factsByRockId: groupFacts(facts, "personRockId"),
@@ -58,11 +67,7 @@ export async function refreshGivingLifecycleSnapshots(
 
   try {
     await client.$transaction(async (tx) => {
-      await tx.givingLifecycleSnapshot.deleteMany({
-        where: {
-          lastSyncRunId: input.syncRunId,
-        },
-      });
+      await tx.givingLifecycleSnapshot.deleteMany({});
 
       if (rows.length > 0) {
         await tx.givingLifecycleSnapshot.createMany({

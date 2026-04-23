@@ -224,6 +224,10 @@ describe("HomePage", () => {
       "href",
       "/sync",
     );
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/settings/funds",
+    );
     expect(
       screen.getByRole("heading", { name: "Dashboard" }),
     ).toBeInTheDocument();

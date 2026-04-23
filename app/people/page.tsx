@@ -3,8 +3,12 @@ import { redirect } from "next/navigation";
 import { ListViewShell } from "@/components/list-views/list-view-shell";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import { hasPermission } from "@/lib/auth/roles";
+import { getCampusFilterOptions } from "@/lib/list-views/campus-options";
+import { getPersonConnectionStatusFilterOptions } from "@/lib/list-views/connection-status-options";
 import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
 import { listPeople } from "@/lib/list-views/people-list";
+import { getPersonRecordStatusFilterOptions } from "@/lib/list-views/record-status-options";
 import {
   buildPeopleFilter,
   parseColumns,
@@ -32,26 +36,42 @@ export default async function PeopleLookupPage({
 
   const params = await searchParams;
   const filterDefinition = buildPeopleFilter(params);
-  const connection = await listPeople(
-    {
-      after: params.after,
-      filterDefinition,
-      first: 50,
-    },
-    accessState.user,
-  );
+  const [
+    campusOptions,
+    connectionStatusOptions,
+    recordStatusOptions,
+    connection,
+  ] = await Promise.all([
+    getCampusFilterOptions(),
+    getPersonConnectionStatusFilterOptions(),
+    getPersonRecordStatusFilterOptions(),
+    listPeople(
+      {
+        after: params.after,
+        filterDefinition,
+        first: 50,
+      },
+      accessState.user,
+    ),
+  ]);
 
   return (
     <ListViewShell
+      campusOptions={campusOptions}
       catalog={getListViewFilterCatalog("PEOPLE", accessState.user.role)}
       columns={parseColumns(params)}
       connection={connection}
+      canManageSettings={hasPermission(
+        accessState.user.role,
+        "settings:manage",
+      )}
       ageGroup={params.ageGroup}
-      filterDefinitionJson={JSON.stringify(filterDefinition)}
       filters={peopleFiltersFromParams(params)}
       kind="people"
       lifecycle={params.lifecycle}
       query={params.q}
+      connectionStatusOptions={connectionStatusOptions}
+      recordStatusOptions={recordStatusOptions}
     />
   );
 }
