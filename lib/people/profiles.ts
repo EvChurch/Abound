@@ -50,6 +50,7 @@ export type ProfilePersonSummary = {
   lastName: string | null;
   email: string | null;
   emailActive: boolean | null;
+  connectionStatus?: string | null;
   deceased: boolean;
   photoUrl: string | null;
   primaryCampus: ProfileCampus | null;
@@ -83,11 +84,17 @@ export type ProfileGivingSummary = GivingSummary & {
   source: "HOUSEHOLD" | "PERSON";
 };
 
+export type ProfileLifecycleLabel = {
+  lifecycle: string;
+  summary: string;
+};
+
 export type RockPersonProfile = ProfilePersonSummary & {
   givingId: string | null;
   givingLeaderRockId: number | null;
   primaryAliasRockId: number | null;
   recordStatus: string | null;
+  lifecycle: ProfileLifecycleLabel[];
   givingHousehold: ProfileHouseholdSummary | null;
   householdMemberships: HouseholdMembershipProfile[];
   staffTasks: ProfileTask[];
@@ -134,6 +141,7 @@ type HouseholdSummaryRow = {
 };
 
 type PersonSummaryRow = {
+  connectionStatus?: { value: string } | null;
   deceased: boolean;
   email: string | null;
   emailActive: boolean | null;
@@ -147,6 +155,11 @@ type PersonSummaryRow = {
 };
 
 const personProfileSelect = {
+  connectionStatus: {
+    select: {
+      value: true,
+    },
+  },
   deceased: true,
   email: true,
   emailActive: true,
@@ -157,6 +170,14 @@ const personProfileSelect = {
   },
   givingId: true,
   givingLeaderRockId: true,
+  givingLifecycleSnapshots: {
+    orderBy: [{ windowEndedAt: "desc" }, { lifecycle: "asc" }],
+    select: {
+      lifecycle: true,
+      summary: true,
+    },
+    take: 4,
+  },
   householdMembers: {
     orderBy: [{ archived: "asc" }, { rockId: "asc" }],
     select: {
@@ -255,6 +276,7 @@ export async function getRockPersonProfile(
     givingId: person.givingId,
     givingLeaderRockId: person.givingLeaderRockId,
     givingSummary,
+    lifecycle: lifecycleLabels(person.givingLifecycleSnapshots),
     pledgeEditor,
     householdMemberships: person.householdMembers.map((membership) => ({
       archived: membership.archived,
@@ -436,6 +458,7 @@ async function findProfileTasks(
 
 function mapPersonSummary(person: PersonSummaryRow) {
   return {
+    connectionStatus: person.connectionStatus?.value ?? null,
     deceased: person.deceased,
     displayName: displayName(person),
     email: person.email,
@@ -550,6 +573,11 @@ function householdSummarySelect() {
 
 function personSummarySelect() {
   return {
+    connectionStatus: {
+      select: {
+        value: true,
+      },
+    },
     deceased: true,
     email: true,
     emailActive: true,
@@ -565,4 +593,23 @@ function personSummarySelect() {
     },
     rockId: true,
   } as const;
+}
+
+function lifecycleLabels(
+  snapshots: Array<{ lifecycle: string; summary: string }>,
+) {
+  const labels: ProfileLifecycleLabel[] = [];
+
+  for (const snapshot of snapshots) {
+    if (labels.some((label) => label.lifecycle === snapshot.lifecycle)) {
+      continue;
+    }
+
+    labels.push({
+      lifecycle: snapshot.lifecycle,
+      summary: snapshot.summary,
+    });
+  }
+
+  return labels;
 }

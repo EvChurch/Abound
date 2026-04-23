@@ -1,11 +1,13 @@
+import Link from "next/link";
+
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import type {
+  DashboardLifecycleKind,
   HouseholdDonorTrend,
-  HouseholdMovementKind,
-  HouseholdMovementSummary,
+  LifecycleCounts,
 } from "@/lib/giving/metrics";
 
 type StaffDashboardProps = {
@@ -108,8 +110,7 @@ export function StaffDashboard({
         </section>
 
         <HouseholdMovementPanel
-          atRiskHouseholds={householdDonorTrend.atRiskHouseholdDonors}
-          movement={householdDonorTrend.movement}
+          lifecycleCounts={householdDonorTrend.lifecycleCounts}
         />
       </main>
     </div>
@@ -118,52 +119,64 @@ export function StaffDashboard({
 
 type MonthlyPeak = HouseholdDonorTrend["months"][number];
 
-const movementLabels: Record<HouseholdMovementKind, string> = {
+const movementLabels: Record<DashboardLifecycleKind, string> = {
+  AT_RISK: "At-risk",
   DROPPED: "Dropped",
+  HEALTHY: "Healthy",
   NEW: "New",
   REACTIVATED: "Reactivated",
-  RETAINED: "Retained",
 };
 
-const movementDetails: Record<HouseholdMovementKind, string> = {
-  DROPPED: "Gave in prior month, missing in latest",
-  NEW: "First month in this window",
-  REACTIVATED: "Returned after an inactive month",
-  RETAINED: "Gave in both months",
+const movementDetails: Record<DashboardLifecycleKind, string> = {
+  AT_RISK: "Usually gave regularly, but has not given for 90-180 days.",
+  DROPPED: "Usually gave regularly, but has not given for 180-270 days.",
+  HEALTHY: "Has given within the last 90 days and has no warning signal.",
+  NEW: "First recorded gift was within the last 90 days.",
+  REACTIVATED: "Gave again after at least 180 quiet days.",
 };
 
 function HouseholdMovementPanel({
-  atRiskHouseholds,
-  movement,
+  lifecycleCounts,
 }: {
-  atRiskHouseholds: number;
-  movement: HouseholdMovementSummary;
+  lifecycleCounts: LifecycleCounts;
 }) {
   const cards: MovementCard[] = [
     {
-      count: movement.counts.DROPPED,
+      count: lifecycleCounts.HEALTHY,
+      detail: movementDetails.HEALTHY,
+      href: "/people?lifecycle=HEALTHY",
+      key: "HEALTHY",
+      label: movementLabels.HEALTHY,
+      tone: "HEALTHY",
+    },
+    {
+      count: lifecycleCounts.DROPPED,
       detail: movementDetails.DROPPED,
+      href: "/people?lifecycle=DROPPED",
       key: "DROPPED",
       label: movementLabels.DROPPED,
       tone: "DROPPED",
     },
     {
-      count: atRiskHouseholds,
-      detail: "Active recently, not latest",
+      count: lifecycleCounts.AT_RISK,
+      detail: movementDetails.AT_RISK,
+      href: "/people?lifecycle=AT_RISK",
       key: "AT_RISK",
-      label: "At-risk",
+      label: movementLabels.AT_RISK,
       tone: "AT_RISK",
     },
     {
-      count: movement.counts.REACTIVATED,
+      count: lifecycleCounts.REACTIVATED,
       detail: movementDetails.REACTIVATED,
+      href: "/people?lifecycle=REACTIVATED",
       key: "REACTIVATED",
       label: movementLabels.REACTIVATED,
       tone: "REACTIVATED",
     },
     {
-      count: movement.counts.NEW,
+      count: lifecycleCounts.NEW,
       detail: movementDetails.NEW,
+      href: "/people?lifecycle=NEW",
       key: "NEW",
       label: movementLabels.NEW,
       tone: "NEW",
@@ -172,28 +185,17 @@ function HouseholdMovementPanel({
 
   return (
     <section className="grid gap-5 rounded-[10px] border border-app-border bg-app-surface p-5 shadow-[0_1px_2px_rgba(150,140,120,0.16)]">
-      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-        <div>
-          <h2 className="text-[20px] font-semibold text-app-foreground">
-            Household movement
-          </h2>
-          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-app-muted">
-            Compares {formatMovementMonth(movement.latestMonth)} with{" "}
-            {formatMovementMonth(movement.previousMonth)} and highlights the
-            households most likely to need attention.
-          </p>
-        </div>
-        <div className="rounded-[7px] border border-app-border bg-app-chip px-3 py-2 text-[12px] font-semibold text-app-muted">
-          Latest complete month
-        </div>
-      </div>
+      <h2 className="text-[20px] font-semibold text-app-foreground">
+        Giving lifecycle
+      </h2>
 
-      <dl className="grid gap-3 md:grid-cols-4">
+      <dl className="grid gap-3 md:grid-cols-5">
         {cards.map((card) => (
           <MovementMetric
             key={card.key}
             count={card.count}
             detail={card.detail}
+            href={card.href}
             label={card.label}
             tone={card.tone}
           />
@@ -206,6 +208,7 @@ function HouseholdMovementPanel({
 type MovementCard = {
   count: number;
   detail: string;
+  href?: string;
   key: string;
   label: string;
   tone: MovementTone;
@@ -214,16 +217,27 @@ type MovementCard = {
 function MovementMetric({
   count,
   detail,
+  href,
   label,
   tone,
 }: {
   count: number;
   detail: string;
+  href?: string;
   label: string;
   tone: MovementTone;
 }) {
   return (
-    <div className={`rounded-[8px] border p-4 ${movementTone(tone)}`}>
+    <div
+      className={`group relative rounded-[8px] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(38,30,20,0.12)] focus-within:ring-2 focus-within:ring-app-accent/25 focus-within:ring-offset-2 ${movementTone(tone)}`}
+    >
+      {href ? (
+        <Link
+          aria-label={`View ${label.toLowerCase()} people`}
+          className="absolute inset-0 z-10 rounded-[8px]"
+          href={href}
+        />
+      ) : null}
       <dt className="text-[12px] font-semibold">{label}</dt>
       <dd className="mt-2 text-[28px] font-semibold leading-none tabular-nums">
         {formatNumber(count)}
@@ -233,15 +247,15 @@ function MovementMetric({
   );
 }
 
-type MovementTone = HouseholdMovementKind | "AT_RISK";
+type MovementTone = DashboardLifecycleKind;
 
 function movementTone(kind: MovementTone) {
   const tones = {
     AT_RISK: "border-amber-700 bg-amber-50 text-amber-950",
     DROPPED: "border-rose-700 bg-rose-50 text-rose-950",
+    HEALTHY: "border-emerald-700 bg-emerald-50 text-emerald-950",
     NEW: "border-sky-700 bg-sky-50 text-sky-950",
     REACTIVATED: "border-emerald-700 bg-emerald-50 text-emerald-950",
-    RETAINED: "border-app-border bg-app-chip text-app-foreground",
   } satisfies Record<MovementTone, string>;
 
   return tones[kind];
@@ -299,10 +313,6 @@ function formatMonthLabel(value: string) {
     timeZone: "UTC",
     year: "numeric",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-function formatMovementMonth(value: string | null) {
-  return value ? formatMonthLabel(value) : "the selected month";
 }
 
 function formatNumber(value: number) {

@@ -2,6 +2,10 @@ import type { GiftReliabilityKind, PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import {
+  GIVING_LIFECYCLE_KINDS,
+  type GivingLifecycleKind,
+} from "@/lib/giving/lifecycle";
+import {
   getPlatformFundScope,
   platformFundScopeSourceExplanation,
   whereForEnabledPlatformFunds,
@@ -49,11 +53,16 @@ export type MonthlyGiving = {
 export type HouseholdDonorTrend = {
   atRiskHouseholdDonors: number;
   campusSeries: CampusHouseholdDonorSeries[];
+  lifecycleCounts: LifecycleCounts;
   movement: HouseholdMovementSummary;
   months: MonthlyHouseholdDonorCount[];
   sourceExplanation: string;
   totalHouseholdDonors: number;
 };
+
+export type DashboardLifecycleKind = GivingLifecycleKind | "HEALTHY";
+
+export type LifecycleCounts = Record<DashboardLifecycleKind, number>;
 
 export type HouseholdMovementKind =
   | "DROPPED"
@@ -138,6 +147,14 @@ const emptyMovementCounts = (): Record<HouseholdMovementKind, number> => ({
   NEW: 0,
   REACTIVATED: 0,
   RETAINED: 0,
+});
+
+const emptyLifecycleCounts = (): LifecycleCounts => ({
+  AT_RISK: 0,
+  DROPPED: 0,
+  HEALTHY: 0,
+  NEW: 0,
+  REACTIVATED: 0,
 });
 
 export async function getPersonGivingSummary(
@@ -227,6 +244,7 @@ export async function getHouseholdDonorTrend(
       facts,
       referenceDate,
       await campusNamesForFacts(facts, client),
+      await personLifecycleCounts(client, fundScope, referenceDate),
     ),
     fundScope,
   );
@@ -281,6 +299,7 @@ export function summarizeHouseholdDonorTrend(
   facts: GivingFactForHouseholdDonorTrend[],
   referenceDate = new Date(),
   campusNames = new Map<number, CampusName>(),
+  lifecycleCounts = emptyLifecycleCounts(),
 ): HouseholdDonorTrend {
   const monthKeys = lastTwentyFourCompletedMonthKeys(referenceDate);
   const monthKeySet = new Set(monthKeys);
@@ -375,6 +394,7 @@ export function summarizeHouseholdDonorTrend(
         );
       }),
     movement: summarizeHouseholdMovement(facts, monthKeys, campusNames),
+    lifecycleCounts,
     months: monthKeys.map((key) => ({
       householdDonorCount: householdIdsByMonth.get(key)?.size ?? 0,
       month: key,
@@ -382,6 +402,114 @@ export function summarizeHouseholdDonorTrend(
     sourceExplanation: HOUSEHOLD_DONOR_SOURCE_EXPLANATION,
     totalHouseholdDonors: totalHouseholdIds.size,
   };
+}
+
+async function personLifecycleCounts(
+  client: PrismaClient,
+  fundScope: Awaited<ReturnType<typeof getPlatformFundScope>>,
+  referenceDate: Date,
+) {
+  try {
+    const [snapshotRows, factRows] = await Promise.all([
+      client.givingLifecycleSnapshot.findMany({
+        select: {
+          lifecycle: true,
+          personRockId: true,
+        },
+        where: {
+          personRockId: {
+            not: null,
+          },
+          resource: "PERSON",
+        },
+      }),
+      client.givingFact.findMany({
+        orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }],
+        select: {
+          effectiveMonth: true,
+          occurredAt: true,
+          personRockId: true,
+        },
+        where: {
+          ...whereForEnabledPlatformFunds(fundScope),
+          personRockId: {
+            not: null,
+          },
+        },
+      }),
+    ]);
+    const personIdsByLifecycle = new Map<GivingLifecycleKind, Set<number>>();
+    const personIdsWithLifecycle = new Set<number>();
+
+    for (const row of snapshotRows) {
+      if (row.personRockId && GIVING_LIFECYCLE_KINDS.includes(row.lifecycle)) {
+        const people = personIdsByLifecycle.get(row.lifecycle) ?? new Set();
+        people.add(row.personRockId);
+        personIdsByLifecycle.set(row.lifecycle, people);
+        personIdsWithLifecycle.add(row.personRockId);
+      }
+    }
+    const counts = emptyLifecycleCounts();
+
+    for (const lifecycle of GIVING_LIFECYCLE_KINDS) {
+      counts[lifecycle] = personIdsByLifecycle.get(lifecycle)?.size ?? 0;
+    }
+
+    counts.HEALTHY = healthyPersonCount({
+      factRows,
+      personIdsWithLifecycle,
+      referenceDate,
+    });
+
+    return counts;
+  } catch (error) {
+    if (isMissingLifecycleSnapshotTable(error)) {
+      return emptyLifecycleCounts();
+    }
+
+    throw error;
+  }
+}
+
+function healthyPersonCount({
+  factRows,
+  personIdsWithLifecycle,
+  referenceDate,
+}: {
+  factRows: Array<{
+    effectiveMonth: Date;
+    occurredAt: Date | null;
+    personRockId: number | null;
+  }>;
+  personIdsWithLifecycle: Set<number>;
+  referenceDate: Date;
+}) {
+  const recentStart = subtractDays(referenceDate, 90);
+  const latestGiftAtByPerson = new Map<number, Date>();
+
+  for (const fact of factRows) {
+    if (!fact.personRockId) {
+      continue;
+    }
+
+    const giftAt = fact.occurredAt ?? fact.effectiveMonth;
+    const currentLatest = latestGiftAtByPerson.get(fact.personRockId);
+
+    if (!currentLatest || giftAt > currentLatest) {
+      latestGiftAtByPerson.set(fact.personRockId, giftAt);
+    }
+  }
+
+  return Array.from(latestGiftAtByPerson.entries()).filter(
+    ([personRockId, latestGiftAt]) =>
+      latestGiftAt >= recentStart &&
+      latestGiftAt <= referenceDate &&
+      !personIdsWithLifecycle.has(personRockId),
+  ).length;
+}
+
+function subtractDays(date: Date, days: number) {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
 }
 
 function summarizeAtRiskHouseholds(
@@ -972,6 +1100,15 @@ function offsetMonthKey(value: string, offset: number) {
   const [year, month] = value.split("-").map(Number);
 
   return monthKey(new Date(Date.UTC(year, month - 1 + offset, 1)));
+}
+
+function isMissingLifecycleSnapshotTable(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2021"
+  );
 }
 
 function decimalToCents(value: unknown) {

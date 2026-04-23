@@ -35,6 +35,7 @@ function personProfile(
 ): RockPersonProfile {
   return {
     amountsHidden: false,
+    connectionStatus: "Member",
     deceased: false,
     displayName: "Jane Donor",
     email: "jane@example.com",
@@ -176,6 +177,12 @@ function personProfile(
     ],
     lastName: "Donor",
     lastSyncedAt: new Date("2026-04-18T10:00:00.000Z"),
+    lifecycle: [
+      {
+        lifecycle: "REACTIVATED",
+        summary: "Giving activity resumed after a dormant period.",
+      },
+    ],
     nickName: "Jane",
     photoUrl: null,
     primaryAliasRockId: 1001,
@@ -225,6 +232,13 @@ describe("PersonProfile", () => {
     expect(screen.getByText("Current 12 months")).toBeInTheDocument();
     expect(screen.getByLabelText("Account")).toHaveValue("all");
     expect(screen.getByText("Rock sync")).toBeInTheDocument();
+    expect(screen.getByText("Connection status")).toBeInTheDocument();
+    expect(screen.getByText("Member")).toBeInTheDocument();
+    expect(screen.getByText("Lifecycle status")).toBeInTheDocument();
+    expect(screen.getByText("Reactivated")).toHaveAttribute(
+      "title",
+      "Giving activity resumed after a dormant period.",
+    );
     expect(screen.getByText("Pledges")).toBeInTheDocument();
     expect(screen.getByText("Quick create")).toBeInTheDocument();
     expect(screen.getByText("Create draft")).toBeInTheDocument();

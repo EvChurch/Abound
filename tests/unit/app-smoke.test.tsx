@@ -44,6 +44,13 @@ const mocks = vi.hoisted(() => ({
         totalHouseholdDonors: 26,
       },
     ],
+    lifecycleCounts: {
+      AT_RISK: 5,
+      DROPPED: 7,
+      HEALTHY: 42,
+      NEW: 2,
+      REACTIVATED: 3,
+    },
     movement: {
       campusSummaries: [
         {
@@ -237,7 +244,30 @@ describe("HomePage", () => {
     expect(screen.queryByText("Home")).not.toBeInTheDocument();
     expect(screen.queryByText("Household donor trend")).not.toBeInTheDocument();
     expect(screen.getByText("Household donors by campus")).toBeInTheDocument();
-    expect(screen.getByText("Household movement")).toBeInTheDocument();
+    expect(screen.getByText("Giving lifecycle")).toBeInTheDocument();
+    expect(screen.queryByText("Current badge count")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Counts people with current lifecycle badges/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Usually gave regularly, but has not given for 90-180 days.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Usually gave regularly, but has not given for 180-270 days.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("First recorded gift was within the last 90 days."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Gave again after at least 180 quiet days."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Compares .+ with .+ and highlights/i),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Campus movement")).not.toBeInTheDocument();
     expect(screen.queryByText("Drop-off analysis")).not.toBeInTheDocument();
     expect(screen.queryByText("Last 24 months")).not.toBeInTheDocument();
@@ -247,9 +277,46 @@ describe("HomePage", () => {
       screen.queryByText("Reactivated households"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("New households")).not.toBeInTheDocument();
+    expect(screen.getByText("Healthy")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Has given within the last 90 days and has no warning signal.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Dropped").length).toBeGreaterThan(0);
     expect(screen.getAllByText("At-risk").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Reactivated").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: "View healthy people" }),
+    ).toHaveAttribute("href", "/people?lifecycle=HEALTHY");
+    expect(
+      screen.getByRole("link", { name: "View healthy people" }).parentElement,
+    ).toHaveTextContent("42");
+    expect(
+      screen.getByRole("link", { name: "View dropped people" }),
+    ).toHaveAttribute("href", "/people?lifecycle=DROPPED");
+    expect(
+      screen.getByRole("link", { name: "View dropped people" }).parentElement,
+    ).toHaveTextContent("7");
+    expect(
+      screen.getByRole("link", { name: "View at-risk people" }),
+    ).toHaveAttribute("href", "/people?lifecycle=AT_RISK");
+    expect(
+      screen.getByRole("link", { name: "View at-risk people" }).parentElement,
+    ).toHaveTextContent("5");
+    expect(
+      screen.getByRole("link", { name: "View reactivated people" }),
+    ).toHaveAttribute("href", "/people?lifecycle=REACTIVATED");
+    expect(
+      screen.getByRole("link", { name: "View reactivated people" })
+        .parentElement,
+    ).toHaveTextContent("3");
+    expect(
+      screen.getByRole("link", { name: "View new people" }),
+    ).toHaveAttribute("href", "/people?lifecycle=NEW");
+    expect(
+      screen.getByRole("link", { name: "View new people" }).parentElement,
+    ).toHaveTextContent("2");
     expect(screen.queryByText("Retained")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Ng Household/i })).toBeNull();
     expect(

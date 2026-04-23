@@ -1,6 +1,5 @@
 import { CircleCheck, FilePenLine, SearchCheck } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 import type {
   HouseholdListRow,
@@ -71,6 +70,7 @@ function PeopleRow({
   row: PersonListRow;
 }) {
   const showPledgeColumn = columns.includes("pledges");
+  const showSignalColumn = showPledgeColumn || Boolean(row.givingSummary);
 
   return (
     <article
@@ -79,8 +79,8 @@ function PeopleRow({
     >
       <div
         className={
-          showPledgeColumn
-            ? "grid min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-start"
+          showSignalColumn
+            ? "grid min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(260px,380px)] md:items-stretch"
             : "min-w-0"
         }
       >
@@ -101,10 +101,10 @@ function PeopleRow({
             <PersonDisplayFields columns={columns} row={row} />
           </div>
         </div>
-        {showPledgeColumn ? (
-          <PledgeColumn
-            amountsHidden={row.amountsHidden}
-            summary={row.pledgeSummary}
+        {showSignalColumn ? (
+          <GivingSignalColumn
+            givingSummary={row.givingSummary}
+            pledgeSummary={showPledgeColumn ? row.pledgeSummary : null}
           />
         ) : null}
       </div>
@@ -153,14 +153,10 @@ function PersonDisplayFields({
   row: PersonListRow;
 }) {
   return (
-    <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] leading-tight">
-      {columns.includes("lifecycle") && row.lifecycle.length > 0 ? (
-        <LifecycleField labels={row.lifecycle} />
-      ) : null}
-      {columns.includes("tasks") ? (
-        <DisplayField label="Tasks">{row.openTaskCount}</DisplayField>
-      ) : null}
-    </dl>
+    <MetadataLine
+      labels={columns.includes("lifecycle") ? row.lifecycle : []}
+      taskCount={columns.includes("tasks") ? row.openTaskCount : null}
+    />
   );
 }
 
@@ -172,14 +168,10 @@ function HouseholdDisplayFields({
   row: HouseholdListRow;
 }) {
   return (
-    <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] leading-tight">
-      {columns.includes("lifecycle") && row.lifecycle.length > 0 ? (
-        <LifecycleField labels={row.lifecycle} />
-      ) : null}
-      {columns.includes("tasks") ? (
-        <DisplayField label="Tasks">{row.openTaskCount}</DisplayField>
-      ) : null}
-    </dl>
+    <MetadataLine
+      labels={columns.includes("lifecycle") ? row.lifecycle : []}
+      taskCount={columns.includes("tasks") ? row.openTaskCount : null}
+    />
   );
 }
 
@@ -298,21 +290,26 @@ function normalizeColumns(columns: ListColumnKey[] = defaultListColumns) {
   return selected.length > 0 ? selected : defaultListColumns;
 }
 
-function DisplayField({
-  children,
-  label,
+function MetadataLine({
+  labels,
+  taskCount,
 }: {
-  children: ReactNode;
-  label: string;
+  labels: Array<{ lifecycle: string; summary: string }>;
+  taskCount: number | null;
 }) {
+  const visibleTaskCount = taskCount && taskCount > 0 ? taskCount : null;
+
+  if (labels.length === 0 && visibleTaskCount === null) {
+    return null;
+  }
+
   return (
-    <div className="inline-flex min-w-0 max-w-full items-baseline gap-1.5">
-      <dt className="shrink-0 font-mono text-[10px] font-semibold uppercase text-app-muted">
-        {label}
-      </dt>
-      <dd className="min-w-0 truncate font-medium text-app-foreground">
-        {children}
-      </dd>
+    <div className="mt-1 min-w-0 truncate text-[12px] font-medium leading-tight text-app-foreground">
+      {labels.length > 0 ? <LifecycleField labels={labels} /> : null}
+      {labels.length > 0 && visibleTaskCount !== null ? (
+        <span className="text-app-muted"> · </span>
+      ) : null}
+      {visibleTaskCount !== null ? formatTaskCount(visibleTaskCount) : null}
     </div>
   );
 }
@@ -322,42 +319,232 @@ function LifecycleField({
 }: {
   labels: Array<{ lifecycle: string; summary: string }>;
 }) {
-  const text = labels
-    .map((label) => label.lifecycle.replace("_", " "))
-    .join(", ");
   const title = labels.map((label) => label.summary).join("\n");
 
   return (
-    <span
-      className="min-w-0 truncate font-medium text-app-foreground"
-      title={title}
-    >
-      {text}
+    <span className="min-w-0 truncate font-medium" title={title}>
+      {labels.map((label, index) => (
+        <span key={`${label.lifecycle}:${index}`}>
+          {index > 0 ? <span className="text-app-muted">, </span> : null}
+          <span className={lifecycleTone(label.lifecycle)}>
+            {formatLifecycle(label.lifecycle)}
+          </span>
+        </span>
+      ))}
     </span>
   );
 }
 
-function PledgeColumn({
-  amountsHidden,
-  summary,
+function formatLifecycle(value: string) {
+  const labels: Record<string, string> = {
+    AT_RISK: "At risk",
+    DROPPED: "Dropped",
+    NEW: "New",
+    REACTIVATED: "Reactivated",
+  };
+
+  return labels[value] ?? value.replaceAll("_", " ").toLowerCase();
+}
+
+function formatTaskCount(count: number) {
+  return `${count} ${count === 1 ? "task" : "tasks"}`;
+}
+
+function lifecycleTone(value: string) {
+  const tones: Record<string, string> = {
+    AT_RISK: "text-amber-800",
+    DROPPED: "text-rose-800",
+    NEW: "text-sky-800",
+    REACTIVATED: "text-emerald-800",
+  };
+
+  return tones[value] ?? "text-app-foreground";
+}
+
+function GivingSignalColumn({
+  givingSummary,
+  pledgeSummary,
 }: {
-  amountsHidden: boolean;
-  summary: PersonListRow["pledgeSummary"] | null;
+  givingSummary: PersonListRow["givingSummary"];
+  pledgeSummary: PersonListRow["pledgeSummary"] | null;
 }) {
+  const showPledges = pledgeSummary && !pledgeSummaryIsEmpty(pledgeSummary);
+
   return (
-    <div
-      aria-label="Pledges"
-      className="min-w-0 pt-1 text-[12px] leading-tight md:py-0"
-    >
-      {!amountsHidden && summary && !pledgeSummaryIsEmpty(summary) ? (
-        <div className="grid min-w-0 gap-1">
-          <PledgeSummaryEntries items={summary.active} stage="Active" />
-          <PledgeSummaryEntries items={summary.draft} stage="Draft" />
-          <PledgeSummaryEntries items={summary.review} stage="Review" />
+    <div className="relative -mb-2.5 -mr-4 min-h-10 min-w-0 overflow-hidden pb-2.5 pr-4 pt-1 text-[12px] leading-tight md:-my-2.5 md:py-2.5">
+      {givingSummary ? <GivingSparkline summary={givingSummary} /> : null}
+      {givingSummary ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-2/3 bg-gradient-to-r from-app-surface via-app-surface/90 to-transparent"
+        />
+      ) : null}
+      {showPledges ? (
+        <div aria-label="Pledges" className="relative z-10 grid min-w-0 gap-1">
+          <PledgeSummaryEntries items={pledgeSummary.active} stage="Active" />
+          <PledgeSummaryEntries items={pledgeSummary.draft} stage="Draft" />
+          <PledgeSummaryEntries items={pledgeSummary.review} stage="Review" />
         </div>
       ) : null}
     </div>
   );
+}
+
+function GivingSparkline({
+  summary,
+}: {
+  summary: NonNullable<PersonListRow["givingSummary"]>;
+}) {
+  const paths = sparklinePaths(summary.monthlyGiving);
+
+  if (!paths) {
+    return null;
+  }
+
+  return (
+    <svg
+      aria-label="Giving trend over the last 12 months"
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full text-app-muted"
+      preserveAspectRatio="none"
+      role="img"
+      viewBox="0 0 120 32"
+    >
+      <title>Giving trend over the last 12 months</title>
+      <path d={paths.area} fill="currentColor" opacity="0.08" stroke="none" />
+      <path
+        d={paths.line}
+        fill="none"
+        opacity="0.18"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.25"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+function sparklinePaths(
+  monthlyGiving: NonNullable<PersonListRow["givingSummary"]>["monthlyGiving"],
+) {
+  const months = sparklineMonths(monthlyGiving);
+
+  if (months.length === 0) {
+    return null;
+  }
+
+  const values = months.map((month) => decimalToNumber(month.totalGiven));
+  const max = Math.max(...values);
+  const bounds = {
+    height: 32,
+    width: 120,
+  };
+  const xStep = months.length > 1 ? bounds.width / (months.length - 1) : 0;
+  const points = values.map((value, index) => {
+    const x = months.length === 1 ? bounds.width : index * xStep;
+    const normalized = max <= 0 ? 0 : value / max;
+    const y = bounds.height - normalized * bounds.height;
+
+    return clampSparklinePoint(
+      {
+        x: roundSparklineCoordinate(x),
+        y: roundSparklineCoordinate(y),
+      },
+      bounds,
+    );
+  });
+  const line =
+    points.length === 1
+      ? singlePointPath(points[0], bounds)
+      : points.slice(1).reduce((path, point, index) => {
+          const previousPoint = points[index];
+          const startControlPoint = controlPoint(
+            points[index - 1] ?? previousPoint,
+            previousPoint,
+            point,
+            bounds,
+          );
+          const endControlPoint = controlPoint(
+            points[index + 2] ?? point,
+            point,
+            previousPoint,
+            bounds,
+          );
+
+          return `${path} C ${startControlPoint.x} ${startControlPoint.y}, ${endControlPoint.x} ${endControlPoint.y}, ${point.x} ${point.y}`;
+        }, `M ${points[0].x} ${points[0].y}`);
+
+  return {
+    area: `${line} L ${bounds.width} ${bounds.height} L 0 ${bounds.height} Z`,
+    line,
+  };
+}
+
+function sparklineMonths(
+  monthlyGiving: NonNullable<PersonListRow["givingSummary"]>["monthlyGiving"],
+) {
+  const months = monthlyGiving.slice(-12);
+  const latestMonth = months.at(-1);
+
+  if (latestMonth && decimalToNumber(latestMonth.totalGiven) === 0) {
+    return months.slice(0, -1);
+  }
+
+  return months;
+}
+
+function singlePointPath(point: SparklinePoint, bounds: SparklineBounds) {
+  return `M 0 ${point.y} L ${bounds.width} ${point.y}`;
+}
+
+function clampSparklinePoint(
+  point: SparklinePoint,
+  bounds: SparklineBounds,
+): SparklinePoint {
+  return {
+    x: roundSparklineCoordinate(clamp(point.x, 0, bounds.width)),
+    y: roundSparklineCoordinate(clamp(point.y, 0, bounds.height)),
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function controlPoint(
+  adjacent: SparklinePoint,
+  current: SparklinePoint,
+  opposite: SparklinePoint,
+  bounds: SparklineBounds,
+): SparklinePoint {
+  return clampSparklinePoint(
+    {
+      x: current.x + (opposite.x - adjacent.x) / 6,
+      y: current.y + (opposite.y - adjacent.y) / 6,
+    },
+    bounds,
+  );
+}
+
+type SparklinePoint = {
+  x: number;
+  y: number;
+};
+
+type SparklineBounds = {
+  height: number;
+  width: number;
+};
+
+function decimalToNumber(value: string) {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function roundSparklineCoordinate(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 type PledgeStage = "Active" | "Draft" | "Review";

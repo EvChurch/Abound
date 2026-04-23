@@ -45,6 +45,9 @@ const household = {
 };
 
 const person = {
+  connectionStatus: {
+    value: "Member",
+  },
   deceased: false,
   email: "jane@example.com",
   emailActive: true,
@@ -53,6 +56,12 @@ const person = {
   givingHousehold: household,
   givingId: "G-910001",
   givingLeaderRockId: null,
+  givingLifecycleSnapshots: [
+    {
+      lifecycle: "AT_RISK",
+      summary: "Previously consistent giving appears interrupted or reduced.",
+    },
+  ],
   householdMembers: [
     {
       archived: false,
@@ -199,11 +208,19 @@ describe("people profile service", () => {
 
     expect(profile).toMatchObject({
       amountsHidden: false,
+      connectionStatus: "Member",
       displayName: "Jane Donor",
       photoUrl: "/api/rock/person-photo/12345",
       givingSummary: {
         totalGiven: "125.50",
       },
+      lifecycle: [
+        {
+          lifecycle: "AT_RISK",
+          summary:
+            "Previously consistent giving appears interrupted or reduced.",
+        },
+      ],
       pledgeEditor: {
         rows: expect.arrayContaining([
           expect.objectContaining({

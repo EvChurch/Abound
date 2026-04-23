@@ -674,6 +674,11 @@ function IdentityDetails({ profile }: { profile: RockPersonProfile }) {
           ) : null,
         ],
         ["Record status", profile.recordStatus],
+        ["Connection status", profile.connectionStatus],
+        [
+          "Lifecycle status",
+          <LifecycleBadges key="lifecycle" profile={profile} />,
+        ],
         [
           "Household member status",
           profile.householdMemberships[0]
@@ -684,6 +689,27 @@ function IdentityDetails({ profile }: { profile: RockPersonProfile }) {
         ],
       ]}
     />
+  );
+}
+
+function LifecycleBadges({ profile }: { profile: RockPersonProfile }) {
+  if (profile.lifecycle.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-w-0 flex-wrap gap-1.5">
+      {profile.lifecycle.map((label) => (
+        <Badge
+          key={label.lifecycle}
+          subtle
+          title={label.summary}
+          tone={lifecycleBadgeTone(label.lifecycle)}
+        >
+          {formatLifecycle(label.lifecycle)}
+        </Badge>
+      ))}
+    </div>
   );
 }
 
@@ -1265,17 +1291,23 @@ function PermissionsPanel({
 function Badge({
   children,
   subtle = false,
+  title,
   tone = "neutral",
 }: {
   children: React.ReactNode;
   subtle?: boolean;
+  title?: string;
   tone?:
     | "accent"
     | "active"
     | "archive"
+    | "atRisk"
+    | "dropped"
     | "high"
     | "inactive"
+    | "new"
     | "neutral"
+    | "reactivated"
     | "warn";
 }) {
   const tones = {
@@ -1285,9 +1317,16 @@ function Badge({
       "border-[oklch(0.88_0.04_150)] bg-[oklch(0.96_0.03_150)] text-[oklch(0.38_0.08_150)]",
     archive:
       "border-[oklch(0.85_0.015_60)] bg-[oklch(0.94_0.01_60)] text-[oklch(0.42_0.02_60)]",
+    atRisk:
+      "border-[oklch(0.87_0.06_70)] bg-[oklch(0.96_0.05_75)] text-[oklch(0.42_0.09_55)]",
+    dropped:
+      "border-[oklch(0.86_0.05_25)] bg-[oklch(0.97_0.035_25)] text-[oklch(0.42_0.09_25)]",
     high: "border-[oklch(0.87_0.05_30)] bg-[oklch(0.96_0.04_30)] text-[oklch(0.44_0.10_30)]",
     inactive: "border-app-border bg-app-chip text-app-faint",
+    new: "border-[oklch(0.86_0.04_240)] bg-[oklch(0.96_0.025_240)] text-[oklch(0.42_0.09_240)]",
     neutral: "border-app-border bg-app-chip text-app-muted",
+    reactivated:
+      "border-[oklch(0.88_0.04_150)] bg-[oklch(0.96_0.03_150)] text-[oklch(0.38_0.08_150)]",
     warn: "border-[oklch(0.87_0.06_70)] bg-[oklch(0.96_0.05_75)] text-[oklch(0.42_0.09_55)]",
   }[tone];
 
@@ -1296,10 +1335,36 @@ function Badge({
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-[4px] border text-[11.5px] font-medium leading-[1.5] tracking-[0.1px] ${
         subtle ? "px-1.5 py-px" : "px-2 py-0.5"
       } ${tones}`}
+      title={title}
     >
       {children}
     </span>
   );
+}
+
+function formatLifecycle(value: string) {
+  const labels: Record<string, string> = {
+    AT_RISK: "At risk",
+    DROPPED: "Dropped",
+    NEW: "New",
+    REACTIVATED: "Reactivated",
+  };
+
+  return labels[value] ?? formatEnum(value);
+}
+
+function lifecycleBadgeTone(value: string) {
+  const tones: Record<
+    string,
+    "atRisk" | "dropped" | "new" | "neutral" | "reactivated"
+  > = {
+    AT_RISK: "atRisk",
+    DROPPED: "dropped",
+    NEW: "new",
+    REACTIVATED: "reactivated",
+  };
+
+  return tones[value] ?? "neutral";
 }
 
 function StatusDot({

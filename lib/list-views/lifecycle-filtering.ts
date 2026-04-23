@@ -17,6 +17,7 @@ import {
 
 type LifecycleSnapshotDelegate = PrismaClient["givingLifecycleSnapshot"];
 type GivingFactDelegate = PrismaClient["givingFact"];
+type LifecycleFilterKind = GivingLifecycleKind | "HEALTHY";
 
 export type LifecycleFilterResource = "PERSON" | "HOUSEHOLD";
 
@@ -40,7 +41,7 @@ export async function resolveLifecycleFilteredRockIds(
   const snapshotIds = await resolveSnapshotLifecycleIds(
     lifecycles,
     resource,
-    client.givingLifecycleSnapshot,
+    client,
   );
 
   if (snapshotIds) {
@@ -55,7 +56,7 @@ export async function resolveLifecycleFilteredRockIds(
   );
 }
 
-function lifecycleValuesFromFilter(node: FilterNode): GivingLifecycleKind[] {
+function lifecycleValuesFromFilter(node: FilterNode): LifecycleFilterKind[] {
   if (node.type === "group") {
     return uniqueLifecycleValues(
       node.conditions.flatMap((condition) =>
@@ -70,7 +71,7 @@ function lifecycleValuesFromFilter(node: FilterNode): GivingLifecycleKind[] {
 
   return valuesFromCondition(node)
     .map((value) => normalizeLifecycle(value))
-    .filter((value): value is GivingLifecycleKind => Boolean(value));
+    .filter((value): value is LifecycleFilterKind => Boolean(value));
 }
 
 function valuesFromCondition(condition: FilterCondition) {
@@ -86,37 +87,39 @@ function normalizeLifecycle(value: unknown) {
     .trim()
     .toUpperCase();
 
+  if (normalized === "HEALTHY") {
+    return normalized;
+  }
+
   return GIVING_LIFECYCLE_KINDS.find((kind) => kind === normalized) ?? null;
 }
 
 async function resolveSnapshotLifecycleIds(
-  lifecycles: GivingLifecycleKind[],
+  lifecycles: LifecycleFilterKind[],
   resource: LifecycleFilterResource,
-  delegate: LifecycleSnapshotDelegate | undefined,
+  client: LifecycleFilterClient,
 ) {
-  if (!delegate) {
+  if (!client.givingLifecycleSnapshot) {
     return null;
   }
 
   try {
-    const rows = await delegate.findMany({
-      select: {
-        householdRockId: true,
-        personRockId: true,
-      },
-      where: {
-        lifecycle: { in: lifecycles },
-        resource,
-      },
-    });
-
-    return uniqueNumbers(
-      rows
-        .map((row) =>
-          resource === "PERSON" ? row.personRockId : row.householdRockId,
-        )
-        .filter((rockId): rockId is number => typeof rockId === "number"),
+    const storedLifecycles = lifecycles.filter(
+      (lifecycle): lifecycle is GivingLifecycleKind => lifecycle !== "HEALTHY",
     );
+    const matchingIds =
+      storedLifecycles.length > 0
+        ? await idsForStoredLifecycleSnapshots(
+            storedLifecycles,
+            resource,
+            client.givingLifecycleSnapshot,
+          )
+        : [];
+    const healthyIds = lifecycles.includes("HEALTHY")
+      ? await resolveHealthyLifecycleIds(resource, client)
+      : [];
+
+    return uniqueNumbers([...matchingIds, ...healthyIds]);
   } catch (error) {
     if (isMissingLifecycleSnapshotTable(error)) {
       return null;
@@ -126,8 +129,111 @@ async function resolveSnapshotLifecycleIds(
   }
 }
 
-async function resolveFactLifecycleIds(
+async function idsForStoredLifecycleSnapshots(
   lifecycles: GivingLifecycleKind[],
+  resource: LifecycleFilterResource,
+  delegate: LifecycleSnapshotDelegate,
+) {
+  const rows = await delegate.findMany({
+    select: {
+      householdRockId: true,
+      personRockId: true,
+    },
+    where: {
+      lifecycle: { in: lifecycles },
+      resource,
+    },
+  });
+
+  return uniqueNumbers(
+    rows
+      .map((row) =>
+        resource === "PERSON" ? row.personRockId : row.householdRockId,
+      )
+      .filter((rockId): rockId is number => typeof rockId === "number"),
+  );
+}
+
+async function resolveHealthyLifecycleIds(
+  resource: LifecycleFilterResource,
+  client: LifecycleFilterClient,
+) {
+  if (!client.givingLifecycleSnapshot) {
+    return [];
+  }
+
+  const referenceDate = new Date();
+  const recentStart = subtractDays(referenceDate, 90);
+  const fundScope = client.platformFundSetting
+    ? await getPlatformFundScope(client)
+    : { enabledAccountRockIds: [], mode: "UNCONFIGURED" as const };
+  const [snapshotRows, factRows] = await Promise.all([
+    client.givingLifecycleSnapshot.findMany({
+      select: {
+        householdRockId: true,
+        personRockId: true,
+      },
+      where: {
+        resource,
+      },
+    }),
+    client.givingFact.findMany({
+      orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }],
+      select: {
+        effectiveMonth: true,
+        householdRockId: true,
+        occurredAt: true,
+        personRockId: true,
+      },
+      where:
+        resource === "PERSON"
+          ? {
+              ...whereForEnabledPlatformFunds(fundScope),
+              personRockId: { not: null },
+            }
+          : {
+              ...whereForEnabledPlatformFunds(fundScope),
+              householdRockId: { not: null },
+            },
+    }),
+  ]);
+  const idsWithLifecycle = new Set(
+    snapshotRows
+      .map((row) =>
+        resource === "PERSON" ? row.personRockId : row.householdRockId,
+      )
+      .filter((rockId): rockId is number => typeof rockId === "number"),
+  );
+  const latestGiftAtById = new Map<number, Date>();
+
+  for (const fact of factRows) {
+    const rockId =
+      resource === "PERSON" ? fact.personRockId : fact.householdRockId;
+
+    if (!rockId) {
+      continue;
+    }
+
+    const giftAt = fact.occurredAt ?? fact.effectiveMonth;
+    const latestGiftAt = latestGiftAtById.get(rockId);
+
+    if (!latestGiftAt || giftAt > latestGiftAt) {
+      latestGiftAtById.set(rockId, giftAt);
+    }
+  }
+
+  return Array.from(latestGiftAtById.entries())
+    .filter(
+      ([rockId, latestGiftAt]) =>
+        latestGiftAt >= recentStart &&
+        latestGiftAt <= referenceDate &&
+        !idsWithLifecycle.has(rockId),
+    )
+    .map(([rockId]) => rockId);
+}
+
+async function resolveFactLifecycleIds(
+  lifecycles: LifecycleFilterKind[],
   resource: LifecycleFilterResource,
   delegate: GivingFactDelegate,
   client?: LifecycleFilterClient,
@@ -157,6 +263,7 @@ async function resolveFactLifecycleIds(
           },
   });
   const lifecycleSet = new Set(lifecycles);
+  const recentStart = subtractDays(new Date(), 90);
   const factsByRockId = new Map<number, GivingLifecycleFact[]>();
 
   for (const fact of facts) {
@@ -175,13 +282,25 @@ async function resolveFactLifecycleIds(
   return [...factsByRockId.entries()]
     .filter(([, groupedFacts]) => {
       const result = classifyGivingLifecycle(groupedFacts);
+      const latestGiftAt = groupedFacts
+        .map((fact) => fact.occurredAt ?? fact.effectiveMonth)
+        .sort((left, right) => right.getTime() - left.getTime())[0];
+
+      if (
+        lifecycleSet.has("HEALTHY") &&
+        !result.kind &&
+        latestGiftAt &&
+        latestGiftAt >= recentStart
+      ) {
+        return true;
+      }
 
       return result.kind ? lifecycleSet.has(result.kind) : false;
     })
     .map(([rockId]) => rockId);
 }
 
-function uniqueLifecycleValues(values: GivingLifecycleKind[]) {
+function uniqueLifecycleValues(values: LifecycleFilterKind[]) {
   return [...new Set(values)];
 }
 
@@ -196,4 +315,8 @@ function isMissingLifecycleSnapshotTable(error: unknown) {
     "code" in error &&
     error.code === "P2021"
   );
+}
+
+function subtractDays(date: Date, days: number) {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
 }

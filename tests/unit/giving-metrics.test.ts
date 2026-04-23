@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import type { PrismaClient } from "@prisma/client";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  getHouseholdDonorTrend,
   summarizeGivingFacts,
   summarizeHouseholdDonorTrend,
 } from "@/lib/giving/metrics";
@@ -293,6 +295,13 @@ describe("giving metrics", () => {
       ),
     ).toBe(false);
     expect(trend.atRiskHouseholdDonors).toBe(1);
+    expect(trend.lifecycleCounts).toEqual({
+      AT_RISK: 0,
+      DROPPED: 0,
+      HEALTHY: 0,
+      NEW: 0,
+      REACTIVATED: 0,
+    });
     expect(trend.totalHouseholdDonors).toBe(4);
     expect(trend.movement).toMatchObject({
       counts: {
@@ -340,5 +349,50 @@ describe("giving metrics", () => {
     expect(trend.sourceExplanation).toBe(
       "Each household is counted once per month, grouped by campus.",
     );
+  });
+
+  it("loads dashboard lifecycle counts from distinct person snapshots", async () => {
+    const client = {
+      givingFact: {
+        findMany: vi.fn(async () => []),
+      },
+      givingLifecycleSnapshot: {
+        findMany: vi.fn(async () => [
+          { lifecycle: "NEW", personRockId: 101 },
+          { lifecycle: "NEW", personRockId: 101 },
+          { lifecycle: "NEW", personRockId: 102 },
+          { lifecycle: "DROPPED", personRockId: 103 },
+          { lifecycle: "AT_RISK", personRockId: null },
+        ]),
+      },
+      platformFundSetting: {
+        findMany: vi.fn(async () => [{ accountRockId: 1, enabled: true }]),
+      },
+    } as unknown as PrismaClient;
+
+    const trend = await getHouseholdDonorTrend(
+      new Date("2026-04-20T00:00:00.000Z"),
+      client,
+    );
+
+    expect(client.givingLifecycleSnapshot.findMany).toHaveBeenCalledWith({
+      select: {
+        lifecycle: true,
+        personRockId: true,
+      },
+      where: {
+        personRockId: {
+          not: null,
+        },
+        resource: "PERSON",
+      },
+    });
+    expect(trend.lifecycleCounts).toEqual({
+      AT_RISK: 0,
+      DROPPED: 1,
+      HEALTHY: 0,
+      NEW: 2,
+      REACTIVATED: 0,
+    });
   });
 });

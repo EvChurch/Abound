@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import {
   classifyGivingLifecycle,
+  type GivingLifecycleActivePledge,
   lifecycleExplanationForRole,
   type GivingLifecycleFact,
 } from "@/lib/giving/lifecycle";
@@ -17,7 +18,8 @@ type LifecycleSnapshotClient = Pick<
   | "givingFact"
   | "givingLifecycleSnapshot"
   | "platformFundSetting"
->;
+> &
+  Partial<Pick<PrismaClient, "givingPledge">>;
 
 export type RefreshLifecycleSnapshotsInput = {
   referenceDate?: Date;
@@ -27,6 +29,10 @@ export type RefreshLifecycleSnapshotsInput = {
 type GivingFactForSnapshot = GivingLifecycleFact & {
   householdRockId: number | null;
   personRockId: number | null;
+};
+
+type GivingPledgeForSnapshot = GivingLifecycleActivePledge & {
+  personRockId: number;
 };
 
 export async function refreshGivingLifecycleSnapshots(
@@ -39,25 +45,49 @@ export async function refreshGivingLifecycleSnapshots(
 
   const referenceDate = input.referenceDate ?? new Date();
   const fundScope = await getPlatformFundScope(client);
-  const facts = await client.givingFact.findMany({
-    orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
-    select: {
-      amount: true,
-      effectiveMonth: true,
-      householdRockId: true,
-      occurredAt: true,
-      personRockId: true,
-      reliabilityKind: true,
-    },
-    where: whereForEnabledPlatformFunds(fundScope),
-  });
+  const [facts, activePledges] = await Promise.all([
+    client.givingFact.findMany({
+      orderBy: [
+        { occurredAt: "asc" },
+        { effectiveMonth: "asc" },
+        { id: "asc" },
+      ],
+      select: {
+        amount: true,
+        effectiveMonth: true,
+        householdRockId: true,
+        occurredAt: true,
+        personRockId: true,
+        reliabilityKind: true,
+      },
+      where: whereForEnabledPlatformFunds(fundScope),
+    }),
+    client.givingPledge
+      ? client.givingPledge.findMany({
+          select: {
+            amount: true,
+            period: true,
+            personRockId: true,
+          },
+          where: {
+            accountRockId: {
+              in: fundScope.enabledAccountRockIds,
+            },
+            status: "ACTIVE",
+          },
+        })
+      : [],
+  ]);
+  const activePledgesByPerson = groupActivePledges(activePledges);
   const personRows = buildSnapshotRows({
+    activePledgesByRockId: activePledgesByPerson,
     factsByRockId: groupFacts(facts, "personRockId"),
     referenceDate,
     resource: "PERSON",
     syncRunId: input.syncRunId,
   });
   const householdRows = buildSnapshotRows({
+    activePledgesByRockId: new Map(),
     factsByRockId: groupFacts(facts, "householdRockId"),
     referenceDate,
     resource: "HOUSEHOLD",
@@ -136,12 +166,29 @@ function groupFacts(
   return grouped;
 }
 
+function groupActivePledges(pledges: GivingPledgeForSnapshot[]) {
+  const grouped = new Map<number, GivingLifecycleActivePledge[]>();
+
+  for (const pledge of pledges) {
+    const group = grouped.get(pledge.personRockId) ?? [];
+    group.push({
+      amount: pledge.amount,
+      period: pledge.period,
+    });
+    grouped.set(pledge.personRockId, group);
+  }
+
+  return grouped;
+}
+
 function buildSnapshotRows({
+  activePledgesByRockId,
   factsByRockId,
   referenceDate,
   resource,
   syncRunId,
 }: {
+  activePledgesByRockId: Map<number, GivingLifecycleActivePledge[]>;
   factsByRockId: Map<number, GivingFactForSnapshot[]>;
   referenceDate: Date;
   resource: "PERSON" | "HOUSEHOLD";
@@ -152,7 +199,10 @@ function buildSnapshotRows({
   windowStartedAt.setUTCDate(windowStartedAt.getUTCDate() - 90);
 
   return Array.from(factsByRockId.entries()).flatMap(([rockId, facts]) => {
-    const result = classifyGivingLifecycle(facts, { referenceDate });
+    const result = classifyGivingLifecycle(facts, {
+      activePledges: activePledgesByRockId.get(rockId) ?? [],
+      referenceDate,
+    });
 
     if (!result.kind || !result.summary) {
       return [];

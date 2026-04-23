@@ -1,4 +1,4 @@
-import type { GiftReliabilityKind } from "@prisma/client";
+import type { GiftReliabilityKind, GivingPledgePeriod } from "@prisma/client";
 import type { AppRole } from "@/lib/auth/roles";
 import { canSeeGivingAmounts } from "@/lib/auth/roles";
 
@@ -18,11 +18,20 @@ export type GivingLifecycleFact = {
   reliabilityKind: GiftReliabilityKind;
 };
 
+export type GivingLifecycleActivePledge = {
+  amount: unknown;
+  period: GivingPledgePeriod;
+};
+
 export type GivingLifecycleOptions = {
+  activePledges?: GivingLifecycleActivePledge[];
   atRiskAmountDropRatio?: number;
+  atRiskBaselineDropRatio?: number;
   atRiskRecentGivingDays?: number;
+  confirmedDroppedWindowDays?: number;
   currentWindowDays?: number;
   dormantWindowDays?: number;
+  droppedConsistencyLookbackDays?: number;
   droppedWindowDays?: number;
   priorWindowDays?: number;
   referenceDate?: Date;
@@ -41,9 +50,12 @@ export type GivingLifecycleResult = {
 
 const DEFAULT_OPTIONS = {
   atRiskAmountDropRatio: 0.5,
+  atRiskBaselineDropRatio: 0.75,
   atRiskRecentGivingDays: 90,
+  confirmedDroppedWindowDays: 90,
   currentWindowDays: 90,
   dormantWindowDays: 180,
+  droppedConsistencyLookbackDays: 365,
   droppedWindowDays: 180,
   priorWindowDays: 90,
 } as const;
@@ -85,6 +97,14 @@ export function classifyGivingLifecycle(
     merged.referenceDate,
     merged.droppedWindowDays,
   );
+  const confirmedDroppedWindowStart = subtractDays(
+    droppedWindowStart,
+    merged.confirmedDroppedWindowDays,
+  );
+  const droppedConsistencyStart = subtractDays(
+    droppedWindowStart,
+    merged.droppedConsistencyLookbackDays,
+  );
   const recentGivingStart = subtractDays(
     merged.referenceDate,
     merged.atRiskRecentGivingDays,
@@ -110,6 +130,9 @@ export function classifyGivingLifecycle(
   );
   const currentWindowTotal = sumFactAmounts(currentFacts);
   const priorWindowTotal = sumFactAmounts(priorFacts);
+  const activePledgeMonthlyTotal = monthlyPledgeTotal(
+    merged.activePledges ?? [],
+  );
   const financeDetail = {
     currentWindowTotal: centsToDecimalString(currentWindowTotal),
     firstGiftAt,
@@ -137,22 +160,36 @@ export function classifyGivingLifecycle(
     };
   }
 
-  if (lastGiftAt < droppedWindowStart) {
+  if (
+    lastGiftAt < droppedWindowStart &&
+    lastGiftAt >= confirmedDroppedWindowStart &&
+    hasRecurringOrConsistentPatternBefore(
+      orderedFacts,
+      droppedConsistencyStart,
+      droppedWindowStart,
+    )
+  ) {
     return {
       financeDetail,
       kind: "DROPPED",
-      summary: "Previously active giving has stopped beyond the drop window.",
+      summary: "Previously at-risk giving now appears dropped.",
     };
   }
 
   if (
     hasRecurringOrConsistentPattern(orderedFacts, priorWindowStart) &&
-    (lastGiftAt < recentGivingStart ||
-      materiallyBelowPreviousPeriod(
+    ((lastGiftAt < recentGivingStart && lastGiftAt >= droppedWindowStart) ||
+      (materiallyBelowPreviousPeriod(
         currentWindowTotal,
         priorWindowTotal,
         merged.atRiskAmountDropRatio,
-      ))
+      ) &&
+        materiallyBelowTypicalBaseline(
+          currentFacts,
+          orderedFacts,
+          activePledgeMonthlyTotal,
+          merged.atRiskBaselineDropRatio,
+        )))
   ) {
     return {
       financeDetail,
@@ -215,6 +252,17 @@ function hasRecurringOrConsistentPattern(
   return activeMonths.size >= 3;
 }
 
+function hasRecurringOrConsistentPatternBefore(
+  facts: Array<GivingLifecycleFact & { giftAt: Date }>,
+  since: Date,
+  before: Date,
+) {
+  return hasRecurringOrConsistentPattern(
+    facts.filter((fact) => fact.giftAt < before),
+    since,
+  );
+}
+
 function materiallyBelowPreviousPeriod(
   currentWindowTotal: bigint,
   priorWindowTotal: bigint,
@@ -227,6 +275,107 @@ function materiallyBelowPreviousPeriod(
   const thresholdBasisPoints = BigInt(Math.round(thresholdRatio * 10000));
 
   return currentWindowTotal * 10000n < priorWindowTotal * thresholdBasisPoints;
+}
+
+function materiallyBelowTypicalBaseline(
+  currentFacts: GivingLifecycleFact[],
+  facts: Array<GivingLifecycleFact & { giftAt: Date }>,
+  activePledgeMonthlyTotal: bigint | null,
+  thresholdRatio: number,
+) {
+  const currentMonthlyAverage = monthlyAverage(currentFacts);
+  const typicalMonthTotal =
+    activePledgeMonthlyTotal && activePledgeMonthlyTotal > 0n
+      ? activePledgeMonthlyTotal
+      : typicalMonthlyTotal(facts);
+
+  if (!currentMonthlyAverage || !typicalMonthTotal) {
+    return true;
+  }
+
+  const thresholdBasisPoints = BigInt(Math.round(thresholdRatio * 10000));
+
+  return (
+    currentMonthlyAverage * 10000n < typicalMonthTotal * thresholdBasisPoints
+  );
+}
+
+function monthlyAverage(facts: GivingLifecycleFact[]) {
+  const monthlyTotals = monthlyTotalsForFacts(facts);
+
+  if (monthlyTotals.length === 0) {
+    return null;
+  }
+
+  return sumBigInts(monthlyTotals) / BigInt(monthlyTotals.length);
+}
+
+function typicalMonthlyTotal(
+  facts: Array<GivingLifecycleFact & { giftAt: Date }>,
+) {
+  const monthlyTotals = monthlyTotalsForFacts(facts).filter(
+    (total) => total > 0n,
+  );
+
+  if (monthlyTotals.length < 3) {
+    return null;
+  }
+
+  const sortedTotals = [...monthlyTotals].sort((left, right) =>
+    left < right ? -1 : left > right ? 1 : 0,
+  );
+  const midpoint = Math.floor(sortedTotals.length / 2);
+
+  if (sortedTotals.length % 2 === 1) {
+    return sortedTotals[midpoint];
+  }
+
+  return (sortedTotals[midpoint - 1]! + sortedTotals[midpoint]!) / 2n;
+}
+
+function monthlyTotalsForFacts(facts: GivingLifecycleFact[]) {
+  const totals = new Map<string, bigint>();
+
+  for (const fact of facts) {
+    const month = monthKey(giftDate(fact));
+    totals.set(month, (totals.get(month) ?? 0n) + decimalToCents(fact.amount));
+  }
+
+  return Array.from(totals.values());
+}
+
+function monthlyPledgeTotal(pledges: GivingLifecycleActivePledge[]) {
+  if (pledges.length === 0) {
+    return null;
+  }
+
+  return sumBigInts(
+    pledges.map((pledge) =>
+      pledgeAmountToMonthlyCents(decimalToCents(pledge.amount), pledge.period),
+    ),
+  );
+}
+
+function pledgeAmountToMonthlyCents(
+  amountCents: bigint,
+  period: GivingPledgePeriod,
+) {
+  switch (period) {
+    case "WEEKLY":
+      return (amountCents * 52n) / 12n;
+    case "FORTNIGHTLY":
+      return (amountCents * 26n) / 12n;
+    case "MONTHLY":
+      return amountCents;
+    case "QUARTERLY":
+      return amountCents / 3n;
+    case "ANNUALLY":
+      return amountCents / 12n;
+  }
+}
+
+function sumBigInts(values: bigint[]) {
+  return values.reduce((total, value) => total + value, 0n);
 }
 
 function giftDate(fact: GivingLifecycleFact) {

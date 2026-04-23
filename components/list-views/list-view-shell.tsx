@@ -413,6 +413,7 @@ function ListWorkspaceHeader({
 }
 
 const quickLifecycleFilters = [
+  { label: "Healthy", value: "HEALTHY" },
   { label: "New", value: "NEW" },
   { label: "Reactivated", value: "REACTIVATED" },
   { label: "At risk", value: "AT_RISK" },
@@ -1021,6 +1022,7 @@ function lifecycleLabel(value: string) {
   const labels: Record<string, string> = {
     AT_RISK: "At risk",
     DROPPED: "Dropped",
+    HEALTHY: "Healthy",
     NEW: "New",
     REACTIVATED: "Reactivated",
   };
