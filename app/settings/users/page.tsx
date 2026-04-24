@@ -1,26 +1,26 @@
 import { redirect } from "next/navigation";
 
 import {
-  rebuildFundScopedCalculationsAction,
-  updatePlatformFundSettingsAction,
-} from "@/app/settings/funds/actions";
+  approveAccessRequestAction,
+  denyAccessRequestAction,
+  updateAppUserAction,
+} from "@/app/settings/users/actions";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
-import { FundSettings } from "@/components/settings/fund-settings";
+import { UserManagementSettings } from "@/components/settings/user-management-settings";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
 import { hasPermission } from "@/lib/auth/roles";
-import { listPlatformFundSettings } from "@/lib/settings/funds";
+import { listUserManagementSummary } from "@/lib/settings/users";
 
-type FundSettingsPageProps = {
+type UserSettingsPageProps = {
   searchParams: Promise<{
-    refresh?: string;
     saved?: string;
   }>;
 };
 
-export default async function FundSettingsPage({
+export default async function UserSettingsPage({
   searchParams,
-}: FundSettingsPageProps) {
+}: UserSettingsPageProps) {
   const session = await auth0.getSession();
   const accessState = await getCurrentAccessState(session?.user);
 
@@ -40,7 +40,7 @@ export default async function FundSettingsPage({
             Settings require administrator access.
           </h1>
           <p className="text-sm leading-6 text-app-muted">
-            Your local app role does not include settings management.
+            Your local app role does not include user management.
           </p>
         </div>
       </main>
@@ -48,7 +48,7 @@ export default async function FundSettingsPage({
   }
 
   const [summary, params] = await Promise.all([
-    listPlatformFundSettings(accessState.user),
+    listUserManagementSummary(accessState.user),
     searchParams,
   ]);
 
@@ -57,15 +57,15 @@ export default async function FundSettingsPage({
       <AppTopNav
         active="settings"
         canManageSettings
-        settingsActiveItem="funds"
+        settingsActiveItem="users"
       />
       <div className="mx-auto max-w-[1280px] px-7 py-7">
-        <FundSettings
-          onRebuild={rebuildFundScopedCalculationsAction}
-          onSave={updatePlatformFundSettingsAction}
+        <UserManagementSettings
+          approveAction={approveAccessRequestAction}
+          denyAction={denyAccessRequestAction}
           saved={params.saved === "1"}
-          refreshRequested={params.refresh === "1"}
           summary={summary}
+          updateUserAction={updateAppUserAction}
         />
       </div>
     </main>

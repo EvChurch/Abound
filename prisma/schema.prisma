@@ -135,6 +135,12 @@ enum DerivedCalculationRefreshStatus {
   FAILED
 }
 
+enum JobWorkerEventLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
 model AppUser {
   id                 String                               @id @default(cuid())
   auth0Subject       String                               @unique
@@ -576,6 +582,21 @@ model DerivedCalculationRefresh {
   @@index([kind, status])
   @@index([requestedAt])
   @@index([requestedByUserId])
+}
+
+model JobWorkerEvent {
+  id        String              @id @default(cuid())
+  level     JobWorkerEventLevel @default(INFO)
+  queue     String?
+  jobId     String?
+  eventType String
+  message   String
+  metadata  Json?
+  createdAt DateTime            @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([queue, createdAt(sort: Desc)])
+  @@index([jobId, createdAt(sort: Desc)])
 }
 
 model GivingPledge {

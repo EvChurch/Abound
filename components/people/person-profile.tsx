@@ -16,6 +16,7 @@ import {
   type SerializedGivingSummary,
 } from "@/components/people/giving-summary-panel";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
+import { CustomSelect } from "@/components/ui/custom-select";
 import type { PledgeAnalysisRow } from "@/lib/giving/pledges";
 
 type PersonProfileProps = {
@@ -914,31 +915,31 @@ function PledgeEditForm({
         </label>
         <label>
           <span className="sr-only">Pledge period</span>
-          <select
-            className="h-8 w-full rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground"
+          <CustomSelect
+            ariaLabel="Pledge period"
+            className="inline-flex h-8 w-full items-center justify-between gap-2 rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground outline-none transition hover:border-app-border-strong focus-visible:ring-2 focus-visible:ring-app-accent/25"
             defaultValue={pledge.period}
             name="period"
-          >
-            {PLEDGE_PERIODS.map((period) => (
-              <option key={period} value={period}>
-                {formatEnum(period)}
-              </option>
-            ))}
-          </select>
+            options={PLEDGE_PERIODS.map((period) => ({
+              label: formatEnum(period),
+              value: period,
+            }))}
+            rootClassName="relative w-full"
+          />
         </label>
         <label>
           <span className="sr-only">Pledge status</span>
-          <select
-            className="h-8 w-full rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground"
+          <CustomSelect
+            ariaLabel="Pledge status"
+            className="inline-flex h-8 w-full items-center justify-between gap-2 rounded-[4px] border border-app-border bg-app-surface px-2 text-[12.5px] text-app-foreground outline-none transition hover:border-app-border-strong focus-visible:ring-2 focus-visible:ring-app-accent/25"
             defaultValue={pledge.status}
             name="status"
-          >
-            {statusOptionsForPledge(pledge.status).map((status) => (
-              <option key={status} value={status}>
-                {formatEnum(status)}
-              </option>
-            ))}
-          </select>
+            options={statusOptionsForPledge(pledge.status).map((status) => ({
+              label: formatEnum(status),
+              value: status,
+            }))}
+            rootClassName="relative w-full"
+          />
         </label>
       </div>
       <div className="flex items-center justify-between gap-3">

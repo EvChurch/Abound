@@ -16,11 +16,21 @@ import {
   type SyncSummary,
 } from "@/lib/sync/run-sync";
 
-export const ROCK_FULL_SYNC_QUEUE = "rock-full-sync";
-export const ROCK_FULL_SYNC_SCHEDULE_KEY = "default-rock-full-sync";
-export const ROCK_PERSON_SYNC_QUEUE = "rock-person-sync";
-export const ROCK_PERSON_SYNC_SCHEDULE_KEY = "default-rock-person-sync";
-export const GIVING_DERIVED_REFRESH_QUEUE = "giving-derived-refresh";
+import {
+  GIVING_DERIVED_REFRESH_QUEUE,
+  ROCK_FULL_SYNC_QUEUE,
+  ROCK_FULL_SYNC_SCHEDULE_KEY,
+  ROCK_PERSON_SYNC_QUEUE,
+  ROCK_PERSON_SYNC_SCHEDULE_KEY,
+} from "@/lib/sync/job-constants";
+
+export {
+  GIVING_DERIVED_REFRESH_QUEUE,
+  ROCK_FULL_SYNC_QUEUE,
+  ROCK_FULL_SYNC_SCHEDULE_KEY,
+  ROCK_PERSON_SYNC_QUEUE,
+  ROCK_PERSON_SYNC_SCHEDULE_KEY,
+};
 
 export type RockFullSyncJobData = {
   requestedBy?: "manual" | "schedule";

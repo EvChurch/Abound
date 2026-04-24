@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { CustomSelect } from "@/components/ui/custom-select";
 import type { ProfileGivingSummary } from "@/lib/people/profiles";
 
 type SerializedMonthlyGiving = ProfileGivingSummary["monthlyGiving"][number];
@@ -59,21 +60,19 @@ export function GivingSummarySection({
         {canFilter ? (
           <label className="flex min-h-8 items-center border-l border-app-border-faint pl-4">
             <span className="sr-only">Account</span>
-            <select
-              className="h-8 min-w-[160px] rounded-[4px] border border-transparent bg-transparent px-2 text-[12.5px] font-medium text-app-muted outline-none hover:bg-app-soft hover:text-app-foreground focus:border-app-accent focus:bg-app-surface focus:text-app-foreground"
-              onChange={(event) => setSelectedAccount(event.target.value)}
+            <CustomSelect
+              ariaLabel="Account"
+              className="inline-flex h-8 min-w-[160px] items-center justify-between gap-2 rounded-[4px] border border-transparent bg-transparent px-2 text-[12.5px] font-medium text-app-muted outline-none transition hover:bg-app-soft hover:text-app-foreground focus-visible:ring-2 focus-visible:ring-app-accent/25"
+              onValueChange={(nextValue) => setSelectedAccount(nextValue)}
+              options={[
+                { label: "All accounts", value: ALL_ACCOUNTS },
+                ...(summary?.accountSummaries.map((accountSummary) => ({
+                  label: accountSummary.accountName,
+                  value: accountKey(accountSummary.accountRockId),
+                })) ?? []),
+              ]}
               value={selectedAccount}
-            >
-              <option value={ALL_ACCOUNTS}>All accounts</option>
-              {summary?.accountSummaries.map((accountSummary) => (
-                <option
-                  key={accountKey(accountSummary.accountRockId)}
-                  value={accountKey(accountSummary.accountRockId)}
-                >
-                  {accountSummary.accountName}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         ) : null}
       </header>

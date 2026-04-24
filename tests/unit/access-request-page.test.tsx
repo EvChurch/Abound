@@ -23,12 +23,7 @@ vi.mock("@/lib/auth/access-control", () => ({
 }));
 
 vi.mock("@/components/auth/access-request-form", () => ({
-  AccessRequestForm: ({ email }: { email?: string | null }) => (
-    <div>
-      <span>Mock access request form</span>
-      {email ? <span>{email}</span> : null}
-    </div>
-  ),
+  AccessRequestForm: () => <button type="submit">Request access</button>,
 }));
 
 import AccessRequestPage from "@/app/access-request/page";
@@ -75,7 +70,7 @@ describe("AccessRequestPage", () => {
     await expect(AccessRequestPage()).rejects.toThrow("NEXT_REDIRECT:/");
   });
 
-  it("renders the request form only for authenticated users without local access", async () => {
+  it("renders a one-click request action for authenticated users without local access", async () => {
     render(await AccessRequestPage());
 
     expect(
@@ -83,8 +78,10 @@ describe("AccessRequestPage", () => {
         name: "Ask an administrator to enable your account.",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Mock access request form")).toBeInTheDocument();
-    expect(screen.getByText("pending@example.com")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Request access" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("pending@example.com")).not.toBeInTheDocument();
   });
 });
 

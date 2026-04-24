@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import type { Job } from "pg-boss";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { RockClient } from "@/lib/rock/client";
@@ -18,6 +19,10 @@ import {
   ROCK_PERSON_SYNC_QUEUE,
   type RockPersonSyncJobData,
 } from "@/lib/sync/jobs";
+import {
+  recordJobWorkerEvent,
+  WORKER_EVENT_TYPES,
+} from "@/lib/sync/worker-events";
 
 const once = process.argv.includes("--once");
 const onceTimeoutMs = Number(process.env.SYNC_WORKER_ONCE_TIMEOUT_MS ?? 900000);
@@ -35,6 +40,14 @@ async function main() {
   boss.on("error", (error) => console.error(error.message));
   await boss.start();
   await ensureSyncQueues(boss);
+  await emitWorkerEvent({
+    eventType: WORKER_EVENT_TYPES.WORKER_STARTED,
+    message: "Sync worker started.",
+    metadata: {
+      chunkSize,
+      once,
+    },
+  });
 
   const rockClient = new RockClient({ baseUrl: baseUrl!, restKey: restKey! });
   let processed = 0;
@@ -54,17 +67,39 @@ async function main() {
     },
     async (jobs: Job<RockFullSyncJobData>[]) => {
       for (const job of jobs) {
-        console.log(`queue=${ROCK_FULL_SYNC_QUEUE} jobId=${job.id} started`);
-        const result = await performRockFullSyncJob(job.data, {
-          prisma,
-          rockClient,
-          syncOptions: {
-            chunkSize,
-            onProgress: createProgressLogger(ROCK_FULL_SYNC_QUEUE, job.id),
+        await emitWorkerEvent({
+          eventType: WORKER_EVENT_TYPES.JOB_STARTED,
+          jobId: job.id,
+          message: "Rock full sync job started.",
+          metadata: {
+            requestedBy: job.data.requestedBy ?? "manual",
           },
+          queue: ROCK_FULL_SYNC_QUEUE,
         });
-        processed += 1;
-        logSyncResult(ROCK_FULL_SYNC_QUEUE, job.id, result);
+        try {
+          const result = await performRockFullSyncJob(job.data, {
+            prisma,
+            rockClient,
+            syncOptions: {
+              chunkSize,
+              onProgress: createProgressLogger(ROCK_FULL_SYNC_QUEUE, job.id),
+            },
+          });
+          processed += 1;
+          await logSyncResult(ROCK_FULL_SYNC_QUEUE, job.id, result);
+        } catch (error) {
+          await emitWorkerEvent({
+            eventType: WORKER_EVENT_TYPES.JOB_FAILED,
+            jobId: job.id,
+            level: "ERROR",
+            message: toErrorMessage(error),
+            metadata: {
+              requestedBy: job.data.requestedBy ?? "manual",
+            },
+            queue: ROCK_FULL_SYNC_QUEUE,
+          });
+          throw error;
+        }
       }
 
       if (once && resolveOnce) {
@@ -81,17 +116,41 @@ async function main() {
     },
     async (jobs: Job<RockPersonSyncJobData>[]) => {
       for (const job of jobs) {
-        console.log(`queue=${ROCK_PERSON_SYNC_QUEUE} jobId=${job.id} started`);
-        const result = await performRockPersonSyncJob(job.data, {
-          prisma,
-          rockClient,
-          syncOptions: {
-            chunkSize,
-            onProgress: createProgressLogger(ROCK_PERSON_SYNC_QUEUE, job.id),
+        await emitWorkerEvent({
+          eventType: WORKER_EVENT_TYPES.JOB_STARTED,
+          jobId: job.id,
+          message: "Rock person sync job started.",
+          metadata: {
+            personId: job.data.personId,
+            requestedBy: job.data.requestedBy ?? "manual",
           },
+          queue: ROCK_PERSON_SYNC_QUEUE,
         });
-        processed += 1;
-        logSyncResult(ROCK_PERSON_SYNC_QUEUE, job.id, result);
+        try {
+          const result = await performRockPersonSyncJob(job.data, {
+            prisma,
+            rockClient,
+            syncOptions: {
+              chunkSize,
+              onProgress: createProgressLogger(ROCK_PERSON_SYNC_QUEUE, job.id),
+            },
+          });
+          processed += 1;
+          await logSyncResult(ROCK_PERSON_SYNC_QUEUE, job.id, result);
+        } catch (error) {
+          await emitWorkerEvent({
+            eventType: WORKER_EVENT_TYPES.JOB_FAILED,
+            jobId: job.id,
+            level: "ERROR",
+            message: toErrorMessage(error),
+            metadata: {
+              personId: job.data.personId,
+              requestedBy: job.data.requestedBy ?? "manual",
+            },
+            queue: ROCK_PERSON_SYNC_QUEUE,
+          });
+          throw error;
+        }
       }
 
       if (once && resolveOnce) {
@@ -108,23 +167,45 @@ async function main() {
     },
     async (jobs: Job<FundScopedGivingRefreshJobData>[]) => {
       for (const job of jobs) {
-        console.log(
-          `queue=${GIVING_DERIVED_REFRESH_QUEUE} jobId=${job.id} started`,
-        );
-        const result = await performFundScopedGivingRefreshJob(job.data, {
-          prisma,
+        await emitWorkerEvent({
+          eventType: WORKER_EVENT_TYPES.JOB_STARTED,
+          jobId: job.id,
+          message: "Fund-scoped giving refresh job started.",
+          metadata: {
+            refreshId: job.data.refreshId,
+          },
+          queue: GIVING_DERIVED_REFRESH_QUEUE,
         });
-        processed += 1;
-        console.log(
-          [
-            `queue=${GIVING_DERIVED_REFRESH_QUEUE}`,
-            `jobId=${job.id}`,
-            `refreshId=${job.data.refreshId}`,
-            `totalSnapshots=${result.totalSnapshots}`,
-            `personSnapshots=${result.personSnapshots}`,
-            `householdSnapshots=${result.householdSnapshots}`,
-          ].join(" "),
-        );
+        try {
+          const result = await performFundScopedGivingRefreshJob(job.data, {
+            prisma,
+          });
+          processed += 1;
+          await emitWorkerEvent({
+            eventType: WORKER_EVENT_TYPES.JOB_SUCCEEDED,
+            jobId: job.id,
+            message: "Fund-scoped giving refresh job completed successfully.",
+            metadata: {
+              householdSnapshots: result.householdSnapshots,
+              personSnapshots: result.personSnapshots,
+              refreshId: job.data.refreshId,
+              totalSnapshots: result.totalSnapshots,
+            },
+            queue: GIVING_DERIVED_REFRESH_QUEUE,
+          });
+        } catch (error) {
+          await emitWorkerEvent({
+            eventType: WORKER_EVENT_TYPES.JOB_FAILED,
+            jobId: job.id,
+            level: "ERROR",
+            message: toErrorMessage(error),
+            metadata: {
+              refreshId: job.data.refreshId,
+            },
+            queue: GIVING_DERIVED_REFRESH_QUEUE,
+          });
+          throw error;
+        }
       }
 
       if (once && resolveOnce) {
@@ -143,6 +224,13 @@ async function main() {
         );
       }),
     ]);
+    await emitWorkerEvent({
+      eventType: WORKER_EVENT_TYPES.WORKER_STOPPED,
+      message: "Sync worker stopped after one job.",
+      metadata: {
+        processed,
+      },
+    });
     await boss.stop({ graceful: false, timeout: 5000 });
     await prisma.$disconnect();
     console.log(`processed=${processed}`);
@@ -167,40 +255,97 @@ function createProgressLogger(queue: string, jobId: string) {
     }
 
     lastLoggedByStage.set(event.stage, event.completed);
-    console.log(
-      [
-        `queue=${queue}`,
-        `jobId=${jobId}`,
-        `syncRunId=${event.syncRunId}`,
-        `stage=${event.stage}`,
-        `completed=${event.completed}`,
-        `total=${event.total}`,
-      ].join(" "),
-    );
+    void emitWorkerEvent({
+      eventType: WORKER_EVENT_TYPES.JOB_PROGRESS,
+      jobId,
+      message: `Sync progress ${event.stage}: ${event.completed}/${event.total}.`,
+      metadata: {
+        completed: event.completed,
+        stage: event.stage,
+        syncRunId: event.syncRunId,
+        total: event.total,
+      },
+      queue,
+    });
   };
 }
 
-function logSyncResult(
+async function logSyncResult(
   queue: string,
   jobId: string,
   result: Awaited<ReturnType<typeof performRockFullSyncJob>>,
 ) {
-  console.log(
-    [
-      `queue=${queue}`,
-      `jobId=${jobId}`,
-      `syncRunId=${result.syncRunId}`,
-      `status=${result.status}`,
-      `recordsRead=${result.recordsRead}`,
-      `recordsWritten=${result.recordsWritten}`,
-      `recordsSkipped=${result.recordsSkipped}`,
-      `issueCount=${result.issueCount}`,
-    ].join(" "),
-  );
+  await emitWorkerEvent({
+    eventType:
+      result.status === "FAILED"
+        ? WORKER_EVENT_TYPES.JOB_FAILED
+        : WORKER_EVENT_TYPES.JOB_SUCCEEDED,
+    jobId,
+    level: result.status === "FAILED" ? "ERROR" : "INFO",
+    message:
+      result.status === "FAILED"
+        ? "Sync job failed."
+        : "Sync job completed successfully.",
+    metadata: {
+      issueCount: result.issueCount,
+      recordsRead: result.recordsRead,
+      recordsSkipped: result.recordsSkipped,
+      recordsWritten: result.recordsWritten,
+      status: result.status,
+      syncRunId: result.syncRunId,
+    },
+    queue,
+  });
 }
 
 main().catch(async (error: unknown) => {
+  await emitWorkerEvent({
+    eventType: WORKER_EVENT_TYPES.WORKER_STOPPED,
+    level: "ERROR",
+    message: "Sync worker exited with an error.",
+    metadata: {
+      error: toErrorMessage(error),
+    },
+  });
   console.error(error instanceof Error ? error.message : String(error));
   await prisma.$disconnect();
   process.exit(1);
 });
+
+async function emitWorkerEvent(input: {
+  eventType: (typeof WORKER_EVENT_TYPES)[keyof typeof WORKER_EVENT_TYPES];
+  jobId?: string;
+  level?: "INFO" | "WARNING" | "ERROR";
+  message: string;
+  metadata?: Prisma.InputJsonValue;
+  queue?: string;
+}) {
+  const line = [
+    input.queue && `queue=${input.queue}`,
+    input.jobId && `jobId=${input.jobId}`,
+    `eventType=${input.eventType}`,
+    input.message,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  console.log(line);
+
+  try {
+    await recordJobWorkerEvent({
+      eventType: input.eventType,
+      jobId: input.jobId ?? null,
+      level: input.level ?? "INFO",
+      message: input.message,
+      metadata: input.metadata ?? null,
+      queue: input.queue ?? null,
+    });
+  } catch (error) {
+    console.error(
+      `Failed to persist worker event: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+function toErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}

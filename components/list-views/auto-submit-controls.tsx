@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef } from "react";
 
+import { CustomSelect } from "@/components/ui/custom-select";
+
 type InputProps = {
   className: string;
   defaultValue?: string;
@@ -65,18 +67,14 @@ export function AutoSubmitSelect({
   const submitForm = useRouteSubmit();
 
   return (
-    <select
+    <CustomSelect
+      ariaLabel={name}
       className={className}
       defaultValue={defaultValue}
       name={name}
-      onChange={(event) => submitForm(event.currentTarget.form)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      onValueChange={(_, form) => submitForm(form)}
+      options={options}
+    />
   );
 }
 

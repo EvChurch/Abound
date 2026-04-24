@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AccessRequestForm } from "@/components/auth/access-request-form";
 import { StaffDashboard } from "@/components/dashboard/staff-dashboard";
 import { auth0 } from "@/lib/auth/auth0";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
@@ -28,12 +28,7 @@ export default async function HomePage() {
             Your Auth0 login worked, but this app requires a local user profile
             and role before sensitive data is visible.
           </p>
-          <Link
-            className="inline-flex min-h-11 w-fit items-center justify-center rounded-md border border-app-accent bg-app-accent px-5 font-bold text-white"
-            href="/access-request"
-          >
-            Request access
-          </Link>
+          <AccessRequestForm />
         </section>
       </main>
     );

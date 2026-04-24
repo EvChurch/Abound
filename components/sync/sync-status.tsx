@@ -9,7 +9,7 @@ export function SyncStatus({ summary }: SyncStatusProps) {
   const runStatus = latestRun?.status ?? "NO_RUN";
 
   return (
-    <section className="grid gap-8">
+    <section className="mx-auto grid w-full max-w-[1280px] gap-8 px-7 py-7">
       <div className="grid gap-4">
         <p className="text-sm font-bold uppercase text-app-accent-strong">
           Sync status

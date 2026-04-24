@@ -29,7 +29,7 @@ export default async function AccessRequestPage() {
           You are signed in with Auth0, but this app requires a local user
           profile and role before sensitive data is available.
         </p>
-        <AccessRequestForm email={accessState.identity.email} />
+        <AccessRequestForm />
       </section>
     </main>
   );

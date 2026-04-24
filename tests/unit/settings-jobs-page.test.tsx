@@ -2,47 +2,21 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessState } from "@/lib/auth/types";
-import type { PlatformFundSettingsSummary } from "@/lib/settings/funds";
+import type { JobsDashboardSummary } from "@/lib/settings/jobs";
 
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
   redirect: vi.fn(),
   summary: {
-    configured: true,
-    enabledCount: 1,
-    funds: [
-      {
-        accountRockId: 101,
-        active: true,
-        campusName: "Central",
-        enabled: true,
-        factCount: 12,
-        lastGiftAt: new Date("2026-04-01T00:00:00.000Z"),
-        name: "General Fund",
-        notes: null,
-        public: true,
-        taxDeductible: true,
-        updatedAt: null,
-        updatedByName: null,
-      },
-      {
-        accountRockId: 202,
-        active: true,
-        campusName: null,
-        enabled: false,
-        factCount: 4,
-        lastGiftAt: null,
-        name: "Missions",
-        notes: null,
-        public: false,
-        taxDeductible: true,
-        updatedAt: null,
-        updatedByName: null,
-      },
-    ],
-    latestRefresh: null,
-    totalCount: 2,
-  } satisfies PlatformFundSettingsSummary,
+    degraded: null,
+    derivedRefreshes: [],
+    fetchedAt: new Date("2026-04-23T12:00:00.000Z"),
+    queues: [],
+    recentEvents: [],
+    runningJobs: [],
+    schedules: [],
+    syncRuns: [],
+  } satisfies JobsDashboardSummary,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -59,18 +33,22 @@ vi.mock("@/lib/auth/access-control", () => ({
   getCurrentAccessState: vi.fn(async () => mocks.accessState),
 }));
 
-vi.mock("@/lib/settings/funds", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/settings/funds")>();
+vi.mock("@/lib/settings/jobs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/settings/jobs")>();
 
   return {
     ...actual,
-    listPlatformFundSettings: vi.fn(async () => mocks.summary),
+    listJobsDashboardSummary: vi.fn(async () => mocks.summary),
   };
 });
 
-import FundSettingsPage from "@/app/settings/funds/page";
+vi.mock("@/components/settings/jobs-dashboard", () => ({
+  JobsDashboard: () => <h1>Jobs</h1>,
+}));
 
-describe("FundSettingsPage", () => {
+import JobsSettingsPage from "@/app/settings/jobs/page";
+
+describe("JobsSettingsPage", () => {
   beforeEach(() => {
     mocks.accessState = { status: "anonymous" };
     mocks.redirect.mockImplementation((path: string) => {
@@ -80,7 +58,7 @@ describe("FundSettingsPage", () => {
 
   it("redirects anonymous users to login", async () => {
     await expect(
-      FundSettingsPage({ searchParams: Promise.resolve({}) }),
+      JobsSettingsPage({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
@@ -98,7 +76,7 @@ describe("FundSettingsPage", () => {
       },
     };
 
-    render(await FundSettingsPage({ searchParams: Promise.resolve({}) }));
+    render(await JobsSettingsPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", {
@@ -107,7 +85,7 @@ describe("FundSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders fund settings for Admin users", async () => {
+  it("renders jobs settings surface for admins", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -121,24 +99,21 @@ describe("FundSettingsPage", () => {
       },
     };
 
-    render(await FundSettingsPage({ searchParams: Promise.resolve({}) }));
+    render(await JobsSettingsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("heading", { name: "Funds" })).toBeInTheDocument();
-    expect(screen.getByText("General Fund")).toBeInTheDocument();
-    expect(screen.getByText("Missions")).toBeInTheDocument();
-    expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Jobs" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("link", { name: "Funds" })).toHaveAttribute(
       "href",
       "/settings/funds",
     );
+    expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute(
+      "href",
+      "/settings/jobs",
+    );
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute(
       "href",
       "/settings/users",
-    );
-    expect(screen.getByRole("link", { name: "Sync status" })).toHaveAttribute(
-      "href",
-      "/sync",
     );
   });
 });

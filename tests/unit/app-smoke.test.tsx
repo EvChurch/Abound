@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessState } from "@/lib/auth/types";
@@ -151,6 +151,10 @@ vi.mock("@/lib/giving/metrics", () => ({
   getHouseholdDonorTrend: vi.fn(async () => mocks.householdDonorTrend),
 }));
 
+vi.mock("@/components/auth/access-request-form", () => ({
+  AccessRequestForm: () => <button type="submit">Request access</button>,
+}));
+
 import HomePage from "@/app/page";
 
 describe("HomePage", () => {
@@ -184,8 +188,11 @@ describe("HomePage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Request access" }),
-    ).toHaveAttribute("href", "/access-request");
+      screen.getByRole("button", { name: "Request access" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Request access" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Sign in" }),
     ).not.toBeInTheDocument();
@@ -227,13 +234,19 @@ describe("HomePage", () => {
       "href",
       "/households",
     );
-    expect(screen.getByRole("link", { name: "Sync" })).toHaveAttribute(
-      "href",
-      "/sync",
-    );
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+    expect(screen.getByText("Settings")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("link", { name: "Funds" })).toHaveAttribute(
       "href",
       "/settings/funds",
+    );
+    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute(
+      "href",
+      "/settings/users",
+    );
+    expect(screen.getByRole("link", { name: "Sync status" })).toHaveAttribute(
+      "href",
+      "/sync",
     );
     expect(
       screen.getByRole("heading", { name: "Dashboard" }),

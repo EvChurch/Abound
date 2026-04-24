@@ -2,47 +2,40 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessState } from "@/lib/auth/types";
-import type { PlatformFundSettingsSummary } from "@/lib/settings/funds";
+import type { UserManagementSummary } from "@/lib/settings/users";
 
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
   redirect: vi.fn(),
   summary: {
-    configured: true,
-    enabledCount: 1,
-    funds: [
+    accessRequests: [
       {
-        accountRockId: 101,
-        active: true,
-        campusName: "Central",
-        enabled: true,
-        factCount: 12,
-        lastGiftAt: new Date("2026-04-01T00:00:00.000Z"),
-        name: "General Fund",
-        notes: null,
-        public: true,
-        taxDeductible: true,
-        updatedAt: null,
-        updatedByName: null,
-      },
-      {
-        accountRockId: 202,
-        active: true,
-        campusName: null,
-        enabled: false,
-        factCount: 4,
-        lastGiftAt: null,
-        name: "Missions",
-        notes: null,
-        public: false,
-        taxDeductible: true,
-        updatedAt: null,
-        updatedByName: null,
+        auth0Subject: "auth0|pending",
+        createdAt: new Date("2026-04-23T00:00:00.000Z"),
+        email: "pending@example.com",
+        id: "request_1",
+        name: "Pending User",
+        status: "PENDING",
+        updatedAt: new Date("2026-04-23T00:00:00.000Z"),
       },
     ],
-    latestRefresh: null,
-    totalCount: 2,
-  } satisfies PlatformFundSettingsSummary,
+    activeUserCount: 1,
+    pendingRequestCount: 1,
+    users: [
+      {
+        active: true,
+        auth0Subject: "auth0|admin",
+        createdAt: new Date("2026-04-20T00:00:00.000Z"),
+        email: "admin@example.com",
+        id: "user_1",
+        linkedPerson: null,
+        name: "Admin User",
+        rockPersonId: "8597",
+        role: "ADMIN",
+        updatedAt: new Date("2026-04-22T00:00:00.000Z"),
+      },
+    ],
+  } satisfies UserManagementSummary,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -59,18 +52,18 @@ vi.mock("@/lib/auth/access-control", () => ({
   getCurrentAccessState: vi.fn(async () => mocks.accessState),
 }));
 
-vi.mock("@/lib/settings/funds", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/settings/funds")>();
+vi.mock("@/lib/settings/users", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/settings/users")>();
 
   return {
     ...actual,
-    listPlatformFundSettings: vi.fn(async () => mocks.summary),
+    listUserManagementSummary: vi.fn(async () => mocks.summary),
   };
 });
 
-import FundSettingsPage from "@/app/settings/funds/page";
+import UserSettingsPage from "@/app/settings/users/page";
 
-describe("FundSettingsPage", () => {
+describe("UserSettingsPage", () => {
   beforeEach(() => {
     mocks.accessState = { status: "anonymous" };
     mocks.redirect.mockImplementation((path: string) => {
@@ -80,7 +73,7 @@ describe("FundSettingsPage", () => {
 
   it("redirects anonymous users to login", async () => {
     await expect(
-      FundSettingsPage({ searchParams: Promise.resolve({}) }),
+      UserSettingsPage({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
@@ -98,7 +91,7 @@ describe("FundSettingsPage", () => {
       },
     };
 
-    render(await FundSettingsPage({ searchParams: Promise.resolve({}) }));
+    render(await UserSettingsPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", {
@@ -107,7 +100,7 @@ describe("FundSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders fund settings for Admin users", async () => {
+  it("renders local users and access requests for Admin users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -121,12 +114,13 @@ describe("FundSettingsPage", () => {
       },
     };
 
-    render(await FundSettingsPage({ searchParams: Promise.resolve({}) }));
+    render(await UserSettingsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("heading", { name: "Funds" })).toBeInTheDocument();
-    expect(screen.getByText("General Fund")).toBeInTheDocument();
-    expect(screen.getByText("Missions")).toBeInTheDocument();
-    expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
+    expect(screen.getByText("Pending User")).toBeInTheDocument();
+    expect(screen.getByText("Admin User")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deny" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("link", { name: "Funds" })).toHaveAttribute(
       "href",
