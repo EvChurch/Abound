@@ -84,6 +84,10 @@ vi.mock("@/lib/sync/status", () => ({
   getSyncStatusSummary: vi.fn(async () => mocks.summary),
 }));
 
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: () => <nav aria-label="Primary">Top nav</nav>,
+}));
+
 import SyncPage from "@/app/sync/page";
 
 describe("SyncPage", () => {

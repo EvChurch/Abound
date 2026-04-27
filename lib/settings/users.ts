@@ -143,7 +143,7 @@ export async function listUserManagementSummary(actor: LocalAppUser) {
       role: user.role as AppRole,
       rockPersonId: user.rockPersonId,
       linkedPerson: user.rockPersonId
-        ? linkedPeopleById.get(user.rockPersonId) ?? null
+        ? (linkedPeopleById.get(user.rockPersonId) ?? null)
         : null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

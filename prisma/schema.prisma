@@ -207,6 +207,7 @@ model SyncRun {
   financialScheduledTransactionDetails RockFinancialScheduledTransactionDetail[]
   givingFacts                          GivingFact[]
   givingLifecycleSnapshots             GivingLifecycleSnapshot[]
+  pledgeRecommendationSnapshots        GivingPledgeRecommendationSnapshot[]
 
   @@index([source, startedAt])
   @@index([status])
@@ -388,6 +389,7 @@ model RockPerson {
   givingPledges            GivingPledge[]
   pledgeDecisions          GivingPledgeRecommendationDecision[]
   givingLifecycleSnapshots GivingLifecycleSnapshot[]
+  pledgeRecommendationSnapshots GivingPledgeRecommendationSnapshot[]
 
   @@index([email])
   @@index([primaryAliasRockId])
@@ -541,6 +543,7 @@ model RockFinancialAccount {
   givingPledges               GivingPledge[]
   pledgeDecisions             GivingPledgeRecommendationDecision[]
   platformFundSetting         PlatformFundSetting?
+  pledgeRecommendationSnapshots GivingPledgeRecommendationSnapshot[]
 
   @@index([campusRockId])
   @@index([parentAccountRockId])
@@ -651,6 +654,28 @@ model GivingPledgeRecommendationDecision {
   @@index([status])
   @@index([decidedByUserId])
   @@index([personRockId, accountRockId])
+}
+
+model GivingPledgeRecommendationSnapshot {
+  id                             String            @id @default(cuid())
+  personRockId                   Int
+  accountRockId                  Int
+  recommendedAmount              Decimal           @db.Decimal(12, 2)
+  recommendedPeriod              GivingPledgePeriod
+  recommendedMatchStreakCount    Int
+  recommendedMatchStreakStartedAt DateTime?
+  computedAt                     DateTime          @default(now())
+  lastSyncRunId                  String
+
+  person      RockPerson           @relation(fields: [personRockId], references: [rockId], onDelete: Cascade)
+  account     RockFinancialAccount @relation(fields: [accountRockId], references: [rockId], onDelete: Cascade)
+  lastSyncRun SyncRun              @relation(fields: [lastSyncRunId], references: [id], onDelete: Cascade)
+
+  @@unique([personRockId, accountRockId])
+  @@index([personRockId])
+  @@index([accountRockId])
+  @@index([recommendedPeriod])
+  @@index([lastSyncRunId])
 }
 
 model RockFinancialTransaction {

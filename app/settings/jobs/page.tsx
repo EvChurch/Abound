@@ -11,7 +11,11 @@ import {
   unscheduleRockPersonSyncAction,
 } from "@/app/settings/jobs/actions";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
-import { JobsDashboard } from "@/components/settings/jobs-dashboard";
+import {
+  ACTION_RESULT_LABEL,
+  JobsDashboard,
+} from "@/components/settings/jobs-dashboard";
+import { QueryResultToast } from "@/components/ui/query-result-toast";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
 import { hasPermission } from "@/lib/auth/roles";
@@ -56,20 +60,24 @@ export default async function JobsSettingsPage({
     listJobsDashboardSummary(accessState.user),
     searchParams,
   ]);
+  const toastMessages = params.result
+    ? [ACTION_RESULT_LABEL[params.result] ?? "Action completed."]
+    : [];
 
   return (
     <main className="min-h-screen bg-app-background">
       <AppTopNav
         active="settings"
         canManageSettings
+        canManageTools
         settingsActiveItem="jobs"
       />
       <div className="mx-auto max-w-[1280px] px-7 py-7">
+        <QueryResultToast clearHref="/settings/jobs" messages={toastMessages} />
         <JobsDashboard
           enqueueFundRefresh={enqueueFundRefreshAction}
           enqueueRockFullSync={enqueueRockFullSyncAction}
           enqueueRockPersonSync={enqueueRockPersonSyncAction}
-          result={params.result ?? null}
           runJobActionById={runJobActionById}
           scheduleRockFullSync={scheduleRockFullSyncAction}
           scheduleRockPersonSync={scheduleRockPersonSyncAction}

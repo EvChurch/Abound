@@ -7,6 +7,7 @@ import {
 } from "@/app/settings/users/actions";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { UserManagementSettings } from "@/components/settings/user-management-settings";
+import { QueryResultToast } from "@/components/ui/query-result-toast";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
 import { hasPermission } from "@/lib/auth/roles";
@@ -51,19 +52,25 @@ export default async function UserSettingsPage({
     listUserManagementSummary(accessState.user),
     searchParams,
   ]);
+  const toastMessages =
+    params.saved === "1" ? ["User access settings saved."] : [];
 
   return (
     <main className="min-h-screen bg-app-background">
       <AppTopNav
         active="settings"
         canManageSettings
+        canManageTools
         settingsActiveItem="users"
       />
       <div className="mx-auto max-w-[1280px] px-7 py-7">
+        <QueryResultToast
+          clearHref="/settings/users"
+          messages={toastMessages}
+        />
         <UserManagementSettings
           approveAction={approveAccessRequestAction}
           denyAction={denyAccessRequestAction}
-          saved={params.saved === "1"}
           summary={summary}
           updateUserAction={updateAppUserAction}
         />

@@ -8,30 +8,31 @@ import { prisma } from "@/lib/db/prisma";
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 
 type AppTopNavProps = {
-  active: "communications" | "dashboard" | "households" | "people" | "settings";
+  active:
+    | "communications"
+    | "dashboard"
+    | "households"
+    | "people"
+    | "settings"
+    | "tools";
   canManageSettings?: boolean;
+  canManageTools?: boolean;
   settingsActiveItem?: "funds" | "jobs" | "sync-status" | "users";
+  toolsActiveItem?: "pledge-recommendations";
 };
 
 const links: Array<{
   active: AppTopNavProps["active"];
   href: string;
   label: string;
-}> = [
-  { active: "dashboard", href: "/", label: "Dashboard" },
-  { active: "people", href: "/people", label: "People" },
-  { active: "households", href: "/households", label: "Households" },
-  {
-    active: "communications",
-    href: "/communications",
-    label: "Communications",
-  },
-];
+}> = [{ active: "dashboard", href: "/", label: "Dashboard" }];
 
 export async function AppTopNav({
   active,
   canManageSettings = false,
+  canManageTools = false,
   settingsActiveItem,
+  toolsActiveItem,
 }: AppTopNavProps) {
   const session = await auth0.getSession();
   const profile = await resolveNavProfile({
@@ -75,6 +76,96 @@ export async function AppTopNav({
                 </Link>
               );
             })}
+            <DropdownPanel
+              align="left"
+              navigateHref="/people"
+              navigateLabel="People"
+              openOnHover
+              panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              triggerClassName={
+                active === "people" || active === "households"
+                  ? "inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                  : "inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+              }
+              trigger={
+                <>
+                  <span>People</span>
+                  <svg
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 transition-transform"
+                    fill="none"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      d="m5 7.5 5 5 5-5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.6"
+                    />
+                  </svg>
+                </>
+              }
+              widthClassName="min-w-44"
+            >
+              <div className="grid gap-1">
+                <MenuLink
+                  active={active === "people"}
+                  href="/people"
+                  label="People"
+                />
+                <MenuLink
+                  active={active === "households"}
+                  href="/households"
+                  label="Households"
+                />
+              </div>
+            </DropdownPanel>
+            <DropdownPanel
+              align="left"
+              openOnHover
+              panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              triggerClassName={
+                active === "tools" || active === "communications"
+                  ? "inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                  : "inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+              }
+              trigger={
+                <>
+                  <span>Tools</span>
+                  <svg
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 transition-transform"
+                    fill="none"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      d="m5 7.5 5 5 5-5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.6"
+                    />
+                  </svg>
+                </>
+              }
+              widthClassName="min-w-52"
+            >
+              <div className="grid gap-1">
+                <MenuLink
+                  active={active === "communications"}
+                  href="/communications"
+                  label="Communications"
+                />
+                {canManageTools ? (
+                  <MenuLink
+                    active={toolsActiveItem === "pledge-recommendations"}
+                    href="/tools/pledge-recommendations"
+                    label="Pledge recommendations"
+                  />
+                ) : null}
+              </div>
+            </DropdownPanel>
             {canManageSettings ? (
               <DropdownPanel
                 align="left"
@@ -107,22 +198,22 @@ export async function AppTopNav({
                 widthClassName="min-w-48"
               >
                 <div className="grid gap-1">
-                  <SettingsLink
+                  <MenuLink
                     active={settingsActiveItem === "funds"}
                     href="/settings/funds"
                     label="Funds"
                   />
-                  <SettingsLink
+                  <MenuLink
                     active={settingsActiveItem === "jobs"}
                     href="/settings/jobs"
                     label="Jobs"
                   />
-                  <SettingsLink
+                  <MenuLink
                     active={settingsActiveItem === "sync-status"}
                     href="/sync"
                     label="Sync status"
                   />
-                  <SettingsLink
+                  <MenuLink
                     active={settingsActiveItem === "users"}
                     href="/settings/users"
                     label="Users"
@@ -417,7 +508,7 @@ function initialsForName(name: string) {
   return `${words[0][0]}${words[1][0]}`;
 }
 
-function SettingsLink({
+function MenuLink({
   active = false,
   href,
   label,

@@ -5,6 +5,10 @@ import { ListViewShell } from "@/components/list-views/list-view-shell";
 import type { HouseholdsConnection } from "@/lib/list-views/households-list";
 import type { PeopleConnection } from "@/lib/list-views/people-list";
 
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: () => <nav aria-label="Primary">Top nav</nav>,
+}));
+
 vi.mock("@/components/list-views/infinite-list-table", () => ({
   InfiniteListTable: () => <div data-testid="list-table" />,
 }));
@@ -68,17 +72,20 @@ describe("ListViewShell", () => {
       />,
     );
 
-    const campusSelect = screen.getByRole("combobox", { name: "Campus" });
+    const campusSelect = screen.getByRole("button", { name: /campus/i });
 
-    expect(campusSelect).toHaveValue("2");
+    expect(campusSelect).toHaveTextContent("North");
     expect(
       screen.queryByPlaceholderText("Campus number"),
     ).not.toBeInTheDocument();
+
+    fireEvent.click(campusSelect);
+
     expect(
       screen.getByRole("option", { name: "Any campus" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "North" })).toBeInTheDocument();
-    expect(screen.getAllByText("North")).toHaveLength(2);
+    expect(screen.getAllByText("North")).toHaveLength(3);
   });
 
   it("renders the unfiltered lifecycle option like the other lifecycle choices", () => {
@@ -265,8 +272,11 @@ describe("ListViewShell", () => {
     );
 
     expect(
-      screen.getByRole("combobox", { name: "Household status" }),
-    ).toHaveValue("archived");
+      screen.getByRole("button", { name: /rockStatus/i }),
+    ).toHaveTextContent("Archived household");
+
+    fireEvent.click(screen.getByRole("button", { name: /rockStatus/i }));
+
     expect(
       screen.getByRole("option", { name: "Current household" }),
     ).toBeInTheDocument();
@@ -336,14 +346,16 @@ describe("ListViewShell", () => {
 
     expect(audienceButton).toHaveAttribute("aria-expanded", "true");
     expect(statusButton).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("combobox", { name: "Campus" })).toHaveValue("2");
+    expect(screen.getByRole("button", { name: /campus/i })).toHaveTextContent(
+      "North",
+    );
 
     fireEvent.click(statusButton);
 
     expect(audienceButton).toHaveAttribute("aria-expanded", "false");
     expect(statusButton).toHaveAttribute("aria-expanded", "true");
     await waitFor(() => {
-      expect(screen.queryByRole("combobox", { name: "Campus" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /campus/i })).toBeNull();
     });
     expect(screen.getByRole("checkbox", { name: "Member" })).not.toBeChecked();
   });

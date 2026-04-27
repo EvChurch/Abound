@@ -38,6 +38,7 @@ export function StaffDashboard({
       <AppTopNav
         active="dashboard"
         canManageSettings={hasPermission(user.role, "settings:manage")}
+        canManageTools={hasPermission(user.role, "pledges:manage")}
       />
       <main className="mx-auto grid w-full max-w-[1280px] gap-6 px-7 py-7">
         <section className="grid gap-5">

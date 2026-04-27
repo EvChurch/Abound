@@ -141,7 +141,10 @@ export function CustomSelect({
                         if (value === undefined) {
                           setInternalValue(option.value);
                         }
-                        onValueChange?.(option.value, inputRef.current?.form ?? null);
+                        onValueChange?.(
+                          option.value,
+                          inputRef.current?.form ?? null,
+                        );
                         setOpen(false);
                       }}
                       role="option"

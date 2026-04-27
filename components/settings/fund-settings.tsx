@@ -7,16 +7,12 @@ import type { PlatformFundSettingsSummary } from "@/lib/settings/funds";
 type FundSettingsProps = {
   onRebuild: () => Promise<void>;
   onSave: (formData: FormData) => Promise<void>;
-  refreshRequested: boolean;
-  saved: boolean;
   summary: PlatformFundSettingsSummary;
 };
 
 export function FundSettings({
   onRebuild,
   onSave,
-  refreshRequested,
-  saved,
   summary,
 }: FundSettingsProps) {
   return (
@@ -40,19 +36,9 @@ export function FundSettings({
         </div>
 
         {!summary.configured ? (
-          <StatusCallout tone="warn">
-            Funds are not configured yet. Enable at least one fund to apply
-            this configuration.
-          </StatusCallout>
-        ) : null}
-        {saved ? (
-          <StatusCallout tone="success">
-            Fund configuration saved.
-          </StatusCallout>
-        ) : null}
-        {refreshRequested ? (
-          <StatusCallout tone="success">
-            Rebuild requested. Calculations will refresh shortly.
+          <StatusCallout>
+            Funds are not configured yet. Enable at least one fund to apply this
+            configuration.
           </StatusCallout>
         ) : null}
       </header>
@@ -86,7 +72,9 @@ export function FundSettings({
 
       <section className="grid gap-3 rounded-[8px] border border-rose-200 bg-rose-50/70 p-4">
         <div className="grid gap-1">
-          <h2 className="text-[15px] font-semibold text-rose-900">Danger zone</h2>
+          <h2 className="text-[15px] font-semibold text-rose-900">
+            Danger zone
+          </h2>
           <p className="text-[12.5px] leading-5 text-rose-900/90">
             This reruns derived reporting calculations for the currently enabled
             funds. It does not edit gift records. Use it only when reports look
@@ -103,21 +91,9 @@ export function FundSettings({
   );
 }
 
-function StatusCallout({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "success" | "warn";
-}) {
+function StatusCallout({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={
-        tone === "success"
-          ? "rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-900"
-          : "rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-900"
-      }
-    >
+    <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-900">
       {children}
     </div>
   );

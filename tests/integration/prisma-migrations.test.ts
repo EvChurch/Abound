@@ -22,6 +22,10 @@ const platformFundSettingsMigration = readFileSync(
   "prisma/migrations/20260423000100_add_platform_fund_settings/migration.sql",
   "utf8",
 );
+const pledgeRecommendationSnapshotsMigration = readFileSync(
+  "prisma/migrations/20260425000100_add_pledge_recommendation_snapshots/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -187,6 +191,27 @@ describe("synced data model migration", () => {
     );
     expect(platformFundSettingsMigration).toContain(
       'CREATE TYPE "DerivedCalculationKind" AS ENUM',
+    );
+  });
+
+  it("creates persisted pledge recommendation snapshots for async streak metrics", () => {
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'CREATE TABLE "GivingPledgeRecommendationSnapshot"',
+    );
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'CREATE UNIQUE INDEX "GivingPledgeRecommendationSnapshot_personRockId_accountRockId_key"',
+    );
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'CREATE INDEX "GivingPledgeRecommendationSnapshot_recommendedPeriod_idx"',
+    );
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId") ON DELETE CASCADE',
+    );
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'FOREIGN KEY ("accountRockId") REFERENCES "RockFinancialAccount"("rockId") ON DELETE CASCADE',
+    );
+    expect(pledgeRecommendationSnapshotsMigration).toContain(
+      'FOREIGN KEY ("lastSyncRunId") REFERENCES "SyncRun"("id") ON DELETE CASCADE',
     );
   });
 });

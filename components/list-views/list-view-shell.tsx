@@ -32,6 +32,7 @@ type ListViewShellProps =
       columns: ListColumnKey[];
       connection: PeopleConnection;
       canManageSettings?: boolean;
+      canManageTools?: boolean;
       filters?: ListViewShellFilters;
       kind: "people";
       lifecycle?: string | null;
@@ -45,6 +46,7 @@ type ListViewShellProps =
       columns: ListColumnKey[];
       connection: HouseholdsConnection;
       canManageSettings?: boolean;
+      canManageTools?: boolean;
       filters?: ListViewShellFilters;
       kind: "households";
       lifecycle?: string | null;
@@ -220,6 +222,7 @@ export function ListViewShell(props: ListViewShellProps) {
       <AppTopNav
         active={props.kind}
         canManageSettings={props.canManageSettings}
+        canManageTools={props.canManageTools}
       />
       <main className="h-[calc(100vh-48px)] overflow-hidden lg:pl-[320px]">
         <section className="min-w-0">

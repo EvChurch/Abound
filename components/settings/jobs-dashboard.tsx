@@ -17,7 +17,6 @@ type JobsDashboardProps = {
   enqueueFundRefresh: () => Promise<void>;
   enqueueRockFullSync: () => Promise<void>;
   enqueueRockPersonSync: (formData: FormData) => Promise<void>;
-  result: string | null;
   runJobActionById: (formData: FormData) => Promise<void>;
   scheduleRockFullSync: (formData: FormData) => Promise<void>;
   scheduleRockPersonSync: (formData: FormData) => Promise<void>;
@@ -42,7 +41,6 @@ export function JobsDashboard({
   enqueueFundRefresh,
   enqueueRockFullSync,
   enqueueRockPersonSync,
-  result,
   runJobActionById,
   scheduleRockFullSync,
   scheduleRockPersonSync,
@@ -88,9 +86,6 @@ export function JobsDashboard({
   }, []);
 
   const statusTone = summary.degraded ? "degraded" : "healthy";
-  const resultMessage = result
-    ? (ACTION_RESULT_LABEL[result] ?? "Action completed.")
-    : null;
 
   const sortedEvents = useMemo(
     () =>
@@ -129,9 +124,8 @@ export function JobsDashboard({
         </p>
       </header>
 
-      {resultMessage ? <Callout tone="success">{resultMessage}</Callout> : null}
       {summary.degraded ? (
-        <Callout tone="warn">
+        <Callout>
           {summary.degraded.message}
           <br />
           <span className="font-mono text-[11px]">
@@ -488,7 +482,7 @@ export function JobsDashboard({
   );
 }
 
-const ACTION_RESULT_LABEL: Record<string, string> = {
+export const ACTION_RESULT_LABEL: Record<string, string> = {
   "full-sync-enqueued": "Full sync queued.",
   "full-sync-scheduled": "Full sync schedule saved.",
   "full-sync-unscheduled": "Full sync unscheduled.",
@@ -561,21 +555,9 @@ function buttonClassName(tone: "primary" | "secondary" | "danger") {
 const inputClassName =
   "min-h-9 rounded-[6px] border border-app-border bg-app-surface px-2.5 text-[12.5px] text-app-foreground outline-none focus:border-app-accent";
 
-function Callout({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "success" | "warn";
-}) {
+function Callout({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={
-        tone === "success"
-          ? "rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-900"
-          : "rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-900"
-      }
-    >
+    <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-900">
       {children}
     </div>
   );

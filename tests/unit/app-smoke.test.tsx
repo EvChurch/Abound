@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import Link from "next/link";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessState } from "@/lib/auth/types";
@@ -155,6 +156,36 @@ vi.mock("@/components/auth/access-request-form", () => ({
   AccessRequestForm: () => <button type="submit">Request access</button>,
 }));
 
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: ({
+    canManageSettings,
+    canManageTools,
+  }: {
+    canManageSettings?: boolean;
+    canManageTools?: boolean;
+  }) => (
+    <nav aria-label="Primary">
+      <Link href="/">Dashboard</Link>
+      <button type="button">People</button>
+      <Link href="/people">People</Link>
+      <Link href="/households">Households</Link>
+      <button type="button">Tools</button>
+      <Link href="/communications">Communications</Link>
+      {canManageTools ? (
+        <Link href="/tools/pledge-recommendations">Pledge recommendations</Link>
+      ) : null}
+      {canManageSettings ? (
+        <>
+          <button type="button">Settings</button>
+          <Link href="/settings/funds">Funds</Link>
+          <Link href="/settings/users">Users</Link>
+          <Link href="/sync">Sync status</Link>
+        </>
+      ) : null}
+    </nav>
+  ),
+}));
+
 import HomePage from "@/app/page";
 
 describe("HomePage", () => {
@@ -226,6 +257,7 @@ describe("HomePage", () => {
       "href",
       "/",
     );
+    fireEvent.click(screen.getByRole("button", { name: "People" }));
     expect(screen.getByRole("link", { name: "People" })).toHaveAttribute(
       "href",
       "/people",
@@ -234,6 +266,10 @@ describe("HomePage", () => {
       "href",
       "/households",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    expect(
+      screen.getByRole("link", { name: "Communications" }),
+    ).toHaveAttribute("href", "/communications");
     expect(screen.getByText("Settings")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("link", { name: "Funds" })).toHaveAttribute(

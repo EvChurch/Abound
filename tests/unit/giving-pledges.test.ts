@@ -5,6 +5,7 @@ import type { LocalAppUser } from "@/lib/auth/types";
 import {
   buildPledgeAnalysisRows,
   createDraftGivingPledgeFromRecommendation,
+  refreshPledgeRecommendationSnapshots,
   quickCreateGivingPledge,
   rejectGivingPledgeRecommendation,
   updateGivingPledge,
@@ -80,6 +81,14 @@ function serviceClient(overrides: Partial<PrismaClient> = {}) {
   }));
 
   return {
+    $transaction: vi.fn(async (callback) =>
+      callback({
+        givingPledgeRecommendationSnapshot: {
+          createMany: vi.fn(async () => ({ count: 0 })),
+          deleteMany: vi.fn(async () => ({ count: 0 })),
+        },
+      }),
+    ),
     givingFact: {
       findMany: vi.fn(async () => facts),
     },
@@ -99,6 +108,11 @@ function serviceClient(overrides: Partial<PrismaClient> = {}) {
         id: "decision_1",
         updatedAt: new Date("2026-04-20T10:00:00.000Z"),
       })),
+    },
+    givingPledgeRecommendationSnapshot: {
+      createMany: vi.fn(async ({ data }) => ({ count: data.length })),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findMany: vi.fn(async () => []),
     },
     platformFundSetting: {
       findMany: vi.fn(async () => [
@@ -292,7 +306,7 @@ describe("giving pledge analysis", () => {
           updatedAt: new Date("2026-04-20T00:00:00.000Z"),
         },
       ],
-      facts: monthlyFacts(101, [
+      facts: [
         "2025-05",
         "2025-06",
         "2025-07",
@@ -303,7 +317,14 @@ describe("giving pledge analysis", () => {
         "2025-12",
         "2026-01",
         "2026-02",
-      ]),
+        "2026-03",
+        "2026-04",
+      ].map((month) => ({
+        accountRockId: 101,
+        amount: "275.00",
+        effectiveMonth: new Date(`${month}-01T00:00:00.000Z`),
+        occurredAt: new Date(`${month}-10T00:00:00.000Z`),
+      })),
       funds: [generalFund],
       pledges: [],
       referenceDate: new Date("2026-04-20T00:00:00.000Z"),
@@ -525,6 +546,56 @@ describe("giving pledge analysis", () => {
       ),
     ).rejects.toMatchObject({
       message: "An active pledge already exists for this person and fund.",
+    });
+  });
+
+  it("refreshes recommendation snapshots in the background from synced facts", async () => {
+    const client = serviceClient();
+    const createMany = vi.fn(async ({ data }) => ({ count: data.length }));
+    const deleteMany = vi.fn(async () => ({ count: 0 }));
+    vi.mocked(client.givingFact.findMany).mockResolvedValueOnce([
+      ...monthlyFacts(101, [
+        "2025-05",
+        "2025-06",
+        "2025-07",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01",
+      ]).map((fact) => ({
+        ...fact,
+        personRockId: 910001,
+      })),
+    ] as never);
+
+    vi.mocked(client.$transaction).mockImplementationOnce(async (callback) =>
+      callback({
+        givingPledgeRecommendationSnapshot: {
+          createMany,
+          deleteMany,
+        },
+      } as never),
+    );
+
+    await expect(
+      refreshPledgeRecommendationSnapshots(
+        { syncRunId: "sync_1" },
+        client as never,
+      ),
+    ).resolves.toEqual({ recommendationSnapshots: 1 });
+
+    expect(deleteMany).toHaveBeenCalledWith({});
+    expect(createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          accountRockId: 101,
+          personRockId: 910001,
+          recommendedAmount: "250.00",
+          recommendedPeriod: "MONTHLY",
+        }),
+      ]),
     });
   });
 });

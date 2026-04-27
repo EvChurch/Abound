@@ -6,6 +6,7 @@ import {
 } from "@/app/settings/funds/actions";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { FundSettings } from "@/components/settings/fund-settings";
+import { QueryResultToast } from "@/components/ui/query-result-toast";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
 import { hasPermission } from "@/lib/auth/roles";
@@ -51,20 +52,29 @@ export default async function FundSettingsPage({
     listPlatformFundSettings(accessState.user),
     searchParams,
   ]);
+  const toastMessages = [
+    params.saved === "1" ? "Fund configuration saved." : null,
+    params.refresh === "1"
+      ? "Rebuild requested. Calculations will refresh shortly."
+      : null,
+  ].filter((message): message is string => Boolean(message));
 
   return (
     <main className="min-h-screen bg-app-background">
       <AppTopNav
         active="settings"
         canManageSettings
+        canManageTools
         settingsActiveItem="funds"
       />
       <div className="mx-auto max-w-[1280px] px-7 py-7">
+        <QueryResultToast
+          clearHref="/settings/funds"
+          messages={toastMessages}
+        />
         <FundSettings
           onRebuild={rebuildFundScopedCalculationsAction}
           onSave={updatePlatformFundSettingsAction}
-          saved={params.saved === "1"}
-          refreshRequested={params.refresh === "1"}
           summary={summary}
         />
       </div>

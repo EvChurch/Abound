@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PersonProfile } from "@/components/people/person-profile";
 import type { RockPersonProfile } from "@/lib/people/profiles";
+
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: () => <nav aria-label="Primary">Top nav</nav>,
+}));
 
 const monthlyGiving = [
   { giftCount: 0, month: "2025-05", totalGiven: "0.00" },
@@ -230,7 +234,7 @@ describe("PersonProfile", () => {
     expect(screen.getByText("Call Jane")).toBeInTheDocument();
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThan(0);
     expect(screen.getByText("Current 12 months")).toBeInTheDocument();
-    expect(screen.getByLabelText("Account")).toHaveValue("all");
+    expect(screen.getByLabelText("Account")).toHaveTextContent("All accounts");
     expect(screen.getByText("Rock sync")).toBeInTheDocument();
     expect(screen.getByText("Connection status")).toBeInTheDocument();
     expect(screen.getByText("Member")).toBeInTheDocument();
@@ -257,11 +261,10 @@ describe("PersonProfile", () => {
   it("filters giving summary by account from the section header", () => {
     render(<PersonProfile profile={personProfile()} />);
 
-    fireEvent.change(screen.getByLabelText("Account"), {
-      target: { value: "102" },
-    });
+    fireEvent.click(screen.getByLabelText("Account"));
+    fireEvent.click(screen.getByRole("option", { name: "Missions" }));
 
-    expect(screen.getByLabelText("Account")).toHaveValue("102");
+    expect(screen.getByLabelText("Account")).toHaveTextContent("Missions");
     expect(screen.getAllByText("$1,000.00").length).toBeGreaterThan(0);
   });
 

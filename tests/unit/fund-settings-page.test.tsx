@@ -68,6 +68,22 @@ vi.mock("@/lib/settings/funds", async (importOriginal) => {
   };
 });
 
+vi.mock("@/components/ui/query-result-toast", () => ({
+  QueryResultToast: () => null,
+}));
+
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: () => (
+    <nav aria-label="Primary">
+      <button type="button">Settings</button>
+      <a href="/settings/funds">Funds</a>
+      <a href="/settings/jobs">Jobs</a>
+      <a href="/settings/users">Users</a>
+      <a href="/sync">Sync status</a>
+    </nav>
+  ),
+}));
+
 import FundSettingsPage from "@/app/settings/funds/page";
 
 describe("FundSettingsPage", () => {

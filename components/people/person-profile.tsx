@@ -20,6 +20,8 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import type { PledgeAnalysisRow } from "@/lib/giving/pledges";
 
 type PersonProfileProps = {
+  canManageSettings?: boolean;
+  canManageTools?: boolean;
   pledgeActions?: PersonPledgeActions;
   profile: RockPersonProfile;
 };
@@ -33,6 +35,8 @@ type PersonPledgeActions = {
 
 type RecordShellProps = {
   activeView: "person" | "household";
+  canManageSettings?: boolean;
+  canManageTools?: boolean;
   children: React.ReactNode;
   header: React.ReactNode;
   householdHref?: string;
@@ -55,7 +59,12 @@ type MemberRow = {
   status: string;
 };
 
-export function PersonProfile({ pledgeActions, profile }: PersonProfileProps) {
+export function PersonProfile({
+  canManageSettings,
+  canManageTools,
+  pledgeActions,
+  profile,
+}: PersonProfileProps) {
   const role = roleName(profile.amountsHidden);
   const primaryHousehold = profile.primaryHousehold;
   const givingHouseholdDiffers =
@@ -66,6 +75,8 @@ export function PersonProfile({ pledgeActions, profile }: PersonProfileProps) {
   return (
     <RecordShell
       activeView="person"
+      canManageSettings={canManageSettings}
+      canManageTools={canManageTools}
       header={<PersonHeader profile={profile} />}
       householdHref={
         primaryHousehold
@@ -179,6 +190,8 @@ export function PersonProfile({ pledgeActions, profile }: PersonProfileProps) {
 
 export function RecordShell({
   activeView,
+  canManageSettings,
+  canManageTools,
   children,
   header,
   householdHref,
@@ -187,7 +200,11 @@ export function RecordShell({
 }: RecordShellProps) {
   return (
     <main className="min-h-screen bg-app-background text-app-foreground">
-      <AppTopNav active={activeView === "person" ? "people" : "households"} />
+      <AppTopNav
+        active={activeView === "person" ? "people" : "households"}
+        canManageSettings={canManageSettings}
+        canManageTools={canManageTools}
+      />
 
       {stickySummary ? (
         <DelayedStickySummary observeId="record-main-header">

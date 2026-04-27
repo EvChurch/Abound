@@ -30,9 +30,7 @@ export function ColumnPicker({
       triggerClassName="inline-flex min-h-10 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)] transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/20"
       widthClassName="w-[min(360px,calc(100vw-3rem))]"
     >
-      <div>
-        {children}
-      </div>
+      <div>{children}</div>
     </DropdownPanel>
   );
 }

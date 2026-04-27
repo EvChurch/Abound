@@ -10,6 +10,7 @@ import {
   resolveGivingHouseholdRockId,
 } from "@/lib/giving/models";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
+import { refreshPledgeRecommendationSnapshots } from "@/lib/giving/pledges";
 import { ROCK_SYNC_SOURCE } from "@/lib/sync/models";
 import type { SyncIssueInput } from "@/lib/sync/reconcile";
 import { redactForLog } from "@/lib/sync/redaction";
@@ -439,7 +440,10 @@ async function persistNormalizedSync(
       },
     });
 
-    await refreshGivingLifecycleSnapshots({ syncRunId: syncRun.id }, prisma);
+    await Promise.all([
+      refreshGivingLifecycleSnapshots({ syncRunId: syncRun.id }, prisma),
+      refreshPledgeRecommendationSnapshots({ syncRunId: syncRun.id }, prisma),
+    ]);
 
     return {
       syncRunId: syncRun.id,

@@ -56,6 +56,7 @@ export default async function HouseholdLookupPage({
         accessState.user.role,
         "settings:manage",
       )}
+      canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
       filters={householdFiltersFromParams(params)}
       kind="households"
       lifecycle={params.lifecycle}

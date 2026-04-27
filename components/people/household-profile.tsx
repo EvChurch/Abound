@@ -23,11 +23,15 @@ import {
 } from "@/components/people/person-profile";
 
 type HouseholdProfileProps = {
+  canManageSettings?: boolean;
+  canManageTools?: boolean;
   currentPersonRockId?: number;
   profile: RockHouseholdProfile;
 };
 
 export function HouseholdProfile({
+  canManageSettings,
+  canManageTools,
   currentPersonRockId,
   profile,
 }: HouseholdProfileProps) {
@@ -52,6 +56,8 @@ export function HouseholdProfile({
   return (
     <RecordShell
       activeView="household"
+      canManageSettings={canManageSettings}
+      canManageTools={canManageTools}
       header={
         <HouseholdHeader
           archived={profile.archived}

@@ -80,6 +80,14 @@ export type PersonPledgeEditor = {
 export type PledgeCandidate = PledgeAnalysisRow & {
   personRockId: number;
   personDisplayName: string;
+  givingTrendLast24Months: GivingTrendPoint[];
+  recommendedMatchStreakCount: number;
+  recommendedMatchStreakStartedAt: Date | null;
+};
+
+export type GivingTrendPoint = {
+  month: string;
+  total: string;
 };
 
 export type QuickCreateGivingPledgeInput = {
@@ -111,6 +119,18 @@ type PledgeClient = Pick<
   | "platformFundSetting"
   | "rockFinancialAccount"
   | "rockPerson"
+> &
+  Partial<Pick<PrismaClient, "givingPledgeRecommendationSnapshot">>;
+
+type PledgeRecommendationSnapshotRefreshClient = Pick<
+  PrismaClient,
+  | "$transaction"
+  | "givingFact"
+  | "givingPledge"
+  | "givingPledgeRecommendationDecision"
+  | "givingPledgeRecommendationSnapshot"
+  | "platformFundSetting"
+  | "rockFinancialAccount"
 >;
 
 type GivingFactForPledge = {
@@ -154,6 +174,15 @@ type PledgeRecommendationDecisionRow = {
   decidedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type PledgeRecommendationSnapshotRow = {
+  personRockId: number;
+  accountRockId: number;
+  recommendedAmount: unknown;
+  recommendedPeriod: GivingPledgePeriod;
+  recommendedMatchStreakCount: number;
+  recommendedMatchStreakStartedAt: Date | null;
 };
 
 export async function getPersonPledgeEditor(
@@ -404,7 +433,7 @@ export async function listPledgeCandidates(
     return [];
   }
 
-  const [funds, pledges, decisions, people] = await Promise.all([
+  const [funds, pledges, decisions, people, snapshots] = await Promise.all([
     findPledgeableFunds(client),
     client.givingPledge.findMany({
       include: {
@@ -437,9 +466,13 @@ export async function listPledgeCandidates(
         rockId: { in: personIds },
       },
     }),
+    findPledgeRecommendationSnapshots(personIds, client),
   ]);
   const peopleById = new Map(
     people.map((person) => [person.rockId, displayName(person)] as const),
+  );
+  const snapshotsByKey = new Map(
+    snapshots.map((snapshot) => [snapshotKey(snapshot), snapshot] as const),
   );
   const pledgesByPerson = groupBy(pledges, (pledge) =>
     String(pledge.personRockId),
@@ -460,15 +493,148 @@ export async function listPledgeCandidates(
         referenceDate: new Date(),
       })
         .filter((row) => row.status === "RECOMMENDED")
-        .map((row) => ({
-          ...row,
-          personDisplayName:
-            peopleById.get(Number(personRockId)) ??
-            `Rock person ${personRockId}`,
-          personRockId: Number(personRockId),
-        })),
+        .map((row) => {
+          const personRockIdNumber = Number(personRockId);
+          const snapshot = snapshotsByKey.get(
+            snapshotKey({
+              accountRockId: row.account.rockId,
+              personRockId: personRockIdNumber,
+            }),
+          );
+          const streak = resolveCandidateStreak(row, snapshot);
+
+          return {
+            ...row,
+            confidence: confidenceFromStreak(
+              streak.recommendedMatchStreakCount,
+            ),
+            givingTrendLast24Months: buildGivingTrendLast24Months({
+              accountRockId: row.account.rockId,
+              facts: personFacts,
+              referenceDate: new Date(),
+            }),
+            ...streak,
+            personDisplayName:
+              peopleById.get(personRockIdNumber) ??
+              `Rock person ${personRockId}`,
+            personRockId: personRockIdNumber,
+          };
+        }),
     )
     .slice(0, limit);
+}
+
+export async function refreshPledgeRecommendationSnapshots(
+  input: { referenceDate?: Date; syncRunId: string },
+  client: PledgeRecommendationSnapshotRefreshClient = prisma,
+) {
+  const referenceDate = input.referenceDate ?? new Date();
+  const facts = await findAllGivingFactsForCandidateSnapshots(client);
+  const personIds = Array.from(
+    new Set(
+      facts
+        .map((fact) => fact.personRockId)
+        .filter((personRockId): personRockId is number =>
+          Number.isInteger(personRockId),
+        ),
+    ),
+  );
+
+  if (personIds.length === 0) {
+    await client.givingPledgeRecommendationSnapshot.deleteMany({});
+    return { recommendationSnapshots: 0 };
+  }
+
+  const [funds, pledges, decisions] = await Promise.all([
+    findPledgeableFunds(client),
+    client.givingPledge.findMany({
+      include: {
+        account: {
+          select: {
+            name: true,
+            rockId: true,
+          },
+        },
+      },
+      where: {
+        personRockId: { in: personIds },
+        status: { in: ["ACTIVE", "DRAFT"] },
+      },
+    }),
+    client.givingPledgeRecommendationDecision.findMany({
+      where: {
+        personRockId: { in: personIds },
+        status: "REJECTED",
+      },
+    }),
+  ]);
+  const pledgesByPerson = groupBy(pledges, (pledge) =>
+    String(pledge.personRockId),
+  );
+  const decisionsByPerson = groupBy(decisions, (decision) =>
+    String(decision.personRockId),
+  );
+  const factsByPerson = groupBy(facts, (fact) => String(fact.personRockId));
+  const snapshotRows = Array.from(factsByPerson.entries()).flatMap(
+    ([personRockId, personFacts]) =>
+      buildPledgeAnalysisRows({
+        facts: personFacts,
+        funds,
+        decisions: decisionsByPerson.get(personRockId) ?? [],
+        pledges: pledgesByPerson.get(personRockId) ?? [],
+        referenceDate,
+      })
+        .filter(
+          (row) =>
+            row.status === "RECOMMENDED" &&
+            row.recommendedAmount &&
+            row.recommendedPeriod,
+        )
+        .map((row) => {
+          const recommendedAmount = row.recommendedAmount!;
+          const recommendedPeriod = row.recommendedPeriod!;
+          const streak = countRecommendedPeriodMatches({
+            accountRockId: row.account.rockId,
+            facts: personFacts,
+            recommendationAmount: recommendedAmount,
+            recommendationPeriod: recommendedPeriod,
+            referenceDate,
+            fullHistory: true,
+          });
+
+          return {
+            accountRockId: row.account.rockId,
+            computedAt: new Date(),
+            lastSyncRunId: input.syncRunId,
+            personRockId: Number(personRockId),
+            recommendedAmount,
+            recommendedMatchStreakCount: streak.recommendedMatchStreakCount,
+            recommendedMatchStreakStartedAt:
+              streak.recommendedMatchStreakStartedAt,
+            recommendedPeriod,
+          };
+        }),
+  );
+
+  try {
+    await client.$transaction(async (tx) => {
+      await tx.givingPledgeRecommendationSnapshot.deleteMany({});
+
+      if (snapshotRows.length > 0) {
+        await tx.givingPledgeRecommendationSnapshot.createMany({
+          data: snapshotRows,
+        });
+      }
+    });
+  } catch (error) {
+    if (isMissingPledgeRecommendationSnapshotTable(error)) {
+      return { recommendationSnapshots: 0 };
+    }
+
+    throw error;
+  }
+
+  return { recommendationSnapshots: snapshotRows.length };
 }
 
 export function buildPledgeAnalysisRows({
@@ -658,7 +824,16 @@ function analyzeFundPledge({
     });
     const row = {
       ...base,
-      confidence: basisMonths >= 10 ? "HIGH" : "MEDIUM",
+      confidence: confidenceFromStreak(
+        recommendedMatchStreak({
+          facts,
+          recommendationAmount: centsToDecimalString(
+            recommendation.amountCents,
+          ),
+          recommendationPeriod: recommendation.period,
+          referenceDate,
+        }).recommendedMatchStreakCount,
+      ),
       explanation: `${basisMonths} of the latest 12 months include giving to this fund, so a ${periodPhrase(recommendation.period)} pledge recommendation can be reviewed.`,
       recommendedAmount: centsToDecimalString(recommendation.amountCents),
       recommendedPeriod: recommendation.period,
@@ -756,7 +931,7 @@ async function assertNoActivePledge(
 }
 
 async function findPledgeableFunds(
-  client: PledgeClient,
+  client: Pick<PrismaClient, "platformFundSetting" | "rockFinancialAccount">,
 ): Promise<PledgeFund[]> {
   const fundScope = await getPlatformFundScope(client);
 
@@ -812,11 +987,72 @@ async function findRecentGivingFactsForCandidates(
     where: {
       ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
       effectiveMonth: {
-        gte: firstRecentMonthDate(referenceDate),
+        gte: firstRecentCandidateMonthDate(referenceDate),
       },
       personRockId: { not: null },
     },
   });
+}
+
+async function findAllGivingFactsForCandidateSnapshots(
+  client: Pick<PrismaClient, "givingFact" | "platformFundSetting">,
+) {
+  return client.givingFact.findMany({
+    orderBy: [
+      { personRockId: "asc" },
+      { accountRockId: "asc" },
+      { effectiveMonth: "asc" },
+      { id: "asc" },
+    ],
+    select: {
+      ...givingFactSelect,
+      personRockId: true,
+    },
+    where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      personRockId: { not: null },
+    },
+  });
+}
+
+async function findPledgeRecommendationSnapshots(
+  personIds: number[],
+  client: PledgeClient,
+): Promise<PledgeRecommendationSnapshotRow[]> {
+  if (!client.givingPledgeRecommendationSnapshot || personIds.length === 0) {
+    return [];
+  }
+
+  return client.givingPledgeRecommendationSnapshot
+    .findMany({
+      select: {
+        accountRockId: true,
+        personRockId: true,
+        recommendedAmount: true,
+        recommendedMatchStreakCount: true,
+        recommendedMatchStreakStartedAt: true,
+        recommendedPeriod: true,
+      },
+      where: {
+        personRockId: { in: personIds },
+      },
+    })
+    .catch((error: unknown) => {
+      if (isMissingPledgeRecommendationSnapshotTable(error)) {
+        return [];
+      }
+
+      throw error;
+    });
+}
+
+function isMissingPledgeRecommendationSnapshotTable(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2021"
+  );
 }
 
 async function findVisiblePersonPledges(
@@ -1231,6 +1467,12 @@ function firstRecentMonthDate(referenceDate: Date) {
   return new Date(`${keys[0]}-01T00:00:00.000Z`);
 }
 
+function firstRecentCandidateMonthDate(referenceDate: Date) {
+  const keys = lastTwentyFourMonthKeys(referenceDate);
+
+  return new Date(`${keys[0]}-01T00:00:00.000Z`);
+}
+
 function recentAnalysisMonthKeys(
   facts: GivingFactForPledge[],
   referenceDate: Date,
@@ -1245,6 +1487,53 @@ function recentAnalysisMonthKeys(
   return twelveMonthKeysEndingAt(referenceDate, hasCurrentMonthGiving ? 0 : -1);
 }
 
+function streakAnalysisMonthKeys(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+  fullHistory: boolean,
+) {
+  if (!fullHistory) {
+    return recentAnalysisMonthKeys(facts, referenceDate);
+  }
+
+  if (facts.length === 0) {
+    return [];
+  }
+
+  const currentMonth = monthKey(referenceDate);
+  const hasCurrentMonthGiving = facts.some(
+    (fact) =>
+      monthKey(fact.effectiveMonth) === currentMonth &&
+      decimalToCents(fact.amount) > 0n,
+  );
+  const endDate = new Date(referenceDate);
+  endDate.setUTCDate(1);
+
+  if (!hasCurrentMonthGiving) {
+    endDate.setUTCMonth(endDate.getUTCMonth() - 1);
+  }
+
+  const earliestFactMonth = facts.reduce(
+    (earliest, fact) => {
+      const month = new Date(fact.effectiveMonth);
+      month.setUTCDate(1);
+
+      if (!earliest || month.getTime() < earliest.getTime()) {
+        return month;
+      }
+
+      return earliest;
+    },
+    null as Date | null,
+  );
+
+  if (!earliestFactMonth) {
+    return [];
+  }
+
+  return monthKeysBetween(earliestFactMonth, endDate);
+}
+
 function lastThirteenMonthKeys(referenceDate: Date) {
   const year = referenceDate.getUTCFullYear();
   const month = referenceDate.getUTCMonth();
@@ -1254,6 +1543,265 @@ function lastThirteenMonthKeys(referenceDate: Date) {
 
     return monthKey(date);
   });
+}
+
+function lastTwentyFourMonthKeys(referenceDate: Date) {
+  const year = referenceDate.getUTCFullYear();
+  const month = referenceDate.getUTCMonth();
+
+  return Array.from({ length: 24 }, (_value, index) => {
+    const date = new Date(Date.UTC(year, month - 23 + index, 1));
+
+    return monthKey(date);
+  });
+}
+
+function monthKeysBetween(startDate: Date, endDate: Date) {
+  const keys: string[] = [];
+  const cursor = new Date(
+    Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1),
+  );
+  const end = new Date(
+    Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1),
+  );
+
+  while (cursor.getTime() <= end.getTime()) {
+    keys.push(monthKey(cursor));
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return keys;
+}
+
+function buildGivingTrendLast24Months({
+  accountRockId,
+  facts,
+  referenceDate,
+}: {
+  accountRockId: number;
+  facts: Array<GivingFactForPledge & { personRockId: number | null }>;
+  referenceDate: Date;
+}): GivingTrendPoint[] {
+  const monthTotals = new Map(
+    lastTwentyFourMonthKeys(referenceDate).map((month) => [month, 0n]),
+  );
+
+  for (const fact of facts) {
+    if (fact.accountRockId !== accountRockId) {
+      continue;
+    }
+
+    const month = monthKey(fact.effectiveMonth);
+    const current = monthTotals.get(month);
+
+    if (current === undefined) {
+      continue;
+    }
+
+    monthTotals.set(month, current + decimalToCents(fact.amount));
+  }
+
+  return Array.from(monthTotals.entries()).map(([month, totalCents]) => ({
+    month,
+    total: centsToDecimalString(totalCents),
+  }));
+}
+
+function countRecommendedPeriodMatches({
+  accountRockId,
+  facts,
+  recommendationAmount,
+  recommendationPeriod,
+  referenceDate,
+  fullHistory = false,
+}: {
+  accountRockId: number;
+  facts: Array<GivingFactForPledge & { personRockId: number | null }>;
+  recommendationAmount: string | null;
+  recommendationPeriod: GivingPledgePeriod | null;
+  referenceDate: Date;
+  fullHistory?: boolean;
+}) {
+  const relevantFacts = facts.filter(
+    (fact) => fact.accountRockId === accountRockId,
+  );
+  return recommendedMatchStreak({
+    facts: relevantFacts,
+    fullHistory,
+    recommendationAmount,
+    recommendationPeriod,
+    referenceDate,
+  });
+}
+
+function recommendedMatchStreak({
+  facts,
+  fullHistory = false,
+  recommendationAmount,
+  recommendationPeriod,
+  referenceDate,
+}: {
+  facts: GivingFactForPledge[];
+  fullHistory?: boolean;
+  recommendationAmount: string | null;
+  recommendationPeriod: GivingPledgePeriod | null;
+  referenceDate: Date;
+}) {
+  if (!recommendationAmount || !recommendationPeriod) {
+    return {
+      recommendedMatchStreakCount: 0,
+      recommendedMatchStreakStartedAt: null,
+    };
+  }
+
+  const recommendedCents = decimalToCents(recommendationAmount);
+  const analysisMonths = new Set(
+    streakAnalysisMonthKeys(facts, referenceDate, fullHistory),
+  );
+  const analysisFacts = facts.filter((fact) =>
+    analysisMonths.has(monthKey(fact.effectiveMonth)),
+  );
+
+  let periodTotals: PeriodTotal[] = [];
+
+  if (recommendationPeriod === "MONTHLY") {
+    periodTotals = sumByMonth(analysisFacts, analysisMonths);
+  }
+
+  if (recommendationPeriod === "QUARTERLY") {
+    periodTotals = sumByQuarter(analysisFacts, analysisMonths);
+  }
+
+  if (recommendationPeriod === "ANNUALLY") {
+    const annual = sumByYear(analysisFacts, analysisMonths);
+    periodTotals = annual ? [annual] : [];
+  }
+
+  if (
+    recommendationPeriod === "WEEKLY" ||
+    recommendationPeriod === "FORTNIGHTLY"
+  ) {
+    periodTotals = analysisFacts
+      .map((fact) => ({
+        startDate: giftDate(fact),
+        totalCents: decimalToCents(fact.amount),
+      }))
+      .filter((period) => period.totalCents > 0n)
+      .sort(
+        (left, right) => left.startDate.getTime() - right.startDate.getTime(),
+      );
+  }
+
+  let streakCount = 0;
+  let streakStartedAt: Date | null = null;
+
+  for (let index = periodTotals.length - 1; index >= 0; index -= 1) {
+    const period = periodTotals[index];
+
+    if (!period || period.totalCents < recommendedCents) {
+      break;
+    }
+
+    streakCount += 1;
+    streakStartedAt = period.startDate;
+  }
+
+  return {
+    recommendedMatchStreakCount: streakCount,
+    recommendedMatchStreakStartedAt: streakStartedAt,
+  };
+}
+
+function confidenceFromStreak(streakCount: number): PledgeConfidence {
+  if (streakCount >= 4) {
+    return "HIGH";
+  }
+
+  if (streakCount >= 2) {
+    return "MEDIUM";
+  }
+
+  return "LOW";
+}
+
+type PeriodTotal = {
+  startDate: Date;
+  totalCents: bigint;
+};
+
+function sumByMonth(facts: GivingFactForPledge[], analysisMonths: Set<string>) {
+  const totals = new Map(
+    Array.from(analysisMonths).map((month) => [month, 0n]),
+  );
+
+  for (const fact of facts) {
+    const month = monthKey(fact.effectiveMonth);
+    const total = totals.get(month);
+
+    if (total === undefined) {
+      continue;
+    }
+
+    totals.set(month, total + decimalToCents(fact.amount));
+  }
+
+  return Array.from(totals.entries())
+    .map(([month, totalCents]) => ({
+      startDate: new Date(`${month}-01T00:00:00.000Z`),
+      totalCents,
+    }))
+    .sort(
+      (left, right) => left.startDate.getTime() - right.startDate.getTime(),
+    );
+}
+
+function sumByQuarter(
+  facts: GivingFactForPledge[],
+  analysisMonths: Set<string>,
+) {
+  const monthTotals = sumByMonth(facts, analysisMonths);
+  const quarterTotals = new Map<string, PeriodTotal>();
+
+  for (const period of monthTotals) {
+    const month = monthKey(period.startDate);
+    const [yearText, monthText] = month.split("-");
+    const quarter = Math.floor((Number(monthText) - 1) / 3) + 1;
+    const key = `${yearText}-Q${quarter}`;
+    const current = quarterTotals.get(key);
+
+    if (!current) {
+      quarterTotals.set(key, {
+        startDate: new Date(Date.UTC(Number(yearText), (quarter - 1) * 3, 1)),
+        totalCents: period.totalCents,
+      });
+      continue;
+    }
+
+    quarterTotals.set(key, {
+      ...current,
+      totalCents: current.totalCents + period.totalCents,
+    });
+  }
+
+  return Array.from(quarterTotals.values()).sort(
+    (left, right) => left.startDate.getTime() - right.startDate.getTime(),
+  );
+}
+
+function sumByYear(facts: GivingFactForPledge[], analysisMonths: Set<string>) {
+  const monthTotals = sumByMonth(facts, analysisMonths);
+
+  if (monthTotals.length === 0) {
+    return null;
+  }
+
+  return {
+    startDate: monthTotals[0].startDate,
+    totalCents: monthTotals.reduce(
+      (total, period) => total + period.totalCents,
+      0n,
+    ),
+  };
 }
 
 function twelveMonthKeysEndingAt(referenceDate: Date, endMonthOffset: number) {
@@ -1271,6 +1819,34 @@ function twelveMonthKeysEndingAt(referenceDate: Date, endMonthOffset: number) {
 
 function monthKey(value: Date) {
   return value.toISOString().slice(0, 7);
+}
+
+function snapshotKey(input: { personRockId: number; accountRockId: number }) {
+  return `${input.personRockId}:${input.accountRockId}`;
+}
+
+function resolveCandidateStreak(
+  row: Pick<PledgeAnalysisRow, "recommendedAmount" | "recommendedPeriod">,
+  snapshot: PledgeRecommendationSnapshotRow | undefined,
+) {
+  if (
+    !snapshot ||
+    !row.recommendedAmount ||
+    !row.recommendedPeriod ||
+    snapshot.recommendedPeriod !== row.recommendedPeriod ||
+    decimalToCents(snapshot.recommendedAmount) !==
+      decimalToCents(row.recommendedAmount)
+  ) {
+    return {
+      recommendedMatchStreakCount: 0,
+      recommendedMatchStreakStartedAt: null,
+    };
+  }
+
+  return {
+    recommendedMatchStreakCount: snapshot.recommendedMatchStreakCount,
+    recommendedMatchStreakStartedAt: snapshot.recommendedMatchStreakStartedAt,
+  };
 }
 
 function groupBy<T>(items: T[], key: (item: T) => string) {

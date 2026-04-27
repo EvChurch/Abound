@@ -29,6 +29,7 @@ export default async function SyncPage() {
           accessState.user.role,
           "settings:manage",
         )}
+        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
         settingsActiveItem="sync-status"
       />
       <SyncStatus summary={summary} />

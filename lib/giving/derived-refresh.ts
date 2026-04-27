@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
+import { refreshPledgeRecommendationSnapshots } from "@/lib/giving/pledges";
 
 export type FundScopedGivingRefreshJobData = {
   refreshId: string;
@@ -12,7 +13,11 @@ type DerivedRefreshClient = Pick<
   | "derivedCalculationRefresh"
   | "givingFact"
   | "givingLifecycleSnapshot"
+  | "givingPledge"
+  | "givingPledgeRecommendationDecision"
+  | "givingPledgeRecommendationSnapshot"
   | "platformFundSetting"
+  | "rockFinancialAccount"
   | "syncRun"
 > & {
   $transaction: PrismaClient["$transaction"];
@@ -73,11 +78,8 @@ export async function performFundScopedGivingRefresh(
       select: { id: true },
     });
     const result = latestSyncRun
-      ? await refreshGivingLifecycleSnapshots(
-          { syncRunId: latestSyncRun.id },
-          client,
-        )
-      : await clearGivingLifecycleSnapshots(client);
+      ? await refreshAllDerivedSnapshots(latestSyncRun.id, client)
+      : await clearAllDerivedSnapshots(client);
 
     await client.derivedCalculationRefresh.update({
       data: {
@@ -103,13 +105,35 @@ export async function performFundScopedGivingRefresh(
   }
 }
 
-async function clearGivingLifecycleSnapshots(
-  client: Pick<PrismaClient, "givingLifecycleSnapshot">,
+async function refreshAllDerivedSnapshots(
+  syncRunId: string,
+  client: DerivedRefreshClient,
 ) {
-  await client.givingLifecycleSnapshot.deleteMany({});
+  const [lifecycle, pledgeRecommendations] = await Promise.all([
+    refreshGivingLifecycleSnapshots({ syncRunId }, client),
+    refreshPledgeRecommendationSnapshots({ syncRunId }, client),
+  ]);
+
+  return {
+    ...lifecycle,
+    ...pledgeRecommendations,
+  };
+}
+
+async function clearAllDerivedSnapshots(
+  client: Pick<
+    PrismaClient,
+    "givingLifecycleSnapshot" | "givingPledgeRecommendationSnapshot"
+  >,
+) {
+  await Promise.all([
+    client.givingLifecycleSnapshot.deleteMany({}),
+    client.givingPledgeRecommendationSnapshot.deleteMany({}),
+  ]);
 
   return {
     householdSnapshots: 0,
+    recommendationSnapshots: 0,
     personSnapshots: 0,
     totalSnapshots: 0,
   };

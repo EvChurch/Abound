@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import { hasPermission } from "@/lib/auth/roles";
 import {
   audiencePreviewFromRecord,
   listCommunicationPreps,
@@ -35,7 +36,14 @@ export default async function CommunicationsPage({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav active="communications" />
+      <AppTopNav
+        active="communications"
+        canManageSettings={hasPermission(
+          accessState.user.role,
+          "settings:manage",
+        )}
+        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
+      />
       <main className="grid gap-6 px-7 py-7">
         <section className="grid gap-3">
           <h1 className="text-[34px] font-semibold leading-tight tracking-normal text-app-foreground">

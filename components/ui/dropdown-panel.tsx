@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -7,6 +9,8 @@ type DropdownPanelProps = {
   align?: "left" | "right";
   panelClassName?: string;
   openOnHover?: boolean;
+  navigateHref?: string;
+  navigateLabel?: string;
   trigger: ReactNode;
   triggerClassName?: string;
   widthClassName?: string;
@@ -16,6 +20,8 @@ type DropdownPanelProps = {
 export function DropdownPanel({
   align = "left",
   children,
+  navigateHref,
+  navigateLabel,
   openOnHover = false,
   panelClassName,
   trigger,
@@ -24,6 +30,9 @@ export function DropdownPanel({
 }: DropdownPanelProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [prefersHoverNav, setPrefersHoverNav] = useState(
+    Boolean(navigateHref && navigateLabel && openOnHover),
+  );
 
   useEffect(() => {
     if (!open) {
@@ -51,6 +60,27 @@ export function DropdownPanel({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const updatePreference = () => {
+      setPrefersHoverNav(mediaQuery.matches);
+    };
+
+    updatePreference();
+    mediaQuery.addEventListener("change", updatePreference);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updatePreference);
+    };
+  }, []);
+
   const resolvedTriggerClassName =
     triggerClassName ??
     "inline-flex min-h-10 items-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)] transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25";
@@ -58,6 +88,9 @@ export function DropdownPanel({
     panelClassName ??
     "rounded-[8px] border border-app-border bg-app-surface p-4 shadow-[0_20px_40px_rgba(35,31,24,0.14)]";
   const resolvedWidthClassName = widthClassName ?? "";
+  const canNavigateWithPrimaryTrigger = Boolean(
+    navigateHref && navigateLabel && prefersHoverNav,
+  );
 
   return (
     <div
@@ -74,15 +107,21 @@ export function DropdownPanel({
       }}
       ref={rootRef}
     >
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className={resolvedTriggerClassName}
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        {trigger}
-      </button>
+      {canNavigateWithPrimaryTrigger ? (
+        <Link className={resolvedTriggerClassName} href={navigateHref!}>
+          {trigger}
+        </Link>
+      ) : (
+        <button
+          aria-expanded={open}
+          aria-haspopup="menu"
+          className={resolvedTriggerClassName}
+          onClick={() => setOpen((current) => !current)}
+          type="button"
+        >
+          {trigger}
+        </button>
+      )}
       <AnimatePresence>
         {open ? (
           <motion.div

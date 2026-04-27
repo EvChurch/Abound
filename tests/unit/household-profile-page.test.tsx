@@ -1,8 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { HouseholdProfile } from "@/components/people/household-profile";
 import type { RockHouseholdProfile } from "@/lib/people/profiles";
+
+vi.mock("@/components/navigation/app-top-nav", () => ({
+  AppTopNav: () => <nav aria-label="Primary">Top nav</nav>,
+}));
 
 const monthlyGiving = [
   { giftCount: 0, month: "2025-05", totalGiven: "0.00" },

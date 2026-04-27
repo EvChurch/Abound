@@ -113,6 +113,12 @@ describe("pg-boss sync jobs", () => {
       getPersonSlice: vi.fn(async () => slice),
     };
     const prisma = {
+      givingFact: {
+        findMany: vi.fn(async () => []),
+      },
+      givingPledgeRecommendationSnapshot: {
+        deleteMany: vi.fn(async () => null),
+      },
       syncRun: {
         create: vi.fn(async () => ({ id: "sync_1" })),
         update: vi.fn(async () => null),
@@ -160,6 +166,12 @@ describe("pg-boss sync jobs", () => {
       getFullSyncSlice: vi.fn(async () => slice),
     };
     const prisma = {
+      givingFact: {
+        findMany: vi.fn(async () => []),
+      },
+      givingPledgeRecommendationSnapshot: {
+        deleteMany: vi.fn(async () => null),
+      },
       syncRun: {
         create: vi.fn(async () => ({ id: "sync_1" })),
         update: vi.fn(async () => null),

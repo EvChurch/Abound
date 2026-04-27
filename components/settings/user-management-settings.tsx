@@ -10,7 +10,6 @@ import { DropdownPanel } from "@/components/ui/dropdown-panel";
 type UserManagementSettingsProps = {
   approveAction: (formData: FormData) => Promise<void>;
   denyAction: (formData: FormData) => Promise<void>;
-  saved: boolean;
   summary: UserManagementSummary;
   updateUserAction: (formData: FormData) => Promise<void>;
 };
@@ -18,7 +17,6 @@ type UserManagementSettingsProps = {
 export function UserManagementSettings({
   approveAction,
   denyAction,
-  saved,
   summary,
   updateUserAction,
 }: UserManagementSettingsProps) {
@@ -42,12 +40,6 @@ export function UserManagementSettings({
             </p>
           </div>
         </div>
-
-        {saved ? (
-          <div className="rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-900">
-            User access settings saved.
-          </div>
-        ) : null}
       </header>
 
       {pendingAccessRequests.length > 0 ? (
@@ -142,9 +134,11 @@ function UserCard({
   updateUserAction: (formData: FormData) => Promise<void>;
   user: ManagedAppUser;
 }) {
-  const displayName = user.linkedPerson?.name ?? user.name ?? user.email ?? "User";
+  const displayName =
+    user.linkedPerson?.name ?? user.name ?? user.email ?? "User";
   const displayEmail = user.linkedPerson?.email ?? user.email;
-  const avatarName = user.linkedPerson?.name ?? user.name ?? displayEmail ?? "User";
+  const avatarName =
+    user.linkedPerson?.name ?? user.name ?? displayEmail ?? "User";
 
   return (
     <article className="grid gap-4 rounded-[8px] border border-app-border bg-app-surface p-4 shadow-[0_1px_2px_rgba(150,140,120,0.12)] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -317,11 +311,7 @@ function formatDateTime(value: Date) {
 }
 
 function initialsForName(value: string) {
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
+  const parts = value.trim().split(/\s+/).filter(Boolean).slice(0, 2);
 
   const initials = parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
   return initials || "?";

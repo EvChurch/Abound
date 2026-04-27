@@ -65,6 +65,7 @@ export default async function PeopleLookupPage({
         accessState.user.role,
         "settings:manage",
       )}
+      canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
       ageGroup={params.ageGroup}
       filters={peopleFiltersFromParams(params)}
       kind="people"
