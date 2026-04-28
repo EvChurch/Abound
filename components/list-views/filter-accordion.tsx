@@ -19,7 +19,7 @@ export function FilterAccordion({ items }: { items: FilterAccordionItem[] }) {
 
   return (
     <div className="bg-app-surface">
-      {items.map((item, index) => {
+      {items.map((item) => {
         const open = openId === item.id;
         const panelId = `filter-panel-${item.id}`;
 

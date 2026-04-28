@@ -241,7 +241,7 @@ describe("ListViewShell", () => {
   });
 
   it("renders the filter accordion edge-to-edge without rounded outer chrome", () => {
-    const { container } = render(
+    render(
       <ListViewShell
         campusOptions={[]}
         catalog={[]}
