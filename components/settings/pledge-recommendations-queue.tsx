@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
@@ -29,8 +29,6 @@ export function PledgeRecommendationsQueue({
   result,
 }: PledgeRecommendationsQueueProps) {
   const [displayCandidates, setDisplayCandidates] = useState(candidates);
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setDisplayCandidates(candidates);
@@ -50,45 +48,38 @@ export function PledgeRecommendationsQueue({
     candidate: PledgeCandidate,
     action: "accept" | "deny",
   ) {
-    if (pendingKey) {
-      return;
-    }
-
     const key = candidateKey(candidate);
     const previousCandidates = displayCandidates;
 
     setDisplayCandidates((current) =>
       current.filter((item) => candidateKey(item) !== key),
     );
-    setPendingKey(key);
 
     const formData = new FormData();
     formData.set("personRockId", String(candidate.personRockId));
     formData.set("accountRockId", String(candidate.account.rockId));
 
-    startTransition(async () => {
-      try {
-        const actionResult =
-          action === "accept"
-            ? await acceptAction(formData)
-            : await denyAction(formData);
+    try {
+      const actionResult =
+        action === "accept"
+          ? await acceptAction(formData)
+          : await denyAction(formData);
 
-        const message = RESULT_COPY[actionResult.result] ?? null;
+      const message = RESULT_COPY[actionResult.result] ?? null;
 
-        if (message) {
-          toast.success(message);
-        }
-      } catch (error) {
-        setDisplayCandidates(previousCandidates);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to process this recommendation right now.",
-        );
-      } finally {
-        setPendingKey(null);
+      if (message) {
+        toast.success(message);
       }
-    });
+    } catch (error) {
+      setDisplayCandidates((current) =>
+        restoreCandidate(current, previousCandidates, candidate),
+      );
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to process this recommendation right now.",
+      );
+    }
   }
 
   return (
@@ -197,7 +188,6 @@ export function PledgeRecommendationsQueue({
                 <div className="relative z-10 flex flex-wrap items-center gap-2">
                   <button
                     className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-emerald-700 bg-emerald-50 px-3 text-[12px] font-semibold text-emerald-950 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-wait disabled:opacity-60"
-                    disabled={isPending}
                     onClick={() =>
                       void handleRecommendationAction(candidate, "accept")
                     }
@@ -208,7 +198,6 @@ export function PledgeRecommendationsQueue({
 
                   <button
                     className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[12px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/30 disabled:cursor-wait disabled:opacity-60"
-                    disabled={isPending}
                     onClick={() =>
                       void handleRecommendationAction(candidate, "deny")
                     }
@@ -230,6 +219,29 @@ function candidateKey(
   candidate: Pick<PledgeCandidate, "personRockId" | "account">,
 ) {
   return `${candidate.personRockId}-${candidate.account.rockId}`;
+}
+
+function restoreCandidate(
+  current: PledgeCandidate[],
+  previousCandidates: PledgeCandidate[],
+  candidate: PledgeCandidate,
+) {
+  if (current.some((item) => candidateKey(item) === candidateKey(candidate))) {
+    return current;
+  }
+
+  const previousOrder = new Map(
+    previousCandidates.map((item, index) => [candidateKey(item), index]),
+  );
+
+  return [...current, candidate].sort((left, right) => {
+    const leftOrder =
+      previousOrder.get(candidateKey(left)) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder =
+      previousOrder.get(candidateKey(right)) ?? Number.MAX_SAFE_INTEGER;
+
+    return leftOrder - rightOrder;
+  });
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
