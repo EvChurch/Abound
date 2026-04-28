@@ -240,6 +240,51 @@ describe("ListViewShell", () => {
     expect(aside?.className).toContain("xl:w-[320px]");
   });
 
+  it("renders the filter accordion edge-to-edge without rounded outer chrome", () => {
+    const { container } = render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    const accordionShell = screen
+      .getByRole("button", { name: /Lifecycle signals/i })
+      .closest("section")?.parentElement;
+
+    expect(accordionShell?.className).not.toContain("border-y");
+    expect(accordionShell?.className).not.toContain("rounded");
+  });
+
+  it("uses a sticky accordion title inside the filter rail", () => {
+    render(
+      <ListViewShell
+        ageGroup="ADULTS"
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    const accordionButton = screen.getByRole("button", {
+      name: /Lifecycle signals/i,
+    });
+
+    fireEvent.click(accordionButton);
+
+    expect(accordionButton.className).toContain("sticky");
+    expect(accordionButton.className).toContain("top-0");
+  });
+
   it("renders visible status controls for people and households", () => {
     const { rerender } = render(
       <ListViewShell

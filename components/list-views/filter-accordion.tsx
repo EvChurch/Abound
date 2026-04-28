@@ -18,20 +18,17 @@ export function FilterAccordion({ items }: { items: FilterAccordionItem[] }) {
   const [openId, setOpenId] = useState<string | null>(initialOpenId);
 
   return (
-    <div className="overflow-hidden rounded-[7px] border border-app-border bg-app-surface shadow-[0_1px_1px_rgba(20,18,14,0.03)]">
+    <div className="bg-app-surface">
       {items.map((item, index) => {
         const open = openId === item.id;
         const panelId = `filter-panel-${item.id}`;
 
         return (
-          <section
-            className={index > 0 ? "border-t border-app-border" : undefined}
-            key={item.id}
-          >
+          <section key={item.id}>
             <button
               aria-controls={panelId}
               aria-expanded={open}
-              className="flex min-h-10 w-full items-center justify-between gap-3 px-3 text-left text-[13px] font-semibold text-app-foreground outline-none hover:bg-app-chip/70 focus-visible:ring-2 focus-visible:ring-app-accent/25"
+              className="sticky top-0 z-20 flex min-h-10 w-full items-center justify-between gap-3 border-b border-app-border bg-app-surface px-3 text-left text-[13px] font-semibold text-app-foreground outline-none hover:bg-app-chip/70 focus-visible:ring-2 focus-visible:ring-app-accent/25"
               onClick={() => setOpenId(open ? null : item.id)}
               type="button"
             >
@@ -55,7 +52,7 @@ export function FilterAccordion({ items }: { items: FilterAccordionItem[] }) {
               {open ? (
                 <motion.div
                   animate={{ height: "auto", opacity: 1 }}
-                  className="overflow-hidden border-t border-app-border"
+                  className="overflow-hidden"
                   exit={{ height: 0, opacity: 0 }}
                   id={panelId}
                   initial={{ height: 0, opacity: 0 }}
@@ -64,7 +61,7 @@ export function FilterAccordion({ items }: { items: FilterAccordionItem[] }) {
                     ease: [0.2, 0.8, 0.2, 1],
                   }}
                 >
-                  <div className="grid gap-3 px-3 py-3">{item.children}</div>
+                  <div className="grid gap-3 p-3">{item.children}</div>
                 </motion.div>
               ) : null}
             </AnimatePresence>

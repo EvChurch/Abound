@@ -279,7 +279,7 @@ export function ListViewShell(props: ListViewShellProps) {
                   </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                   <FilterAccordion items={accordionItems} />
                 </div>
 
@@ -640,10 +640,10 @@ function PanelSelect({
   options: ReadonlyArray<{ label: string; value: string }>;
 }) {
   return (
-    <label className="grid gap-2.5">
-      <span className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
+    <div className="flex flex-col gap-2">
+      <div className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
         {label}
-      </span>
+      </div>
       <AutoSubmitSelect
         key={`${name}:${defaultValue ?? ""}`}
         className="flex min-h-9 w-full items-center justify-between rounded-[6px] border border-app-border bg-app-background px-2.5 text-[13px] font-medium text-app-foreground outline-none focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
@@ -651,7 +651,7 @@ function PanelSelect({
         name={name}
         options={options}
       />
-    </label>
+    </div>
   );
 }
 
@@ -669,39 +669,37 @@ function PanelMultiChoice({
   const selected = new Set(selectedValues);
 
   return (
-    <fieldset className="grid gap-2.5">
-      <legend className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
-        <span className="block pb-1.5">{label}</span>
-      </legend>
-      <div>
-        <div className="grid max-h-44 gap-1 overflow-y-auto rounded-[6px] border border-app-border bg-app-background p-1.5">
-          {options.length > 0 ? (
-            options.map((option) => (
-              <label
-                className="flex min-h-8 items-center justify-between gap-3 rounded-[5px] px-2 text-[13px] font-medium text-app-foreground hover:bg-app-chip"
-                key={option.value}
-              >
-                <span className="min-w-0 truncate">{option.label}</span>
-                <AutoSubmitChoice
-                  key={`${name}:${option.value}:${
-                    selected.has(option.value) ? "checked" : "unchecked"
-                  }`}
-                  className="h-4 w-4 shrink-0 accent-app-accent"
-                  defaultChecked={selected.has(option.value)}
-                  name={name}
-                  type="checkbox"
-                  value={option.value}
-                />
-              </label>
-            ))
-          ) : (
-            <span className="px-2 py-1.5 text-[12px] font-medium text-app-muted">
-              No options available
-            </span>
-          )}
-        </div>
+    <div className="flex flex-col gap-2">
+      <div className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
+        {label}
       </div>
-    </fieldset>
+      <div className="grid gap-1 rounded-[6px] border border-app-border bg-app-background p-1.5">
+        {options.length > 0 ? (
+          options.map((option) => (
+            <label
+              className="flex min-h-8 items-center justify-between gap-3 rounded-[5px] px-2 text-[13px] font-medium text-app-foreground hover:bg-app-chip"
+              key={option.value}
+            >
+              <span className="min-w-0 truncate">{option.label}</span>
+              <AutoSubmitChoice
+                key={`${name}:${option.value}:${
+                  selected.has(option.value) ? "checked" : "unchecked"
+                }`}
+                className="h-4 w-4 shrink-0 accent-app-accent"
+                defaultChecked={selected.has(option.value)}
+                name={name}
+                type="checkbox"
+                value={option.value}
+              />
+            </label>
+          ))
+        ) : (
+          <span className="px-2 py-1.5 text-[12px] font-medium text-app-muted">
+            No options available
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
