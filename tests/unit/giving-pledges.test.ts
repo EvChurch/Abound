@@ -5,6 +5,7 @@ import type { LocalAppUser } from "@/lib/auth/types";
 import {
   buildPledgeAnalysisRows,
   createDraftGivingPledgeFromRecommendation,
+  listPledgeCandidates,
   refreshPledgeRecommendationSnapshots,
   quickCreateGivingPledge,
   rejectGivingPledgeRecommendation,
@@ -213,6 +214,87 @@ describe("giving pledge analysis", () => {
       recommendedPeriod: "WEEKLY",
       status: "RECOMMENDED",
     });
+  });
+
+  it("builds queue trends using the recommendation period cadence", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-20T00:00:00.000Z"));
+
+    const client = serviceClient();
+    vi.mocked(client.givingFact.findMany).mockResolvedValueOnce(
+      weeklyFacts(101, [
+        "2025-08-01",
+        "2025-08-08",
+        "2025-08-15",
+        "2025-08-22",
+        "2025-08-29",
+        "2025-09-05",
+        "2025-09-12",
+        "2025-09-19",
+        "2025-09-26",
+        "2025-10-03",
+        "2025-10-10",
+        "2025-10-17",
+        "2025-10-24",
+        "2025-10-31",
+        "2025-11-07",
+        "2025-11-14",
+        "2025-11-21",
+        "2025-11-28",
+        "2025-12-05",
+        "2025-12-12",
+        "2025-12-19",
+        "2025-12-29",
+        "2026-01-05",
+        "2026-01-09",
+        "2026-01-16",
+        "2026-01-23",
+        "2026-01-30",
+        "2026-02-09",
+        "2026-02-13",
+        "2026-02-20",
+        "2026-02-27",
+        "2026-03-06",
+        "2026-03-13",
+        "2026-03-20",
+        "2026-03-27",
+        "2026-04-07",
+        "2026-04-10",
+        "2026-04-17",
+      ]).map((fact) => ({
+        ...fact,
+        personRockId: 910001,
+      })) as never,
+    );
+    vi.mocked(client.rockPerson.findMany).mockResolvedValueOnce([
+      {
+        firstName: "Jordan",
+        lastName: "Lee",
+        nickName: "Jordan",
+        rockId: 910001,
+      },
+    ] as never);
+    vi.mocked(client.rockPerson.findUnique).mockResolvedValueOnce({
+      rockId: 910001,
+    } as never);
+
+    try {
+      const candidates = await listPledgeCandidates({ limit: 10 }, financeUser, client);
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0]?.recommendedPeriod).toBe("WEEKLY");
+      expect(candidates[0]?.givingTrend).toHaveLength(16);
+      expect(candidates[0]?.givingTrend.at(-1)).toMatchObject({
+        periodStart: "2026-04-20",
+        total: "0.00",
+      });
+      expect(candidates[0]?.givingTrend.at(-2)).toMatchObject({
+        periodStart: "2026-04-13",
+        total: "100.00",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not treat an empty current month as a missing active month", () => {

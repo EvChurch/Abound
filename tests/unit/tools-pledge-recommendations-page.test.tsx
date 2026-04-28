@@ -68,9 +68,7 @@ describe("PledgeRecommendationsPage", () => {
       },
     };
 
-    render(
-      await PledgeRecommendationsPage({ searchParams: Promise.resolve({}) }),
-    );
+    render(await PledgeRecommendationsPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByRole("heading", {
@@ -100,9 +98,9 @@ describe("PledgeRecommendationsPage", () => {
         confidence: "HIGH",
         draftPledge: null,
         explanation: "Review recommendation.",
-        givingTrendLast24Months: [
-          { month: "2024-05", total: "0.00" },
-          { month: "2024-06", total: "50.00" },
+        givingTrend: [
+          { periodStart: "2024-05-01", total: "0.00" },
+          { periodStart: "2024-06-01", total: "50.00" },
         ],
         lastGiftAt: new Date("2026-04-01T00:00:00.000Z"),
         lastTwelveMonthsTotal: "1200.00",
@@ -117,7 +115,7 @@ describe("PledgeRecommendationsPage", () => {
       },
     ];
 
-    render(
+    const { container } = render(
       await PledgeRecommendationsPage({ searchParams: Promise.resolve({}) }),
     );
 
@@ -129,5 +127,11 @@ describe("PledgeRecommendationsPage", () => {
       "/people/8597",
     );
     expect(screen.getByText("Top nav")).toBeInTheDocument();
+    expect(container.querySelectorAll("svg rect").length).toBeGreaterThanOrEqual(
+      2,
+    );
+    expect(
+      container.querySelector("svg line[stroke-dasharray='4 3']"),
+    ).not.toBeNull();
   });
 });

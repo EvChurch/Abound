@@ -152,8 +152,9 @@ export function PledgeRecommendationsQueue({
                       "linear-gradient(to right, transparent 0%, black 40%)",
                   }}
                 >
-                  <GivingTrendSparkline
-                    series={candidate.givingTrendLast24Months}
+                  <GivingTrendBarChart
+                    recommendedAmount={candidate.recommendedAmount}
+                    series={candidate.givingTrend}
                   />
                 </div>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -482,10 +483,12 @@ function monthDistance(start: Date, end: Date) {
   return Math.max(0, yearDelta * 12 + monthDelta);
 }
 
-function GivingTrendSparkline({
+function GivingTrendBarChart({
+  recommendedAmount,
   series,
 }: {
-  series: PledgeCandidate["givingTrendLast24Months"];
+  recommendedAmount: string | null;
+  series: PledgeCandidate["givingTrend"];
 }) {
   if (series.length === 0) {
     return null;
@@ -493,17 +496,28 @@ function GivingTrendSparkline({
 
   const width = 128;
   const height = 56;
-  const points = series.map((point) => Number(point.total));
-  const maxValue = Math.max(...points, 1);
-  const minValue = Math.min(...points, 0);
-  const range = Math.max(maxValue - minValue, 1);
-  const xStep = width / Math.max(series.length - 1, 1);
+  const chartPaddingTop = 4;
+  const chartPaddingBottom = 4;
+  const barGap = 1.5;
+  const values = series.map((point) => Number(point.total));
+  const normalizedRecommendedAmount = Number(recommendedAmount);
+  const maxValue = Math.max(
+    ...values,
+    Number.isFinite(normalizedRecommendedAmount)
+      ? normalizedRecommendedAmount
+      : 0,
+    1,
+  );
+  const chartHeight = height - chartPaddingTop - chartPaddingBottom;
+  const barWidth = Math.max(
+    2,
+    (width - barGap * (series.length - 1)) / series.length,
+  );
   const yForValue = (value: number) =>
-    height - ((value - minValue) / range) * (height - 8) - 4;
-  const line = points
-    .map((value, index) => `${index * xStep},${yForValue(value)}`)
-    .join(" ");
-  const area = `${line} ${width},${height} 0,${height}`;
+    height - chartPaddingBottom - (value / maxValue) * chartHeight;
+  const recommendedLineY = Number.isFinite(normalizedRecommendedAmount)
+    ? yForValue(normalizedRecommendedAmount)
+    : null;
 
   return (
     <svg
@@ -512,14 +526,35 @@ function GivingTrendSparkline({
       fill="none"
       viewBox={`0 0 ${width} ${height}`}
     >
-      <path d={`M${area} Z`} fill="rgba(110, 120, 140, 0.12)" />
-      <polyline
-        points={line}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
+      {recommendedLineY !== null ? (
+        <line
+          stroke="rgba(176, 89, 47, 0.78)"
+          strokeDasharray="4 3"
+          strokeWidth="1.5"
+          x1="0"
+          x2={width}
+          y1={recommendedLineY}
+          y2={recommendedLineY}
+        />
+      ) : null}
+      {values.map((value, index) => {
+        const safeValue = Number.isFinite(value) ? Math.max(value, 0) : 0;
+        const barHeight = (safeValue / maxValue) * chartHeight;
+        const x = index * (barWidth + barGap);
+        const y = height - chartPaddingBottom - barHeight;
+
+        return (
+          <rect
+            fill="rgba(110, 120, 140, 0.22)"
+            height={barHeight}
+            key={`${series[index]?.periodStart ?? index}-${value}`}
+            rx="1.5"
+            width={barWidth}
+            x={x}
+            y={y}
+          />
+        );
+      })}
     </svg>
   );
 }

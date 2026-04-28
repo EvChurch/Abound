@@ -80,13 +80,13 @@ export type PersonPledgeEditor = {
 export type PledgeCandidate = PledgeAnalysisRow & {
   personRockId: number;
   personDisplayName: string;
-  givingTrendLast24Months: GivingTrendPoint[];
+  givingTrend: GivingTrendPoint[];
   recommendedMatchStreakCount: number;
   recommendedMatchStreakStartedAt: Date | null;
 };
 
 export type GivingTrendPoint = {
-  month: string;
+  periodStart: string;
   total: string;
 };
 
@@ -508,9 +508,10 @@ export async function listPledgeCandidates(
             confidence: confidenceFromStreak(
               streak.recommendedMatchStreakCount,
             ),
-            givingTrendLast24Months: buildGivingTrendLast24Months({
+            givingTrend: buildGivingTrend({
               accountRockId: row.account.rockId,
               facts: personFacts,
+              recommendedPeriod: row.recommendedPeriod,
               referenceDate: new Date(),
             }),
             ...streak,
@@ -1546,11 +1547,15 @@ function lastThirteenMonthKeys(referenceDate: Date) {
 }
 
 function lastTwentyFourMonthKeys(referenceDate: Date) {
+  return lastMonthKeys(referenceDate, 24);
+}
+
+function lastMonthKeys(referenceDate: Date, count: number) {
   const year = referenceDate.getUTCFullYear();
   const month = referenceDate.getUTCMonth();
 
-  return Array.from({ length: 24 }, (_value, index) => {
-    const date = new Date(Date.UTC(year, month - 23 + index, 1));
+  return Array.from({ length: count }, (_value, index) => {
+    const date = new Date(Date.UTC(year, month - (count - 1) + index, 1));
 
     return monthKey(date);
   });
@@ -1573,24 +1578,48 @@ function monthKeysBetween(startDate: Date, endDate: Date) {
   return keys;
 }
 
-function buildGivingTrendLast24Months({
+function buildGivingTrend({
   accountRockId,
   facts,
+  recommendedPeriod,
   referenceDate,
 }: {
   accountRockId: number;
   facts: Array<GivingFactForPledge & { personRockId: number | null }>;
+  recommendedPeriod: GivingPledgePeriod | null;
   referenceDate: Date;
 }): GivingTrendPoint[] {
+  const relevantFacts = facts.filter((fact) => fact.accountRockId === accountRockId);
+
+  if (recommendedPeriod === "WEEKLY") {
+    return buildWeekBasedTrend(relevantFacts, referenceDate, 1, 16);
+  }
+
+  if (recommendedPeriod === "FORTNIGHTLY") {
+    return buildWeekBasedTrend(relevantFacts, referenceDate, 2, 16);
+  }
+
+  if (recommendedPeriod === "QUARTERLY") {
+    return buildQuarterTrend(relevantFacts, referenceDate, 12);
+  }
+
+  if (recommendedPeriod === "ANNUALLY") {
+    return buildYearTrend(relevantFacts, referenceDate, 4);
+  }
+
+  return buildMonthTrend(relevantFacts, referenceDate, 24);
+}
+
+function buildMonthTrend(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+  count: number,
+) {
   const monthTotals = new Map(
-    lastTwentyFourMonthKeys(referenceDate).map((month) => [month, 0n]),
+    lastMonthKeys(referenceDate, count).map((month) => [month, 0n]),
   );
 
   for (const fact of facts) {
-    if (fact.accountRockId !== accountRockId) {
-      continue;
-    }
-
     const month = monthKey(fact.effectiveMonth);
     const current = monthTotals.get(month);
 
@@ -1602,9 +1631,181 @@ function buildGivingTrendLast24Months({
   }
 
   return Array.from(monthTotals.entries()).map(([month, totalCents]) => ({
-    month,
+    periodStart: `${month}-01`,
     total: centsToDecimalString(totalCents),
   }));
+}
+
+function buildQuarterTrend(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+  count: number,
+) {
+  const currentQuarterStart = startOfQuarter(referenceDate);
+  const quarterTotals = new Map<string, bigint>();
+
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const quarterStart = addUtcMonths(currentQuarterStart, -index * 3);
+    quarterTotals.set(dateKey(quarterStart), 0n);
+  }
+
+  for (const fact of facts) {
+    const quarterStart = startOfQuarter(giftDate(fact));
+    const key = dateKey(quarterStart);
+    const current = quarterTotals.get(key);
+
+    if (current === undefined) {
+      continue;
+    }
+
+    quarterTotals.set(key, current + decimalToCents(fact.amount));
+  }
+
+  return Array.from(quarterTotals.entries()).map(([periodStart, totalCents]) => ({
+    periodStart,
+    total: centsToDecimalString(totalCents),
+  }));
+}
+
+function buildYearTrend(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+  count: number,
+) {
+  const currentYearStart = startOfYear(referenceDate);
+  const yearTotals = new Map<string, bigint>();
+
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const yearStart = new Date(
+      Date.UTC(currentYearStart.getUTCFullYear() - index, 0, 1),
+    );
+    yearTotals.set(dateKey(yearStart), 0n);
+  }
+
+  for (const fact of facts) {
+    const yearStart = startOfYear(giftDate(fact));
+    const key = dateKey(yearStart);
+    const current = yearTotals.get(key);
+
+    if (current === undefined) {
+      continue;
+    }
+
+    yearTotals.set(key, current + decimalToCents(fact.amount));
+  }
+
+  return Array.from(yearTotals.entries()).map(([periodStart, totalCents]) => ({
+    periodStart,
+    total: centsToDecimalString(totalCents),
+  }));
+}
+
+function buildWeekBasedTrend(
+  facts: GivingFactForPledge[],
+  referenceDate: Date,
+  weeksPerBucket: number,
+  count: number,
+) {
+  const currentBucketStart = startOfWeek(referenceDate);
+  const earliestBucketStart = addUtcDays(
+    currentBucketStart,
+    -(count - 1) * weeksPerBucket * 7,
+  );
+  const bucketTotals = new Map<string, bigint>();
+
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const bucketStart = addUtcDays(
+      currentBucketStart,
+      -index * weeksPerBucket * 7,
+    );
+    bucketTotals.set(dateKey(bucketStart), 0n);
+  }
+
+  for (const fact of facts) {
+    const bucketStart = weekBucketStart(
+      giftDate(fact),
+      currentBucketStart,
+      weeksPerBucket,
+    );
+
+    if (
+      bucketStart.getTime() < earliestBucketStart.getTime() ||
+      bucketStart.getTime() > currentBucketStart.getTime()
+    ) {
+      continue;
+    }
+
+    const key = dateKey(bucketStart);
+    const current = bucketTotals.get(key);
+
+    if (current === undefined) {
+      continue;
+    }
+
+    bucketTotals.set(key, current + decimalToCents(fact.amount));
+  }
+
+  return Array.from(bucketTotals.entries()).map(([periodStart, totalCents]) => ({
+    periodStart,
+    total: centsToDecimalString(totalCents),
+  }));
+}
+
+function startOfQuarter(value: Date) {
+  const quarterMonth = Math.floor(value.getUTCMonth() / 3) * 3;
+
+  return new Date(Date.UTC(value.getUTCFullYear(), quarterMonth, 1));
+}
+
+function startOfYear(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), 0, 1));
+}
+
+function startOfWeek(value: Date) {
+  const start = new Date(
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
+  );
+  const dayOffset = (start.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - dayOffset);
+
+  return start;
+}
+
+function weekBucketStart(
+  value: Date,
+  currentBucketStart: Date,
+  weeksPerBucket: number,
+) {
+  const normalized = startOfWeek(value);
+  const weeksFromCurrent = Math.floor(
+    (currentBucketStart.getTime() - normalized.getTime()) /
+      (7 * 24 * 60 * 60 * 1000),
+  );
+  const bucketOffset = Math.floor(
+    Math.max(0, weeksFromCurrent) / weeksPerBucket,
+  );
+
+  return addUtcDays(currentBucketStart, -bucketOffset * weeksPerBucket * 7);
+}
+
+function addUtcDays(value: Date, days: number) {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate() + days,
+    ),
+  );
+}
+
+function addUtcMonths(value: Date, months: number) {
+  return new Date(
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + months, 1),
+  );
+}
+
+function dateKey(value: Date) {
+  return value.toISOString().slice(0, 10);
 }
 
 function countRecommendedPeriodMatches({
