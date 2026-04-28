@@ -21,7 +21,10 @@ import type { HouseholdsConnection } from "@/lib/list-views/households-list";
 import type { PeopleConnection } from "@/lib/list-views/people-list";
 import type { ConnectionStatusFilterOption } from "@/lib/list-views/connection-status-options";
 import type { FilterFieldDefinition } from "@/lib/list-views/filter-schema";
-import type { ListViewShellFilters } from "@/lib/list-views/page-params";
+import type {
+  ListViewShellFilters,
+  PageParamValue,
+} from "@/lib/list-views/page-params";
 import type { RecordStatusFilterOption } from "@/lib/list-views/record-status-options";
 
 type ListViewShellProps =
@@ -35,7 +38,7 @@ type ListViewShellProps =
       canManageTools?: boolean;
       filters?: ListViewShellFilters;
       kind: "people";
-      lifecycle?: string | null;
+      lifecycle?: PageParamValue | null;
       query?: string | null;
       connectionStatusOptions: ConnectionStatusFilterOption[];
       recordStatusOptions: RecordStatusFilterOption[];
@@ -49,7 +52,7 @@ type ListViewShellProps =
       canManageTools?: boolean;
       filters?: ListViewShellFilters;
       kind: "households";
-      lifecycle?: string | null;
+      lifecycle?: PageParamValue | null;
       query?: string | null;
     };
 
@@ -67,7 +70,8 @@ export function ListViewShell(props: ListViewShellProps) {
     query: props.query,
   });
   const resetHref = props.kind === "people" ? "/people" : "/households";
-  const lifecycleCount = queryHasValue(props.lifecycle) ? 1 : 0;
+  const lifecycleValues = filterValues(props.lifecycle);
+  const lifecycleCount = lifecycleValues.length;
   const audienceCount =
     (queryHasValue(ageGroup) ? 1 : 0) +
     (queryHasValue(props.filters?.campus) ? 1 : 0);
@@ -97,39 +101,12 @@ export function ListViewShell(props: ListViewShellProps) {
   const accordionItems: FilterAccordionItem[] = [
     {
       children: (
-        <div className="grid grid-cols-2 gap-2">
-          {quickLifecycleFilters.map((filter) => (
-            <label
-              className="flex min-h-8 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12px] font-semibold text-app-foreground has-[:checked]:border-app-accent has-[:checked]:bg-app-accent/10 has-[:checked]:text-app-accent-strong"
-              key={filter.value}
-            >
-              <AutoSubmitChoice
-                key={`lifecycle:${filter.value}:${
-                  props.lifecycle?.toUpperCase() === filter.value
-                    ? "checked"
-                    : "unchecked"
-                }`}
-                className="h-3.5 w-3.5 accent-app-accent"
-                defaultChecked={props.lifecycle?.toUpperCase() === filter.value}
-                name="lifecycle"
-                type="radio"
-                value={filter.value}
-              />
-              {filter.label}
-            </label>
-          ))}
-          <label className="flex min-h-8 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12px] font-semibold text-app-foreground has-[:checked]:border-app-accent has-[:checked]:bg-app-accent/10 has-[:checked]:text-app-accent-strong">
-            <AutoSubmitChoice
-              key={`lifecycle:any:${props.lifecycle ? "unchecked" : "checked"}`}
-              className="h-3.5 w-3.5 accent-app-accent"
-              defaultChecked={!props.lifecycle}
-              name="lifecycle"
-              type="radio"
-              value=""
-            />
-            Any
-          </label>
-        </div>
+        <PanelMultiChoice
+          label="Lifecycle signal"
+          name="lifecycle"
+          options={quickLifecycleFilters}
+          selectedValues={lifecycleValues}
+        />
       ),
       count: lifecycleCount,
       defaultOpen: lifecycleCount > 0,
@@ -224,10 +201,10 @@ export function ListViewShell(props: ListViewShellProps) {
         canManageSettings={props.canManageSettings}
         canManageTools={props.canManageTools}
       />
-      <main className="h-[calc(100vh-48px)] overflow-hidden lg:pl-[320px]">
+      <main className="h-[calc(100vh-48px)] overflow-hidden md:pl-[300px] xl:pl-[320px]">
         <section className="min-w-0">
-          <div className="lg:contents">
-            <aside className="border-b border-app-border bg-app-surface lg:fixed lg:bottom-0 lg:left-0 lg:top-12 lg:z-20 lg:w-[320px] lg:border-b-0 lg:border-r">
+          <div className="md:contents">
+            <aside className="border-b border-app-border bg-app-surface md:fixed md:bottom-0 md:left-0 md:top-12 md:z-20 md:w-[300px] md:border-b-0 md:border-r xl:w-[320px]">
               <form action={action} className="flex h-full flex-col">
                 <div className="border-b border-app-border bg-app-background/60 px-3 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
@@ -389,7 +366,7 @@ function ListWorkspaceHeader({
   ageGroup?: string | null;
   filters?: ListViewShellFilters;
   kind: "households" | "people";
-  lifecycle?: string | null;
+  lifecycle?: PageParamValue | null;
   query?: string | null;
   selectedColumns: ListColumnKey[];
 }) {
@@ -616,13 +593,15 @@ function PreservedQueryInputs({
 }: {
   ageGroup?: string | null;
   filters?: ListViewShellFilters;
-  lifecycle?: string | null;
+  lifecycle?: PageParamValue | null;
   query?: string | null;
 }) {
   const entries: Array<[string, string]> = [];
 
   if (query) entries.push(["q", query]);
-  if (lifecycle) entries.push(["lifecycle", lifecycle]);
+  for (const value of filterValues(lifecycle)) {
+    entries.push(["lifecycle", value]);
+  }
   if (ageGroup) entries.push(["ageGroup", ageGroup]);
 
   for (const [key, value] of Object.entries(listFilterQuery(filters))) {
@@ -661,13 +640,13 @@ function PanelSelect({
   options: ReadonlyArray<{ label: string; value: string }>;
 }) {
   return (
-    <label className="grid gap-2">
-      <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+    <label className="grid gap-2.5">
+      <span className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
         {label}
       </span>
       <AutoSubmitSelect
         key={`${name}:${defaultValue ?? ""}`}
-        className="min-h-9 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[13px] font-medium text-app-foreground outline-none focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
+        className="flex min-h-9 w-full items-center justify-between rounded-[6px] border border-app-border bg-app-background px-2.5 text-[13px] font-medium text-app-foreground outline-none focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
         defaultValue={defaultValue ?? ""}
         name={name}
         options={options}
@@ -690,35 +669,37 @@ function PanelMultiChoice({
   const selected = new Set(selectedValues);
 
   return (
-    <fieldset className="grid gap-2">
-      <legend className="font-mono text-[10px] font-semibold uppercase text-app-muted">
-        {label}
+    <fieldset className="grid gap-2.5">
+      <legend className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
+        <span className="block pb-1.5">{label}</span>
       </legend>
-      <div className="grid max-h-44 gap-1 overflow-y-auto rounded-[6px] border border-app-border bg-app-background p-1.5">
-        {options.length > 0 ? (
-          options.map((option) => (
-            <label
-              className="flex min-h-8 items-center justify-between gap-3 rounded-[5px] px-2 text-[13px] font-medium text-app-foreground hover:bg-app-chip"
-              key={option.value}
-            >
-              <span className="min-w-0 truncate">{option.label}</span>
-              <AutoSubmitChoice
-                key={`${name}:${option.value}:${
-                  selected.has(option.value) ? "checked" : "unchecked"
-                }`}
-                className="h-4 w-4 shrink-0 accent-app-accent"
-                defaultChecked={selected.has(option.value)}
-                name={name}
-                type="checkbox"
-                value={option.value}
-              />
-            </label>
-          ))
-        ) : (
-          <span className="px-2 py-1.5 text-[12px] font-medium text-app-muted">
-            No options available
-          </span>
-        )}
+      <div>
+        <div className="grid max-h-44 gap-1 overflow-y-auto rounded-[6px] border border-app-border bg-app-background p-1.5">
+          {options.length > 0 ? (
+            options.map((option) => (
+              <label
+                className="flex min-h-8 items-center justify-between gap-3 rounded-[5px] px-2 text-[13px] font-medium text-app-foreground hover:bg-app-chip"
+                key={option.value}
+              >
+                <span className="min-w-0 truncate">{option.label}</span>
+                <AutoSubmitChoice
+                  key={`${name}:${option.value}:${
+                    selected.has(option.value) ? "checked" : "unchecked"
+                  }`}
+                  className="h-4 w-4 shrink-0 accent-app-accent"
+                  defaultChecked={selected.has(option.value)}
+                  name={name}
+                  type="checkbox"
+                  value={option.value}
+                />
+              </label>
+            ))
+          ) : (
+            <span className="px-2 py-1.5 text-[12px] font-medium text-app-muted">
+              No options available
+            </span>
+          )}
+        </div>
       </div>
     </fieldset>
   );
@@ -742,7 +723,7 @@ function activeFilterChips({
   ageGroup?: string | null;
   campusOptions: CampusFilterOption[];
   filters?: ListViewShellFilters;
-  lifecycle?: string | null;
+  lifecycle?: PageParamValue | null;
   query?: string | null;
 }) {
   const chips: Array<{
@@ -750,16 +731,17 @@ function activeFilterChips({
     param: ListFilterParam;
     value: string;
   }> = [];
+  const lifecycleValues = filterValues(lifecycle);
 
   if (query?.trim()) {
     chips.push({ label: "Search", param: "q", value: query.trim() });
   }
 
-  if (lifecycle?.trim()) {
+  if (lifecycleValues.length > 0) {
     chips.push({
       label: "Lifecycle",
       param: "lifecycle",
-      value: lifecycleLabel(lifecycle.trim()),
+      value: lifecycleValues.map(lifecycleLabel).join(", "),
     });
   }
 
@@ -912,14 +894,16 @@ function clearFilterHref({
   columns: ListColumnKey[];
   columnsChanged: boolean;
   filters?: ListViewShellFilters;
-  lifecycle?: string | null;
+  lifecycle?: PageParamValue | null;
   query?: string | null;
   target: ListFilterParam;
 }) {
   const params = new URLSearchParams();
 
   if (query) params.set("q", query);
-  if (lifecycle) params.set("lifecycle", lifecycle);
+  for (const value of filterValues(lifecycle)) {
+    params.append("lifecycle", value);
+  }
   if (ageGroup) params.set("ageGroup", ageGroup);
   appendListFilterQuery(params, filters);
   if (columnsChanged) params.set("columns", columns.join(","));
@@ -989,13 +973,15 @@ function infiniteQueryString({
   ageGroup?: string | null;
   columns: ListColumnKey[];
   filters?: ListViewShellFilters;
-  lifecycle?: string | null;
+  lifecycle?: PageParamValue | null;
   query?: string | null;
 }) {
   const params = new URLSearchParams();
 
   if (query) params.set("q", query);
-  if (lifecycle) params.set("lifecycle", lifecycle);
+  for (const value of filterValues(lifecycle)) {
+    params.append("lifecycle", value);
+  }
   if (ageGroup) params.set("ageGroup", ageGroup);
   appendListFilterQuery(params, filters);
   params.set("columns", columns.join(","));

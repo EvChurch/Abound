@@ -39,6 +39,27 @@ describe("list view page params", () => {
     expect(params.recordStatus).toEqual(["Active", "Pending"]);
   });
 
+  it("builds multi-selected lifecycle filters and preserves them from URLSearchParams", () => {
+    const filter = buildPeopleFilter({
+      lifecycle: ["NEW", "HEALTHY"],
+    });
+
+    expect(filter.conditions).toEqual([
+      {
+        field: "lifecycle",
+        operator: "IN",
+        type: "condition",
+        value: ["NEW", "HEALTHY"],
+      },
+    ]);
+
+    const params = paramsFromSearch(
+      new URLSearchParams("lifecycle=NEW&lifecycle=HEALTHY"),
+    );
+
+    expect(params.lifecycle).toEqual(["NEW", "HEALTHY"]);
+  });
+
   it("builds the pledge management people filter", () => {
     const filter = buildPeopleFilter({
       pledgeState: ["review", "active"],

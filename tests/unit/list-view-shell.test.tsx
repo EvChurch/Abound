@@ -88,7 +88,7 @@ describe("ListViewShell", () => {
     expect(screen.getAllByText("North")).toHaveLength(3);
   });
 
-  it("renders the unfiltered lifecycle option like the other lifecycle choices", () => {
+  it("renders lifecycle signals as multi-select choices without an any option", () => {
     render(
       <ListViewShell
         campusOptions={[]}
@@ -100,9 +100,13 @@ describe("ListViewShell", () => {
     );
 
     expect(
-      screen.queryByRole("radio", { name: "Any lifecycle" }),
+      screen.queryByRole("radio", { name: /Any/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Any" })).toBeChecked();
+    expect(
+      screen.queryByRole("checkbox", { name: "Any" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Healthy" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "New" })).not.toBeChecked();
     expect(screen.queryByText("0 active")).not.toBeInTheDocument();
   });
 
@@ -116,7 +120,7 @@ describe("ListViewShell", () => {
         connection={emptyPeopleConnection}
         filters={{ campus: "2" }}
         kind="people"
-        lifecycle="NEW"
+        lifecycle={["NEW", "HEALTHY"]}
         query="smith"
         connectionStatusOptions={[{ label: "Member", value: "Member" }]}
         recordStatusOptions={[{ label: "Active", value: "Active" }]}
@@ -124,7 +128,7 @@ describe("ListViewShell", () => {
     );
 
     expect(screen.getAllByText("Lifecycle").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("New").length).toBeGreaterThan(0);
+    expect(screen.getByText("New, Healthy")).toBeInTheDocument();
     expect(screen.getAllByText("Age").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Adults").length).toBeGreaterThan(0);
     expect(screen.getByText("4 active")).toBeInTheDocument();
@@ -137,11 +141,11 @@ describe("ListViewShell", () => {
     );
     expect(screen.getByLabelText("Clear Age filter")).toHaveAttribute(
       "href",
-      "/people?q=smith&lifecycle=NEW&campus=2",
+      "/people?q=smith&lifecycle=NEW&lifecycle=HEALTHY&campus=2",
     );
     expect(screen.getByLabelText("Clear Campus filter")).toHaveAttribute(
       "href",
-      "/people?q=smith&lifecycle=NEW&ageGroup=ADULTS",
+      "/people?q=smith&lifecycle=NEW&lifecycle=HEALTHY&ageGroup=ADULTS",
     );
   });
 
@@ -158,7 +162,7 @@ describe("ListViewShell", () => {
           recordStatus: ["Active"],
         }}
         kind="people"
-        lifecycle="NEW"
+        lifecycle={["NEW", "HEALTHY"]}
         query="smith"
         connectionStatusOptions={[{ label: "Member", value: "Member" }]}
         recordStatusOptions={[{ label: "Active", value: "Active" }]}
@@ -185,10 +189,55 @@ describe("ListViewShell", () => {
     expect(columnForm).toHaveFormValues({
       ageGroup: "ADULTS",
       connectionStatus: ["Attendee", "Member"],
-      lifecycle: "NEW",
+      lifecycle: ["NEW", "HEALTHY"],
       q: "smith",
       recordStatus: "Active",
     });
+  });
+
+  it("shows lifecycle multi-select choices as checked when active", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        lifecycle={["NEW", "HEALTHY"]}
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Healthy" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "New" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Reactivated" }),
+    ).not.toBeChecked();
+  });
+
+  it("keeps the split list workspace active at the tablet breakpoint", () => {
+    const { container } = render(
+      <ListViewShell
+        ageGroup="ADULTS"
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "tasks"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    const main = container.querySelector("main");
+    const aside = container.querySelector("aside");
+
+    expect(main?.className).toContain("md:pl-[300px]");
+    expect(main?.className).toContain("xl:pl-[320px]");
+    expect(aside?.className).toContain("md:fixed");
+    expect(aside?.className).toContain("md:w-[300px]");
+    expect(aside?.className).toContain("xl:w-[320px]");
   });
 
   it("renders visible status controls for people and households", () => {

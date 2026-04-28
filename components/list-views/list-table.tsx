@@ -80,7 +80,7 @@ function PeopleRow({
       <div
         className={
           showSignalColumn
-            ? "grid min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(260px,380px)] md:items-stretch"
+            ? "grid min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-stretch"
             : "min-w-0"
         }
       >
@@ -372,11 +372,16 @@ function GivingSignalColumn({
 
   return (
     <div className="relative -mb-2.5 -mr-4 min-h-10 min-w-0 overflow-hidden pb-2.5 pr-4 pt-1 text-[12px] leading-tight md:-my-2.5 md:py-2.5">
-      {givingSummary ? <GivingSparkline summary={givingSummary} /> : null}
+      {givingSummary ? (
+        <GivingSparkline
+          pledgeSummary={pledgeSummary}
+          summary={givingSummary}
+        />
+      ) : null}
       {givingSummary ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-2/3 bg-gradient-to-r from-app-surface via-app-surface/90 to-transparent"
+          className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-[120px] bg-gradient-to-r from-app-surface via-app-surface/35 to-transparent"
         />
       ) : null}
       {showPledges ? (
@@ -392,41 +397,57 @@ function GivingSignalColumn({
 
 function GivingSparkline({
   summary,
+  pledgeSummary,
 }: {
   summary: NonNullable<PersonListRow["givingSummary"]>;
+  pledgeSummary: PersonListRow["pledgeSummary"] | null;
 }) {
-  const paths = sparklinePaths(summary.monthlyGiving);
+  const chart = givingBarChart(summary.monthlyGiving, pledgeSummary);
 
-  if (!paths) {
+  if (!chart) {
     return null;
   }
 
   return (
     <svg
       aria-label="Giving trend over the last 12 months"
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full text-app-muted"
+      className="pointer-events-none absolute inset-y-0 right-0 z-0 h-full w-[120px] text-app-muted"
       preserveAspectRatio="none"
       role="img"
       viewBox="0 0 120 32"
     >
       <title>Giving trend over the last 12 months</title>
-      <path d={paths.area} fill="currentColor" opacity="0.08" stroke="none" />
-      <path
-        d={paths.line}
-        fill="none"
-        opacity="0.18"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.25"
-        vectorEffect="non-scaling-stroke"
-      />
+      {chart.pledgeLine ? (
+        <line
+          stroke={chart.pledgeLine.stroke}
+          strokeDasharray="4 3"
+          strokeWidth="1.25"
+          vectorEffect="non-scaling-stroke"
+          x1="0"
+          x2={chart.width}
+          y1={chart.pledgeLine.y}
+          y2={chart.pledgeLine.y}
+        />
+      ) : null}
+      {chart.bars.map((bar) => (
+        <rect
+          fill="currentColor"
+          height={bar.height}
+          key={bar.key}
+          opacity="0.14"
+          rx="1.5"
+          width={bar.width}
+          x={bar.x}
+          y={bar.y}
+        />
+      ))}
     </svg>
   );
 }
 
-function sparklinePaths(
+function givingBarChart(
   monthlyGiving: NonNullable<PersonListRow["givingSummary"]>["monthlyGiving"],
+  pledgeSummary: PersonListRow["pledgeSummary"] | null,
 ) {
   const months = sparklineMonths(monthlyGiving);
 
@@ -434,113 +455,112 @@ function sparklinePaths(
     return null;
   }
 
+  const width = 120;
+  const height = 32;
+  const chartPaddingTop = 2;
+  const chartPaddingBottom = 2;
+  const barGap = 1.5;
   const values = months.map((month) => decimalToNumber(month.totalGiven));
-  const max = Math.max(...values);
-  const bounds = {
-    height: 32,
-    width: 120,
-  };
-  const xStep = months.length > 1 ? bounds.width / (months.length - 1) : 0;
-  const points = values.map((value, index) => {
-    const x = months.length === 1 ? bounds.width : index * xStep;
-    const normalized = max <= 0 ? 0 : value / max;
-    const y = bounds.height - normalized * bounds.height;
-
-    return clampSparklinePoint(
-      {
-        x: roundSparklineCoordinate(x),
-        y: roundSparklineCoordinate(y),
-      },
-      bounds,
-    );
-  });
-  const line =
-    points.length === 1
-      ? singlePointPath(points[0], bounds)
-      : points.slice(1).reduce((path, point, index) => {
-          const previousPoint = points[index];
-          const startControlPoint = controlPoint(
-            points[index - 1] ?? previousPoint,
-            previousPoint,
-            point,
-            bounds,
-          );
-          const endControlPoint = controlPoint(
-            points[index + 2] ?? point,
-            point,
-            previousPoint,
-            bounds,
-          );
-
-          return `${path} C ${startControlPoint.x} ${startControlPoint.y}, ${endControlPoint.x} ${endControlPoint.y}, ${point.x} ${point.y}`;
-        }, `M ${points[0].x} ${points[0].y}`);
+  const pledgeLine = resolvePledgeLine(pledgeSummary);
+  const maxValue = pledgeLine
+    ? Math.max(pledgeLine.amount * 2, 1)
+    : Math.max(...values, 1);
+  const chartHeight = height - chartPaddingTop - chartPaddingBottom;
+  const barWidth = Math.max(
+    2,
+    (width - barGap * (months.length - 1)) / months.length,
+  );
+  const yForValue = (value: number) =>
+    height - chartPaddingBottom - (value / maxValue) * chartHeight;
 
   return {
-    area: `${line} L ${bounds.width} ${bounds.height} L 0 ${bounds.height} Z`,
-    line,
+    bars: values.map((value, index) => {
+      const safeValue = Number.isFinite(value) ? Math.max(value, 0) : 0;
+      const barHeight = (safeValue / maxValue) * chartHeight;
+      const x = index * (barWidth + barGap);
+      const y = height - chartPaddingBottom - barHeight;
+
+      return {
+        height: roundSparklineCoordinate(barHeight),
+        key: `${months[index]?.month ?? index}-${value}`,
+        width: roundSparklineCoordinate(barWidth),
+        x: roundSparklineCoordinate(x),
+        y: roundSparklineCoordinate(y),
+      };
+    }),
+    height,
+    pledgeLine: pledgeLine
+      ? {
+          stroke: pledgeLine.stroke,
+          y: roundSparklineCoordinate(yForValue(pledgeLine.amount)),
+        }
+      : null,
+    width,
   };
 }
 
 function sparklineMonths(
   monthlyGiving: NonNullable<PersonListRow["givingSummary"]>["monthlyGiving"],
 ) {
-  const months = monthlyGiving.slice(-12);
-  const latestMonth = months.at(-1);
-
-  if (latestMonth && decimalToNumber(latestMonth.totalGiven) === 0) {
-    return months.slice(0, -1);
-  }
-
-  return months;
+  return monthlyGiving.slice(-12);
 }
-
-function singlePointPath(point: SparklinePoint, bounds: SparklineBounds) {
-  return `M 0 ${point.y} L ${bounds.width} ${point.y}`;
-}
-
-function clampSparklinePoint(
-  point: SparklinePoint,
-  bounds: SparklineBounds,
-): SparklinePoint {
-  return {
-    x: roundSparklineCoordinate(clamp(point.x, 0, bounds.width)),
-    y: roundSparklineCoordinate(clamp(point.y, 0, bounds.height)),
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function controlPoint(
-  adjacent: SparklinePoint,
-  current: SparklinePoint,
-  opposite: SparklinePoint,
-  bounds: SparklineBounds,
-): SparklinePoint {
-  return clampSparklinePoint(
-    {
-      x: current.x + (opposite.x - adjacent.x) / 6,
-      y: current.y + (opposite.y - adjacent.y) / 6,
-    },
-    bounds,
-  );
-}
-
-type SparklinePoint = {
-  x: number;
-  y: number;
-};
-
-type SparklineBounds = {
-  height: number;
-  width: number;
-};
 
 function decimalToNumber(value: string) {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resolvePledgeLine(
+  pledgeSummary: PersonListRow["pledgeSummary"] | null,
+) {
+  const activeAmount = pledgeItemsMonthlyAmount(pledgeSummary?.active ?? []);
+
+  if (activeAmount > 0) {
+    return {
+      amount: activeAmount,
+      stroke: "rgba(22, 163, 74, 0.78)",
+    };
+  }
+
+  const reviewAmount = pledgeItemsMonthlyAmount(pledgeSummary?.review ?? []);
+
+  if (reviewAmount > 0) {
+    return {
+      amount: reviewAmount,
+      stroke: "rgba(176, 89, 47, 0.78)",
+    };
+  }
+
+  return null;
+}
+
+function pledgeItemsMonthlyAmount(items: PledgeListItem[]) {
+  return items.reduce(
+    (total, item) =>
+      total + pledgeAmountToMonthlyNumber(item.amount, item.period),
+    0,
+  );
+}
+
+function pledgeAmountToMonthlyNumber(
+  amount: string,
+  period: PledgeListItem["period"],
+) {
+  const numericAmount = decimalToNumber(amount);
+
+  switch (period) {
+    case "WEEKLY":
+      return (numericAmount * 52) / 12;
+    case "FORTNIGHTLY":
+      return (numericAmount * 26) / 12;
+    case "MONTHLY":
+      return numericAmount;
+    case "QUARTERLY":
+      return numericAmount / 3;
+    case "ANNUALLY":
+      return numericAmount / 12;
+  }
 }
 
 function roundSparklineCoordinate(value: number) {

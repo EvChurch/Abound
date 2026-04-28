@@ -74,6 +74,7 @@ export function AutoSubmitSelect({
       name={name}
       onValueChange={(_, form) => submitForm(form)}
       options={options}
+      rootClassName="relative w-full"
     />
   );
 }

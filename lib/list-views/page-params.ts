@@ -20,7 +20,7 @@ export type PeopleListQueryParams = {
   connectionStatus?: PageParamValue;
   connectGroup?: string;
   emailStatus?: string;
-  lifecycle?: string;
+  lifecycle?: PageParamValue;
   pledgeState?: PageParamValue;
   q?: string;
   recordStatus?: PageParamValue;
@@ -37,7 +37,7 @@ export type HouseholdListQueryParams = {
   columns?: string;
   connectGroup?: string;
   emailCapable?: string;
-  lifecycle?: string;
+  lifecycle?: PageParamValue;
   q?: string;
   rockStatus?: string;
   taskPriority?: string;
@@ -98,8 +98,12 @@ export function buildPeopleFilter(
     conditions.push(condition("search", "CONTAINS", params.q.trim()));
   }
 
-  if (params.lifecycle?.trim()) {
-    conditions.push(condition("lifecycle", "EQUALS", params.lifecycle.trim()));
+  const lifecycleValues = valuesFromParam(params.lifecycle);
+
+  if (lifecycleValues.length === 1) {
+    conditions.push(condition("lifecycle", "EQUALS", lifecycleValues[0]));
+  } else if (lifecycleValues.length > 1) {
+    conditions.push(condition("lifecycle", "IN", lifecycleValues));
   }
 
   if (params.ageGroup?.trim()) {
@@ -182,8 +186,12 @@ export function buildHouseholdFilter(
     conditions.push(condition("search", "CONTAINS", params.q.trim()));
   }
 
-  if (params.lifecycle?.trim()) {
-    conditions.push(condition("lifecycle", "EQUALS", params.lifecycle.trim()));
+  const lifecycleValues = valuesFromParam(params.lifecycle);
+
+  if (lifecycleValues.length === 1) {
+    conditions.push(condition("lifecycle", "EQUALS", lifecycleValues[0]));
+  } else if (lifecycleValues.length > 1) {
+    conditions.push(condition("lifecycle", "IN", lifecycleValues));
   }
 
   if (params.campus?.trim()) {
@@ -277,7 +285,7 @@ export function paramsFromSearch(searchParams: URLSearchParams) {
     connectGroup: valueFromSearch(searchParams, "connectGroup"),
     emailCapable: valueFromSearch(searchParams, "emailCapable"),
     emailStatus: valueFromSearch(searchParams, "emailStatus"),
-    lifecycle: valueFromSearch(searchParams, "lifecycle"),
+    lifecycle: valuesFromSearch(searchParams, "lifecycle"),
     pledgeState: valuesFromSearch(searchParams, "pledgeState"),
     q: valueFromSearch(searchParams, "q"),
     recordStatus: valuesFromSearch(searchParams, "recordStatus"),

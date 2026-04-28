@@ -115,20 +115,30 @@ describe("ListTable", () => {
     });
 
     expect(sparkline).toBeInTheDocument();
-    expect(sparkline).toHaveClass("absolute", "inset-0", "text-app-muted");
-    const sparklinePaths = sparkline.querySelectorAll("path");
-
-    expect(sparklinePaths).toHaveLength(2);
-    expect(sparklinePaths[0]).toHaveAttribute("opacity", "0.08");
-    expect(sparklinePaths[1]).toHaveAttribute("opacity", "0.18");
-    expect(sparklinePaths[1]).toHaveAttribute("stroke-width", "1.25");
-    expect(sparklinePaths[1]).toHaveAttribute(
-      "d",
-      expect.stringContaining("M 0 32 C"),
+    expect(sparkline).toHaveClass(
+      "absolute",
+      "inset-y-0",
+      "right-0",
+      "w-[120px]",
+      "text-app-muted",
     );
+    const sparklineBars = sparkline.querySelectorAll("rect");
+    const sparklineLine = sparkline.querySelector("line");
+
+    expect(sparklineBars).toHaveLength(12);
+    expect(sparklineBars[0]).toHaveAttribute("opacity", "0.14");
+    expect(sparklineLine).toHaveAttribute("stroke", "rgba(22, 163, 74, 0.78)");
+    expect(sparklineLine).toHaveAttribute("stroke-dasharray", "4 3");
+    expect(sparklineLine).toHaveAttribute("y1", "16");
+    expect(sparklineLine).toHaveAttribute("y2", "16");
     expect(
       sparkline.parentElement?.querySelector('[aria-hidden="true"]'),
-    ).toHaveClass("bg-gradient-to-r", "from-app-surface");
+    ).toHaveClass(
+      "bg-gradient-to-r",
+      "right-0",
+      "from-app-surface",
+      "to-transparent",
+    );
     expect(screen.getAllByLabelText("Active pledge")).toHaveLength(2);
     expect(screen.getByText("General Fund $100/mo")).toBeInTheDocument();
     expect(screen.getByText("Missions $25/wk")).toBeInTheDocument();
@@ -201,7 +211,66 @@ describe("ListTable", () => {
     expect(screen.queryByText("None")).not.toBeInTheDocument();
   });
 
-  it("omits the current month from the sparkline when current month giving is zero", () => {
+  it("uses an orange target line when only review pledges are present", () => {
+    const connection: PeopleConnection = {
+      appliedView: {
+        id: null,
+        name: "All people",
+        pageSize: 50,
+      },
+      edges: [
+        {
+          cursor: "person_1",
+          node: {
+            amountsHidden: false,
+            connectionStatus: "Member",
+            deceased: false,
+            displayName: "Jamie Review",
+            email: "jamie@example.com",
+            emailActive: true,
+            givingSummary,
+            lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+            lifecycle: [],
+            openTaskCount: 0,
+            pledgeSummary: {
+              active: [],
+              draft: [],
+              review: [
+                {
+                  accountName: "Building Fund",
+                  amount: "50",
+                  period: "MONTHLY",
+                },
+              ],
+            },
+            photoUrl: null,
+            primaryCampus: null,
+            primaryHousehold: null,
+            recordStatus: "Active",
+            rockId: 103,
+          },
+        },
+      ],
+      pageInfo: {
+        endCursor: null,
+        hasNextPage: false,
+      },
+    };
+
+    render(<ListTable connection={connection} kind="people" />);
+
+    const sparkline = screen.getByRole("img", {
+      name: "Giving trend over the last 12 months",
+    });
+
+    expect(sparkline.querySelector("line")).toHaveAttribute(
+      "stroke",
+      "rgba(176, 89, 47, 0.78)",
+    );
+    expect(sparkline.querySelector("line")).toHaveAttribute("y1", "16");
+  });
+
+  it("keeps all 12 periods in the chart when the current month is zero", () => {
     const currentMonthZeroSummary = {
       ...givingSummary!,
       monthlyGiving: givingSummary!.monthlyGiving.map((month, index, months) =>
@@ -248,13 +317,17 @@ describe("ListTable", () => {
     const sparkline = screen.getByRole("img", {
       name: "Giving trend over the last 12 months",
     });
-    const linePath = sparkline.querySelectorAll("path")[1];
+    const sparklineBars = sparkline.querySelectorAll("rect");
 
-    expect(linePath).toHaveAttribute("d", expect.stringContaining("120 "));
-    expect(linePath).not.toHaveAttribute("d", expect.stringMatching(/120 32$/));
+    expect(sparklineBars).toHaveLength(12);
     expect(
       sparkline.parentElement?.querySelector('[aria-hidden="true"]'),
-    ).toHaveClass("bg-gradient-to-r", "from-app-surface");
+    ).toHaveClass(
+      "bg-gradient-to-r",
+      "right-0",
+      "from-app-surface",
+      "to-transparent",
+    );
   });
 
   it("shows Rock household archive status in the name column", () => {
