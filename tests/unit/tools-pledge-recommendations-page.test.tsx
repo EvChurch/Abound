@@ -68,7 +68,9 @@ describe("PledgeRecommendationsPage", () => {
       },
     };
 
-    render(await PledgeRecommendationsPage({ searchParams: Promise.resolve({}) }));
+    render(
+      await PledgeRecommendationsPage({ searchParams: Promise.resolve({}) }),
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -127,9 +129,9 @@ describe("PledgeRecommendationsPage", () => {
       "/people/8597",
     );
     expect(screen.getByText("Top nav")).toBeInTheDocument();
-    expect(container.querySelectorAll("svg rect").length).toBeGreaterThanOrEqual(
-      2,
-    );
+    expect(
+      container.querySelectorAll("svg rect").length,
+    ).toBeGreaterThanOrEqual(2);
     expect(
       container.querySelector("svg line[stroke-dasharray='4 3']"),
     ).not.toBeNull();

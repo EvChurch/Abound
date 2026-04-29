@@ -279,7 +279,11 @@ describe("giving pledge analysis", () => {
     } as never);
 
     try {
-      const candidates = await listPledgeCandidates({ limit: 10 }, financeUser, client);
+      const candidates = await listPledgeCandidates(
+        { limit: 10 },
+        financeUser,
+        client,
+      );
 
       expect(candidates).toHaveLength(1);
       expect(candidates[0]?.recommendedPeriod).toBe("WEEKLY");

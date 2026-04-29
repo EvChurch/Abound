@@ -1589,7 +1589,9 @@ function buildGivingTrend({
   recommendedPeriod: GivingPledgePeriod | null;
   referenceDate: Date;
 }): GivingTrendPoint[] {
-  const relevantFacts = facts.filter((fact) => fact.accountRockId === accountRockId);
+  const relevantFacts = facts.filter(
+    (fact) => fact.accountRockId === accountRockId,
+  );
 
   if (recommendedPeriod === "WEEKLY") {
     return buildWeekBasedTrend(relevantFacts, referenceDate, 1, 16);
@@ -1661,10 +1663,12 @@ function buildQuarterTrend(
     quarterTotals.set(key, current + decimalToCents(fact.amount));
   }
 
-  return Array.from(quarterTotals.entries()).map(([periodStart, totalCents]) => ({
-    periodStart,
-    total: centsToDecimalString(totalCents),
-  }));
+  return Array.from(quarterTotals.entries()).map(
+    ([periodStart, totalCents]) => ({
+      periodStart,
+      total: centsToDecimalString(totalCents),
+    }),
+  );
 }
 
 function buildYearTrend(
@@ -1745,10 +1749,12 @@ function buildWeekBasedTrend(
     bucketTotals.set(key, current + decimalToCents(fact.amount));
   }
 
-  return Array.from(bucketTotals.entries()).map(([periodStart, totalCents]) => ({
-    periodStart,
-    total: centsToDecimalString(totalCents),
-  }));
+  return Array.from(bucketTotals.entries()).map(
+    ([periodStart, totalCents]) => ({
+      periodStart,
+      total: centsToDecimalString(totalCents),
+    }),
+  );
 }
 
 function startOfQuarter(value: Date) {
