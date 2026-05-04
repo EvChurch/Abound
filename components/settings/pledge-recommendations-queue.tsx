@@ -315,7 +315,9 @@ function ConfidenceBadge({
         aria-haspopup="dialog"
         className={`inline-flex min-h-7 items-center rounded-[6px] border px-2.5 text-[11px] font-semibold uppercase ${className}`}
         onBlur={(event) => {
-          if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) {
+          if (
+            !event.currentTarget.parentElement?.contains(event.relatedTarget)
+          ) {
             setOpen(false);
           }
         }}
@@ -347,7 +349,10 @@ function ConfidenceBadge({
                   label="Current recommendation"
                   value={currentRecommendation}
                 />
-                <ConfidenceDetail label="Current streak" value={currentStreak} />
+                <ConfidenceDetail
+                  label="Current streak"
+                  value={currentStreak}
+                />
                 <ConfidenceDetail
                   label="Last 12 months"
                   value={formatMoney(lastTwelveMonthsTotal)}
@@ -378,7 +383,9 @@ function ConfidenceDetail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function confidenceSummary(confidence: NonNullable<PledgeCandidate["confidence"]>) {
+function confidenceSummary(
+  confidence: NonNullable<PledgeCandidate["confidence"]>,
+) {
   if (confidence === "HIGH") {
     return "High confidence means the recommended cadence has matched for at least 4 consecutive periods.";
   }
