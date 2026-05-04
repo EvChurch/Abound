@@ -120,7 +120,7 @@ export function PledgeRecommendationsQueue({
             {displayCandidates.map((candidate) => (
               <motion.article
                 animate={{ opacity: 1, scale: 1 }}
-                className="relative grid gap-4 overflow-hidden rounded-[8px] border border-app-border bg-app-surface px-4 py-4 shadow-[0_1px_2px_rgba(150,140,120,0.12)]"
+                className="relative grid gap-4 overflow-visible rounded-[8px] border border-app-border bg-app-surface px-4 py-4 shadow-[0_1px_2px_rgba(150,140,120,0.12)]"
                 exit={{ opacity: 0, scale: 0.985 }}
                 initial={{ opacity: 0, scale: 0.995 }}
                 key={candidateKey(candidate)}
@@ -160,7 +160,19 @@ export function PledgeRecommendationsQueue({
                       Fund: {candidate.account.name}
                     </p>
                   </div>
-                  <ConfidenceBadge confidence={candidate.confidence} />
+                  <ConfidenceBadge
+                    confidence={candidate.confidence}
+                    explanation={candidate.explanation}
+                    lastTwelveMonthsTotal={candidate.lastTwelveMonthsTotal}
+                    recommendedAmount={candidate.recommendedAmount}
+                    recommendedMatchStreakCount={
+                      candidate.recommendedMatchStreakCount
+                    }
+                    recommendedMatchStreakStartedAt={
+                      candidate.recommendedMatchStreakStartedAt
+                    }
+                    recommendedPeriod={candidate.recommendedPeriod}
+                  />
                 </div>
 
                 <dl className="relative z-10 grid gap-2 text-[12px] sm:grid-cols-3">
@@ -259,8 +271,20 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function ConfidenceBadge({
   confidence,
+  explanation,
+  lastTwelveMonthsTotal,
+  recommendedAmount,
+  recommendedMatchStreakCount,
+  recommendedMatchStreakStartedAt,
+  recommendedPeriod,
 }: {
   confidence: PledgeCandidate["confidence"];
+  explanation: PledgeCandidate["explanation"];
+  lastTwelveMonthsTotal: PledgeCandidate["lastTwelveMonthsTotal"];
+  recommendedAmount: PledgeCandidate["recommendedAmount"];
+  recommendedMatchStreakCount: PledgeCandidate["recommendedMatchStreakCount"];
+  recommendedMatchStreakStartedAt: PledgeCandidate["recommendedMatchStreakStartedAt"];
+  recommendedPeriod: PledgeCandidate["recommendedPeriod"];
 }) {
   const normalized = confidence ?? "LOW";
   const className =
@@ -269,14 +293,101 @@ function ConfidenceBadge({
       : normalized === "MEDIUM"
         ? "border-amber-700 bg-amber-50 text-amber-950"
         : "border-app-border bg-app-background text-app-muted";
+  const [open, setOpen] = useState(false);
+  const currentStreak = formatStreakValue(
+    recommendedMatchStreakCount,
+    recommendedPeriod,
+    recommendedMatchStreakStartedAt,
+  );
+  const currentRecommendation = formatRecommendedAmount(
+    recommendedAmount,
+    recommendedPeriod,
+  );
 
   return (
-    <span
-      className={`inline-flex min-h-7 items-center rounded-[6px] border px-2.5 text-[11px] font-semibold uppercase ${className}`}
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
     >
-      {normalized.toLowerCase()} confidence
-    </span>
+      <button
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className={`inline-flex min-h-7 items-center rounded-[6px] border px-2.5 text-[11px] font-semibold uppercase ${className}`}
+        onBlur={(event) => {
+          if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) {
+            setOpen(false);
+          }
+        }}
+        onFocus={() => setOpen(true)}
+        type="button"
+      >
+        {normalized.toLowerCase()} confidence
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="absolute right-0 top-[calc(100%+8px)] z-30 w-72 origin-top-right rounded-[8px] border border-app-border bg-app-surface p-3 shadow-[0_20px_40px_rgba(35,31,24,0.14)]"
+            exit={{ opacity: 0, scale: 0.98, y: -4 }}
+            initial={{ opacity: 0, scale: 0.98, y: -6 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+          >
+            <div className="grid gap-2.5 text-left">
+              <div className="grid gap-1">
+                <p className="text-[12px] font-semibold text-app-foreground">
+                  {confidenceSummary(normalized)}
+                </p>
+                <p className="text-[12px] leading-5 text-app-muted">
+                  {explanation}
+                </p>
+              </div>
+              <dl className="grid gap-2 text-[12px]">
+                <ConfidenceDetail
+                  label="Current recommendation"
+                  value={currentRecommendation}
+                />
+                <ConfidenceDetail label="Current streak" value={currentStreak} />
+                <ConfidenceDetail
+                  label="Last 12 months"
+                  value={formatMoney(lastTwelveMonthsTotal)}
+                />
+                <ConfidenceDetail
+                  label="Confidence thresholds"
+                  value="Low: 1 match, Medium: 2-3 matches, High: 4+ matches"
+                />
+              </dl>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
   );
+}
+
+function ConfidenceDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-0.5">
+      <dt className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+        {label}
+      </dt>
+      <dd className="text-[12px] font-medium leading-5 text-app-foreground">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function confidenceSummary(confidence: NonNullable<PledgeCandidate["confidence"]>) {
+  if (confidence === "HIGH") {
+    return "High confidence means the recommended cadence has matched for at least 4 consecutive periods.";
+  }
+
+  if (confidence === "MEDIUM") {
+    return "Medium confidence means the recommended cadence has matched for 2 to 3 consecutive periods.";
+  }
+
+  return "Low confidence means the recommended cadence has matched for just 1 period so far.";
 }
 
 function formatMoney(value: string | null) {

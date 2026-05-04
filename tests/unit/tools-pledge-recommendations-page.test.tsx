@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccessState } from "@/lib/auth/types";
@@ -99,7 +99,8 @@ describe("PledgeRecommendationsPage", () => {
         basisMonths: 10,
         confidence: "HIGH",
         draftPledge: null,
-        explanation: "Review recommendation.",
+        explanation:
+          "10 of the latest 12 months include giving to this fund, so a monthly pledge recommendation can be reviewed.",
         givingTrend: [
           { periodStart: "2024-05-01", total: "0.00" },
           { periodStart: "2024-06-01", total: "50.00" },
@@ -135,5 +136,28 @@ describe("PledgeRecommendationsPage", () => {
     expect(
       container.querySelector("svg line[stroke-dasharray='4 3']"),
     ).not.toBeNull();
+
+    const confidenceTrigger = screen.getByRole("button", {
+      name: "high confidence",
+    });
+    fireEvent.mouseEnter(confidenceTrigger);
+
+    expect(
+      screen.getByText(
+        "High confidence means the recommended cadence has matched for at least 4 consecutive periods.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "10 of the latest 12 months include giving to this fund, so a monthly pledge recommendation can be reviewed.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Current recommendation")).toBeInTheDocument();
+    expect(screen.getAllByText("$100.00/month")).toHaveLength(2);
+    expect(screen.getByText("Current streak")).toBeInTheDocument();
+    expect(screen.getAllByText("6 months")).toHaveLength(2);
+    expect(
+      screen.getByText("Low: 1 match, Medium: 2-3 matches, High: 4+ matches"),
+    ).toBeInTheDocument();
   });
 });
