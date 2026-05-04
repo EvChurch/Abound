@@ -2,10 +2,14 @@
 """Post-install configuration for Claude Code devcontainer.
 
 Runs on container creation to set up:
-- Claude settings (bypassPermissions mode)
-- Codex settings (full auto mode)
+- Claude settings (bypassPermissions mode) and marketplace plugins
+- Codex settings (full auto mode) and compound-engineering plugin
 - Tmux configuration (200k history, mouse support)
 - Directory ownership fixes for mounted volumes
+
+Plugins are installed here rather than in the Dockerfile because ~/.claude
+and ~/.codex are mounted as named volumes — anything baked into the image
+at those paths is masked at runtime.
 """
 
 import contextlib
@@ -55,6 +59,56 @@ sandbox_mode = "danger-full-access"
 """
     config_file.write_text(config, encoding="utf-8")
     print(f"[post_install] Codex settings configured: {config_file}", file=sys.stderr)
+
+
+CLAUDE_MARKETPLACES = [
+    "anthropics/skills",
+    "trailofbits/skills",
+    "trailofbits/skills-curated",
+    "EveryInc/compound-engineering-plugin",
+]
+
+
+def setup_claude_plugins():
+    """Add Claude marketplaces. Idempotent — re-adding is a no-op."""
+    for marketplace in CLAUDE_MARKETPLACES:
+        result = subprocess.run(
+            ["claude", "plugin", "marketplace", "add", marketplace],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            print(f"[post_install] Claude marketplace added: {marketplace}", file=sys.stderr)
+        else:
+            print(
+                f"[post_install] Claude marketplace skipped ({marketplace}): "
+                f"{result.stderr.strip() or result.stdout.strip()}",
+                file=sys.stderr,
+            )
+
+
+def setup_codex_plugins():
+    """Install the compound-engineering plugin into ~/.codex via bunx."""
+    cmd = (
+        'export PATH="$HOME/.bun/bin:$HOME/.fnm:$PATH" && '
+        'eval "$(fnm env)" && '
+        "bunx @every-env/compound-plugin install compound-engineering --to codex"
+    )
+    result = subprocess.run(
+        ["bash", "-lc", cmd],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        print("[post_install] Codex compound-engineering plugin installed", file=sys.stderr)
+    else:
+        print(
+            "[post_install] Codex plugin install failed: "
+            f"{result.stderr.strip() or result.stdout.strip()}",
+            file=sys.stderr,
+        )
 
 
 def setup_tmux_config():
@@ -237,6 +291,8 @@ def main():
     setup_tmux_config()
     fix_directory_ownership()
     setup_global_gitignore()
+    setup_claude_plugins()
+    setup_codex_plugins()
 
     print("[post_install] Configuration complete!", file=sys.stderr)
 

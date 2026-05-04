@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "Claude Code Sandbox",
+  "name": "Abound",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "updateRemoteUserUID": true,
@@ -10,7 +10,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "anthropic.claude-code"
+        "anthropic.claude-code",
+        "openai.codex"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",

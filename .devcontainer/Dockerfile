@@ -80,12 +80,9 @@ ENV PATH="/home/vscode/.local/bin:$PATH"
 ENV BUN_INSTALL="/home/vscode/.bun"
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Install Claude Code natively with marketplace plugins
-RUN curl -fsSL https://claude.ai/install.sh | bash && \
-  claude plugin marketplace add anthropics/skills && \
-  claude plugin marketplace add trailofbits/skills && \
-  claude plugin marketplace add trailofbits/skills-curated && \
-  claude plugin marketplace add EveryInc/compound-engineering-plugin
+# Install Claude Code natively. Marketplace plugins are added in post_install.py
+# because ~/.claude is a mounted volume that masks anything baked into the image.
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
 RUN uv python install 3.13 --default
@@ -108,15 +105,12 @@ RUN export PATH="$FNM_DIR:$PATH" && \
   corepack enable && \
   corepack prepare pnpm@10.33.0 --activate
 
-# Install OpenAI Codex CLI
+# Install OpenAI Codex CLI. The compound-engineering plugin is installed in
+# post_install.py because ~/.codex is a mounted volume that masks anything
+# baked into the image.
 RUN export PATH="$FNM_DIR:$PATH" && \
   eval "$(fnm env)" && \
   npm install -g @openai/codex
-
-# Install Compound Engineering plugin for Codex
-RUN export PATH="$BUN_INSTALL/bin:$FNM_DIR:$PATH" && \
-  eval "$(fnm env)" && \
-  bunx @every-env/compound-plugin install compound-engineering --to codex
 
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
