@@ -11,7 +11,7 @@
     "vscode": {
       "extensions": [
         "anthropic.claude-code",
-        "openai.codex"
+        "openai.chatgpt"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
