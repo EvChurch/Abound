@@ -1,4 +1,8 @@
-import type { GiftReliabilityKind, PrismaClient } from "@prisma/client";
+import type {
+  GiftReliabilityKind,
+  GivingPledgePeriod,
+  PrismaClient,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -58,6 +62,19 @@ export type HouseholdDonorTrend = {
   months: MonthlyHouseholdDonorCount[];
   sourceExplanation: string;
   totalHouseholdDonors: number;
+};
+
+export type GivingPerAdult = {
+  adultCount: number;
+  averagePledge: string;
+  medianPledge: string;
+  monthlyAverage: string;
+  monthlyMedian: string;
+  pledgedAdultCount: number;
+  sourceExplanation: string;
+  totalGiven: string;
+  windowEndedMonth: string;
+  windowStartedMonth: string;
 };
 
 export type DashboardLifecycleKind = GivingLifecycleKind | "HEALTHY";
@@ -128,6 +145,26 @@ type GivingFactForHouseholdDonorTrend = {
   householdRockId: number | null;
 };
 
+type GivingFactForAverageGivingPerAdult = {
+  amount: unknown;
+  householdRockId: number | null;
+};
+
+type HouseholdMemberForAverageGivingPerAdult = {
+  archived: boolean;
+  groupRole: {
+    name: string;
+  } | null;
+  householdRockId: number;
+  personRockId: number;
+};
+
+type PledgeForGivingPerAdult = {
+  amount: unknown;
+  period: GivingPledgePeriod;
+  personRockId: number;
+};
+
 type CampusName = {
   name: string;
   shortCode: string | null;
@@ -141,6 +178,9 @@ const HOUSEHOLD_DONOR_SOURCE_EXPLANATION =
 
 const HOUSEHOLD_MOVEMENT_SOURCE_EXPLANATION =
   "Compares distinct household donors in the latest completed month with the prior completed month.";
+
+const GIVING_PER_ADULT_SOURCE_EXPLANATION =
+  "Total platform-fund giving for the last 12 completed months divided by active Adult household members in households that gave during that window.";
 
 const emptyMovementCounts = (): Record<HouseholdMovementKind, number> => ({
   DROPPED: 0,
@@ -250,6 +290,86 @@ export async function getHouseholdDonorTrend(
   );
 }
 
+export async function getGivingPerAdult(
+  referenceDate = new Date(),
+  client: PrismaClient = prisma,
+) {
+  const fundScope = await getPlatformFundScope(client);
+  const monthKeys = lastTwelveCompletedMonthKeys(referenceDate);
+  const startMonth = parseMonthKey(monthKeys[0] ?? monthKey(referenceDate));
+  const endMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1),
+  );
+  const [facts, pledges] = await Promise.all([
+    client.givingFact.findMany({
+      select: {
+        amount: true,
+        householdRockId: true,
+      },
+      where: {
+        ...whereForEnabledPlatformFunds(fundScope),
+        effectiveMonth: {
+          gte: startMonth,
+          lt: endMonth,
+        },
+        householdRockId: {
+          not: null,
+        },
+      },
+    }),
+    client.givingPledge.findMany({
+      select: {
+        amount: true,
+        period: true,
+        personRockId: true,
+      },
+      where: {
+        ...whereForEnabledPlatformFunds(fundScope),
+        status: "ACTIVE",
+      },
+    }),
+  ]);
+  const householdRockIds = distinctIntegerValues(
+    facts.map((fact) => fact.householdRockId),
+  );
+  const adultMembers =
+    householdRockIds.length === 0
+      ? []
+      : await client.rockHouseholdMember.findMany({
+          select: {
+            archived: true,
+            groupRole: {
+              select: {
+                name: true,
+              },
+            },
+            householdRockId: true,
+            personRockId: true,
+          },
+          where: {
+            archived: false,
+            groupRole: {
+              name: {
+                equals: "Adult",
+                mode: "insensitive",
+              },
+            },
+            household: {
+              active: true,
+              archived: false,
+            },
+            householdRockId: {
+              in: householdRockIds,
+            },
+          },
+        });
+
+  return withPlatformFundAverageSourceExplanation(
+    summarizeGivingPerAdult(facts, adultMembers, pledges, monthKeys),
+    fundScope,
+  );
+}
+
 export function summarizeGivingFacts(
   facts: GivingFactForSummary[],
   referenceDate = new Date(),
@@ -267,6 +387,101 @@ export function summarizeGivingFacts(
   };
 }
 
+export function summarizeGivingPerAdult(
+  facts: GivingFactForAverageGivingPerAdult[],
+  adultMembers: HouseholdMemberForAverageGivingPerAdult[],
+  pledges: PledgeForGivingPerAdult[],
+  monthKeys: string[],
+): GivingPerAdult {
+  const factsWithHouseholds = facts.filter(
+    (fact) =>
+      typeof fact.householdRockId === "number" &&
+      Number.isInteger(fact.householdRockId),
+  );
+  const adultPersonRockIds = new Set<number>();
+  const adultPersonRockIdsByHousehold = new Map<number, Set<number>>();
+  const householdGivingCents = new Map<number, bigint>();
+  const totalCents = factsWithHouseholds.reduce((total, fact) => {
+    const householdRockId = fact.householdRockId!;
+    const amountCents = decimalToCents(fact.amount);
+
+    householdGivingCents.set(
+      householdRockId,
+      (householdGivingCents.get(householdRockId) ?? 0n) + amountCents,
+    );
+
+    return total + amountCents;
+  }, 0n);
+
+  for (const member of adultMembers) {
+    if (
+      member.archived ||
+      member.groupRole?.name.trim().toLowerCase() !== "adult"
+    ) {
+      continue;
+    }
+
+    adultPersonRockIds.add(member.personRockId);
+    const householdAdults =
+      adultPersonRockIdsByHousehold.get(member.householdRockId) ??
+      new Set<number>();
+
+    householdAdults.add(member.personRockId);
+    adultPersonRockIdsByHousehold.set(member.householdRockId, householdAdults);
+  }
+
+  const adultCount = adultPersonRockIds.size;
+  const monthlyAverageCents =
+    adultCount > 0 ? divideCents(totalCents, BigInt(adultCount * 12)) : 0n;
+  const monthlyGivingPerAdultCents = Array.from(
+    householdGivingCents.entries(),
+  ).flatMap(([householdRockId, householdTotalCents]) => {
+    const householdAdultCount =
+      adultPersonRockIdsByHousehold.get(householdRockId)?.size ?? 0;
+
+    if (householdAdultCount === 0) {
+      return [];
+    }
+
+    const monthlyAdultCents = divideCents(
+      householdTotalCents,
+      BigInt(householdAdultCount * 12),
+    );
+
+    return Array.from({ length: householdAdultCount }, () => monthlyAdultCents);
+  });
+  const pledgeCentsByPerson = new Map<number, bigint>();
+
+  for (const pledge of pledges) {
+    const monthlyCents = pledgeAmountToMonthlyCents(
+      decimalToCents(pledge.amount),
+      pledge.period,
+    );
+
+    pledgeCentsByPerson.set(
+      pledge.personRockId,
+      (pledgeCentsByPerson.get(pledge.personRockId) ?? 0n) + monthlyCents,
+    );
+  }
+
+  const monthlyPledgeCents = Array.from(pledgeCentsByPerson.values());
+
+  return {
+    adultCount,
+    averagePledge: centsToDecimalString(averageCents(monthlyPledgeCents)),
+    medianPledge: centsToDecimalString(medianCents(monthlyPledgeCents)),
+    monthlyAverage: centsToDecimalString(monthlyAverageCents),
+    monthlyMedian: centsToDecimalString(
+      medianCents(monthlyGivingPerAdultCents),
+    ),
+    pledgedAdultCount: pledgeCentsByPerson.size,
+    sourceExplanation: GIVING_PER_ADULT_SOURCE_EXPLANATION,
+    totalGiven: centsToDecimalString(totalCents),
+    windowEndedMonth: monthKeys.at(-1) ?? "",
+    windowStartedMonth: monthKeys[0] ?? "",
+  };
+}
+
 function withPlatformFundSourceExplanation(
   summary: GivingSummary,
   scope: Awaited<ReturnType<typeof getPlatformFundScope>>,
@@ -281,6 +496,17 @@ function withPlatformFundSourceExplanation(
         accountSummary.sourceExplanation +
         platformFundScopeSourceExplanation(scope),
     })),
+  };
+}
+
+function withPlatformFundAverageSourceExplanation(
+  summary: GivingPerAdult,
+  scope: Awaited<ReturnType<typeof getPlatformFundScope>>,
+) {
+  return {
+    ...summary,
+    sourceExplanation:
+      summary.sourceExplanation + platformFundScopeSourceExplanation(scope),
   };
 }
 
@@ -1060,6 +1286,18 @@ function lastTwelveMonthKeys(referenceDate: Date) {
   return lastMonthKeys(referenceDate, 12);
 }
 
+function lastTwelveCompletedMonthKeys(referenceDate: Date) {
+  const completedReferenceDate = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth() - 1,
+      1,
+    ),
+  );
+
+  return lastMonthKeys(completedReferenceDate, 12);
+}
+
 function lastTwentyFourCompletedMonthKeys(referenceDate: Date) {
   const completedReferenceDate = new Date(
     Date.UTC(
@@ -1120,6 +1358,75 @@ function decimalToCents(value: unknown) {
   return (
     sign *
     (BigInt(normalizedWhole) * 100n + BigInt(normalizedFractional || "0"))
+  );
+}
+
+function divideCents(cents: bigint, divisor: bigint) {
+  if (divisor <= 0n) {
+    return 0n;
+  }
+
+  const sign = cents < 0n ? -1n : 1n;
+  const absolute = cents < 0n ? -cents : cents;
+
+  return sign * ((absolute + divisor / 2n) / divisor);
+}
+
+function averageCents(values: bigint[]) {
+  if (values.length === 0) {
+    return 0n;
+  }
+
+  return divideCents(sumBigInts(values), BigInt(values.length));
+}
+
+function medianCents(values: bigint[]) {
+  if (values.length === 0) {
+    return 0n;
+  }
+
+  const sorted = [...values].sort((left, right) =>
+    left < right ? -1 : left > right ? 1 : 0,
+  );
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[middle] ?? 0n;
+  }
+
+  return divideCents((sorted[middle - 1] ?? 0n) + (sorted[middle] ?? 0n), 2n);
+}
+
+function pledgeAmountToMonthlyCents(
+  amountCents: bigint,
+  period: GivingPledgePeriod,
+) {
+  switch (period) {
+    case "WEEKLY":
+      return divideCents(amountCents * 52n, 12n);
+    case "FORTNIGHTLY":
+      return divideCents(amountCents * 26n, 12n);
+    case "MONTHLY":
+      return amountCents;
+    case "QUARTERLY":
+      return divideCents(amountCents, 3n);
+    case "ANNUALLY":
+      return divideCents(amountCents, 12n);
+  }
+}
+
+function sumBigInts(values: bigint[]) {
+  return values.reduce((total, value) => total + value, 0n);
+}
+
+function distinctIntegerValues(values: Array<number | null | undefined>) {
+  return Array.from(
+    new Set(
+      values.filter(
+        (value): value is number =>
+          typeof value === "number" && Number.isInteger(value),
+      ),
+    ),
   );
 }
 

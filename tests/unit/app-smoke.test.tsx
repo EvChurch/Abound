@@ -7,6 +7,19 @@ import type { HouseholdDonorTrend } from "@/lib/giving/metrics";
 
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
+  givingPerAdult: {
+    adultCount: 120,
+    averagePledge: "140.00",
+    medianPledge: "125.00",
+    monthlyAverage: "118.33",
+    monthlyMedian: "96.00",
+    pledgedAdultCount: 45,
+    sourceExplanation:
+      "Total platform-fund giving for the last 12 completed months divided by active Adult household members in households that gave during that window.",
+    totalGiven: "170400.00",
+    windowEndedMonth: "2026-03",
+    windowStartedMonth: "2025-04",
+  },
   householdDonorTrend: {
     atRiskHouseholdDonors: 6,
     campusSeries: [
@@ -149,6 +162,7 @@ vi.mock("@/lib/auth/access-control", () => ({
 }));
 
 vi.mock("@/lib/giving/metrics", () => ({
+  getGivingPerAdult: vi.fn(async () => mocks.givingPerAdult),
   getHouseholdDonorTrend: vi.fn(async () => mocks.householdDonorTrend),
 }));
 
@@ -294,6 +308,24 @@ describe("HomePage", () => {
     expect(screen.queryByText("Household donor trend")).not.toBeInTheDocument();
     expect(screen.getByText("Household donors by campus")).toBeInTheDocument();
     expect(screen.getByText("Giving lifecycle")).toBeInTheDocument();
+    expect(screen.getByText("Giving per adult")).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("Giving per adult")
+        .compareDocumentPosition(screen.getByText("Giving lifecycle")) &
+        Node.DOCUMENT_POSITION_PRECEDING,
+    ).toBeTruthy();
+    expect(screen.getByText("Monthly average")).toBeInTheDocument();
+    expect(screen.getByText("$118")).toBeInTheDocument();
+    expect(screen.getByText("Monthly median")).toBeInTheDocument();
+    expect(screen.getByText("$96")).toBeInTheDocument();
+    expect(screen.getByText("Average pledge")).toBeInTheDocument();
+    expect(screen.getByText("$140")).toBeInTheDocument();
+    expect(screen.getByText("Median pledge")).toBeInTheDocument();
+    expect(screen.getByText("$125")).toBeInTheDocument();
+    expect(screen.queryByText("Annual average")).not.toBeInTheDocument();
+    expect(screen.queryByText("Adults counted")).not.toBeInTheDocument();
+    expect(screen.queryByText("Giving households")).not.toBeInTheDocument();
     expect(screen.queryByText("Current badge count")).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Counts people with current lifecycle badges/i),
@@ -388,5 +420,32 @@ describe("HomePage", () => {
     expect(
       screen.queryByRole("link", { name: "Request access" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides average giving amounts from pastoral care users", async () => {
+    mocks.accessState = {
+      status: "authorized",
+      user: {
+        id: "user_2",
+        auth0Subject: "auth0|pastoral",
+        email: "care@example.com",
+        name: "Care",
+        role: "PASTORAL_CARE",
+        active: true,
+        rockPersonId: null,
+      },
+    };
+
+    render(await HomePage());
+
+    expect(screen.getByText("Giving per adult")).toBeInTheDocument();
+    expect(screen.getByText("Giving amounts hidden")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /only Admin and Finance roles can view giving per adult/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("$118")).not.toBeInTheDocument();
+    expect(screen.queryByText("$140")).not.toBeInTheDocument();
   });
 });

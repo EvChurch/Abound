@@ -2,7 +2,9 @@ import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  getGivingPerAdult,
   getHouseholdDonorTrend,
+  summarizeGivingPerAdult,
   summarizeGivingFacts,
   summarizeHouseholdDonorTrend,
 } from "@/lib/giving/metrics";
@@ -142,6 +144,196 @@ describe("giving metrics", () => {
       sourceExplanation: "Derived from local GivingFact rows synced from Rock.",
       totalGiven: "0.00",
     });
+  });
+
+  it("summarizes giving per adult from giving households and active pledges", () => {
+    const summary = summarizeGivingPerAdult(
+      [
+        { amount: "1200.00", householdRockId: 10 },
+        { amount: "600.00", householdRockId: 10 },
+        { amount: "600.00", householdRockId: 20 },
+        { amount: "99.00", householdRockId: null },
+      ],
+      [
+        {
+          archived: false,
+          groupRole: { name: "Adult" },
+          householdRockId: 10,
+          personRockId: 101,
+        },
+        {
+          archived: false,
+          groupRole: { name: "Adult" },
+          householdRockId: 10,
+          personRockId: 102,
+        },
+        {
+          archived: false,
+          groupRole: { name: "Adult" },
+          householdRockId: 10,
+          personRockId: 102,
+        },
+        {
+          archived: false,
+          groupRole: { name: "Child" },
+          householdRockId: 10,
+          personRockId: 103,
+        },
+        {
+          archived: true,
+          groupRole: { name: "Adult" },
+          householdRockId: 20,
+          personRockId: 104,
+        },
+        {
+          archived: false,
+          groupRole: { name: "Adult" },
+          householdRockId: 20,
+          personRockId: 105,
+        },
+      ],
+      [
+        { amount: "120.00", period: "MONTHLY", personRockId: 101 },
+        { amount: "1200.00", period: "ANNUALLY", personRockId: 102 },
+        { amount: "240.00", period: "QUARTERLY", personRockId: 105 },
+      ],
+      ["2025-04", "2026-03"],
+    );
+
+    expect(summary).toEqual({
+      adultCount: 3,
+      averagePledge: "100.00",
+      medianPledge: "100.00",
+      monthlyAverage: "66.67",
+      monthlyMedian: "75.00",
+      pledgedAdultCount: 3,
+      sourceExplanation:
+        "Total platform-fund giving for the last 12 completed months divided by active Adult household members in households that gave during that window.",
+      totalGiven: "2400.00",
+      windowEndedMonth: "2026-03",
+      windowStartedMonth: "2025-04",
+    });
+  });
+
+  it("loads giving per adult through the enabled fund boundary", async () => {
+    const client = {
+      givingFact: {
+        findMany: vi.fn(async () => [
+          { amount: "1200.00", householdRockId: 10 },
+          { amount: "600.00", householdRockId: 20 },
+        ]),
+      },
+      givingPledge: {
+        findMany: vi.fn(async () => [
+          { amount: "120.00", period: "MONTHLY", personRockId: 101 },
+          { amount: "1200.00", period: "ANNUALLY", personRockId: 102 },
+        ]),
+      },
+      platformFundSetting: {
+        findMany: vi.fn(async () => [{ accountRockId: 1, enabled: true }]),
+      },
+      rockHouseholdMember: {
+        findMany: vi.fn(async () => [
+          {
+            archived: false,
+            groupRole: { name: "Adult" },
+            householdRockId: 10,
+            personRockId: 101,
+          },
+          {
+            archived: false,
+            groupRole: { name: "Adult" },
+            householdRockId: 10,
+            personRockId: 102,
+          },
+          {
+            archived: false,
+            groupRole: { name: "Adult" },
+            householdRockId: 20,
+            personRockId: 103,
+          },
+        ]),
+      },
+    } as unknown as PrismaClient;
+
+    const summary = await getGivingPerAdult(
+      new Date("2026-04-20T00:00:00.000Z"),
+      client,
+    );
+
+    expect(client.givingFact.findMany).toHaveBeenCalledWith({
+      select: {
+        amount: true,
+        householdRockId: true,
+      },
+      where: {
+        accountRockId: {
+          in: [1],
+        },
+        effectiveMonth: {
+          gte: new Date("2025-04-01T00:00:00.000Z"),
+          lt: new Date("2026-04-01T00:00:00.000Z"),
+        },
+        householdRockId: {
+          not: null,
+        },
+      },
+    });
+    expect(client.givingPledge.findMany).toHaveBeenCalledWith({
+      select: {
+        amount: true,
+        period: true,
+        personRockId: true,
+      },
+      where: {
+        accountRockId: {
+          in: [1],
+        },
+        status: "ACTIVE",
+      },
+    });
+    expect(client.rockHouseholdMember.findMany).toHaveBeenCalledWith({
+      select: {
+        archived: true,
+        groupRole: {
+          select: {
+            name: true,
+          },
+        },
+        householdRockId: true,
+        personRockId: true,
+      },
+      where: {
+        archived: false,
+        groupRole: {
+          name: {
+            equals: "Adult",
+            mode: "insensitive",
+          },
+        },
+        household: {
+          active: true,
+          archived: false,
+        },
+        householdRockId: {
+          in: [10, 20],
+        },
+      },
+    });
+    expect(summary).toMatchObject({
+      adultCount: 3,
+      averagePledge: "110.00",
+      medianPledge: "110.00",
+      monthlyAverage: "50.00",
+      monthlyMedian: "50.00",
+      pledgedAdultCount: 2,
+      totalGiven: "1800.00",
+      windowEndedMonth: "2026-03",
+      windowStartedMonth: "2025-04",
+    });
+    expect(summary.sourceExplanation).toContain(
+      "Admin-configured platform fund set.",
+    );
   });
 
   it("counts distinct household donors for each of the last 24 months", () => {

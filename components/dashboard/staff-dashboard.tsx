@@ -2,20 +2,23 @@ import Link from "next/link";
 
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
-import { hasPermission } from "@/lib/auth/roles";
+import { canSeeGivingAmounts, hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import type {
   DashboardLifecycleKind,
+  GivingPerAdult,
   HouseholdDonorTrend,
   LifecycleCounts,
 } from "@/lib/giving/metrics";
 
 type StaffDashboardProps = {
+  givingPerAdult: GivingPerAdult;
   householdDonorTrend: HouseholdDonorTrend;
   user: LocalAppUser;
 };
 
 export function StaffDashboard({
+  givingPerAdult,
   householdDonorTrend,
   user,
 }: StaffDashboardProps) {
@@ -113,12 +116,68 @@ export function StaffDashboard({
         <HouseholdMovementPanel
           lifecycleCounts={householdDonorTrend.lifecycleCounts}
         />
+
+        <GivingPerAdultPanel
+          canSeeAmounts={canSeeGivingAmounts(user.role)}
+          givingPerAdult={givingPerAdult}
+        />
       </main>
     </div>
   );
 }
 
 type MonthlyPeak = HouseholdDonorTrend["months"][number];
+
+function GivingPerAdultPanel({
+  canSeeAmounts,
+  givingPerAdult,
+}: {
+  canSeeAmounts: boolean;
+  givingPerAdult: GivingPerAdult;
+}) {
+  return (
+    <section className="grid gap-4 rounded-[10px] border border-app-border bg-app-surface p-5 shadow-[0_1px_2px_rgba(150,140,120,0.16)]">
+      <h2 className="text-[20px] font-semibold text-app-foreground">
+        Giving per adult
+      </h2>
+
+      {canSeeAmounts ? (
+        <dl className="grid gap-3 md:grid-cols-4">
+          <DashboardMoneyMetric
+            detail="Per active adult"
+            label="Monthly average"
+            value={givingPerAdult.monthlyAverage}
+          />
+          <DashboardMoneyMetric
+            detail="Middle adult value"
+            label="Monthly median"
+            value={givingPerAdult.monthlyMedian}
+          />
+          <DashboardMoneyMetric
+            detail="Active pledges"
+            label="Average pledge"
+            value={givingPerAdult.averagePledge}
+          />
+          <DashboardMoneyMetric
+            detail="Active pledges"
+            label="Median pledge"
+            value={givingPerAdult.medianPledge}
+          />
+        </dl>
+      ) : (
+        <div className="rounded-[8px] border border-app-border bg-app-chip p-4">
+          <p className="text-[13px] font-semibold text-app-foreground">
+            Giving amounts hidden
+          </p>
+          <p className="mt-2 max-w-3xl text-[13px] leading-6 text-app-muted">
+            This metric includes giving totals, so only Admin and Finance roles
+            can view giving per adult and pledge values.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
 
 const movementLabels: Record<DashboardLifecycleKind, string> = {
   AT_RISK: "At-risk",
@@ -282,6 +341,26 @@ function DashboardMetric({
   );
 }
 
+function DashboardMoneyMetric({
+  detail,
+  label,
+  value,
+}: {
+  detail: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[8px] border border-app-border bg-app-surface p-4 shadow-[0_1px_2px_rgba(150,140,120,0.12)]">
+      <dt className="text-[12px] font-semibold text-app-muted">{label}</dt>
+      <dd className="mt-2 text-[30px] font-semibold leading-none tabular-nums text-app-foreground">
+        {formatCurrency(value)}
+      </dd>
+      <dd className="mt-2 text-[12px] leading-5 text-app-faint">{detail}</dd>
+    </div>
+  );
+}
+
 function TrendDelta({ value }: { value: number }) {
   const tone =
     value > 0
@@ -318,6 +397,14 @@ function formatMonthLabel(value: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
+}
+
+function formatCurrency(value: string) {
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }).format(Number(value));
 }
 
 function formatRole(role: LocalAppUser["role"]) {

@@ -4,7 +4,10 @@ import { AccessRequestForm } from "@/components/auth/access-request-form";
 import { StaffDashboard } from "@/components/dashboard/staff-dashboard";
 import { auth0 } from "@/lib/auth/auth0";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
-import { getHouseholdDonorTrend } from "@/lib/giving/metrics";
+import {
+  getGivingPerAdult,
+  getHouseholdDonorTrend,
+} from "@/lib/giving/metrics";
 
 export default async function HomePage() {
   const session = await auth0.getSession();
@@ -34,10 +37,14 @@ export default async function HomePage() {
     );
   }
 
-  const householdDonorTrend = await getHouseholdDonorTrend();
+  const [givingPerAdult, householdDonorTrend] = await Promise.all([
+    getGivingPerAdult(),
+    getHouseholdDonorTrend(),
+  ]);
 
   return (
     <StaffDashboard
+      givingPerAdult={givingPerAdult}
       householdDonorTrend={householdDonorTrend}
       user={accessState.user}
     />
