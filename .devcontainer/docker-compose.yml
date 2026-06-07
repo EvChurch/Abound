@@ -13,13 +13,28 @@ services:
       - NET_RAW
     volumes:
       - ..:/workspace:cached
+      - gh-config:/home/vscode/.config/gh
+      - vscode-ssh:/home/vscode/.ssh
+    ports:
+      - "127.0.0.1:2290:22"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Keep container running
-    command: sleep infinity
+    command: >
+      bash -lc '
+        set -euo pipefail
+        sudo mkdir -p /run/sshd /home/vscode/.ssh /home/vscode/.config/gh
+        sudo ssh-keygen -A
+        sudo chown -R vscode:vscode /home/vscode/.ssh /home/vscode/.config/gh
+        chmod 700 /home/vscode/.ssh
+        touch /home/vscode/.ssh/authorized_keys
+        chmod 600 /home/vscode/.ssh/authorized_keys
+        sync-github-authorized-keys || true
+        sudo /usr/sbin/sshd
+        exec sleep infinity
+      '
 
   db:
     image: postgres:17
@@ -48,5 +63,7 @@ services:
       retries: 5
 
 volumes:
+  gh-config:
   postgres-data:
   redis-data:
+  vscode-ssh:

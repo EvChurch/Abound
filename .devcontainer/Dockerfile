@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   socat \
   # Modern CLI tools
   fd-find \
+  gh \
   ripgrep \
   tmux \
   zsh \
@@ -34,7 +35,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   # Database clients (servers run as separate containers)
   postgresql-client \
   redis-tools \
+  # Host access to the running devcontainer
+  openssh-server \
+  && rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Restrict SSH access to public-key authentication for the normal dev user.
+RUN mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
+  cat >/etc/ssh/sshd_config.d/99-devcontainer.conf <<'EOF'
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitEmptyPasswords no
+PermitRootLogin no
+AllowUsers vscode
+AuthorizedKeysFile .ssh/authorized_keys
+EOF
+
+COPY sync-github-authorized-keys /usr/local/bin/sync-github-authorized-keys
+RUN chmod 0755 /usr/local/bin/sync-github-authorized-keys
 
 # Install git-delta
 ARG GIT_DELTA_VERSION=0.18.2
@@ -57,10 +77,11 @@ RUN ARCH=$(dpkg --print-architecture) && \
   curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-${FZF_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
 
 # Create directories and set ownership (combined for fewer layers)
-RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt && \
+RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /home/vscode/.config/gh /home/vscode/.ssh /opt && \
   touch /commandhistory/.bash_history && \
   touch /commandhistory/.zsh_history && \
-  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt
+  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /home/vscode/.config /home/vscode/.ssh /opt && \
+  chmod 700 /home/vscode/.ssh
 
 # Set environment variables
 ENV DEVCONTAINER=true

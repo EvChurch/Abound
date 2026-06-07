@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target_user="${DEVCONTAINER_SSH_USER:-vscode}"
+target_home="$(getent passwd "$target_user" | cut -d: -f6)"
+
+if [ -z "$target_home" ]; then
+  echo "[sync-github-authorized-keys] User '$target_user' does not exist." >&2
+  exit 1
+fi
+
+ssh_dir="$target_home/.ssh"
+authorized_keys="$ssh_dir/authorized_keys"
+begin_marker="# BEGIN MANAGED GITHUB PUBLIC KEYS - sync-github-authorized-keys"
+end_marker="# END MANAGED GITHUB PUBLIC KEYS - sync-github-authorized-keys"
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "[sync-github-authorized-keys] GitHub CLI is not installed. Rebuild the devcontainer, then run 'gh auth login' inside it." >&2
+  exit 0
+fi
+
+if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+  echo "[sync-github-authorized-keys] GitHub CLI is not authenticated. Run 'gh auth login' inside the devcontainer, then rerun 'sync-github-authorized-keys' or restart the service." >&2
+  exit 0
+fi
+
+github_user="$(gh api user --jq .login 2>/dev/null || true)"
+if [ -z "$github_user" ]; then
+  echo "[sync-github-authorized-keys] Could not determine the authenticated GitHub username. Run 'gh auth login' inside the devcontainer." >&2
+  exit 0
+fi
+
+keys_url="https://github.com/${github_user}.keys"
+github_keys="$(curl -fsSL "$keys_url" | sed '/^[[:space:]]*$/d')"
+
+install -d -m 700 "$ssh_dir"
+touch "$authorized_keys"
+chmod 600 "$authorized_keys"
+
+existing_without_block="$(mktemp)"
+awk -v begin="$begin_marker" -v end="$end_marker" '
+  $0 == begin { skip = 1; next }
+  $0 == end { skip = 0; next }
+  skip != 1 { print }
+' "$authorized_keys" >"$existing_without_block"
+
+{
+  cat "$existing_without_block"
+  if [ -s "$existing_without_block" ]; then
+    printf '\n'
+  fi
+  printf '%s\n' "$begin_marker"
+  printf '# Synced from %s for GitHub user %s\n' "$keys_url" "$github_user"
+  if [ -n "$github_keys" ]; then
+    printf '%s\n' "$github_keys"
+  else
+    printf '# No public SSH keys were published by this GitHub account at sync time.\n'
+  fi
+  printf '%s\n' "$end_marker"
+} >"$authorized_keys"
+
+rm -f "$existing_without_block"
+chmod 600 "$authorized_keys"
+
+if [ "$(id -u)" -eq 0 ]; then
+  chown -R "$target_user:$target_user" "$ssh_dir"
+elif command -v sudo >/dev/null 2>&1; then
+  sudo chown -R "$target_user:$target_user" "$ssh_dir" >/dev/null 2>&1 || true
+fi
+
+echo "[sync-github-authorized-keys] Synced GitHub public SSH keys for ${github_user} into ${authorized_keys}." >&2
