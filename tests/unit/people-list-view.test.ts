@@ -429,6 +429,70 @@ describe("people list view", () => {
     );
   });
 
+  it("adds computed lapsed lifecycle labels and last gift month", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-20T12:00:00Z"));
+
+    const prisma = client({
+      givingFactFindMany: vi.fn(async () => [
+        {
+          accountRockId: 20,
+          amount: "50",
+          effectiveMonth: new Date("2025-01-01T00:00:00Z"),
+          occurredAt: new Date("2025-01-10T00:00:00Z"),
+          personRockId: 101,
+          reliabilityKind: "ONE_OFF",
+        },
+        {
+          accountRockId: 20,
+          amount: "50",
+          effectiveMonth: new Date("2025-02-01T00:00:00Z"),
+          occurredAt: new Date("2025-02-10T00:00:00Z"),
+          personRockId: 101,
+          reliabilityKind: "ONE_OFF",
+        },
+        {
+          accountRockId: 20,
+          amount: "50",
+          effectiveMonth: new Date("2025-03-01T00:00:00Z"),
+          occurredAt: new Date("2025-03-10T00:00:00Z"),
+          personRockId: 101,
+          reliabilityKind: "ONE_OFF",
+        },
+      ]),
+      lifecycleSnapshotFindMany: vi.fn(async () => []),
+      rockPersonFindMany: vi.fn(async () => [
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: { value: "Prospect" },
+          deceased: false,
+          email: null,
+          emailActive: null,
+          firstName: "Pat",
+          lastName: "Lapsed",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 101,
+        },
+      ]),
+    });
+
+    const connection = await listPeople({ first: 10 }, adminUser, prisma);
+
+    expect(connection.edges[0]?.node.lifecycle).toEqual([
+      {
+        lifecycle: "LAPSED",
+        summary: "Prior multi-month giving, but no gift in the lapsed window.",
+        windowEndedAt: new Date("2025-03-10T00:00:00Z"),
+      },
+    ]);
+    expect(connection.edges[0]?.node.lastGiftMonth).toBe("Mar 2025");
+  });
+
   it("filters people to rows with selected pledge management states", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-20T12:00:00Z"));
@@ -480,6 +544,71 @@ describe("people list view", () => {
     );
 
     expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ rockId: { in: [101] } }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("filters people by household giving state from recent household gifts", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-20T12:00:00Z"));
+
+    const rockPersonFindMany = vi.fn(async (args?: unknown) => {
+      const select = (args as { select?: Record<string, unknown> } | undefined)
+        ?.select;
+
+      if (select?.givingGroupRockId) {
+        return [
+          {
+            givingGroupRockId: 501,
+            primaryFamilyRockId: 501,
+            rockId: 101,
+          },
+          {
+            givingGroupRockId: 502,
+            primaryFamilyRockId: 502,
+            rockId: 202,
+          },
+        ];
+      }
+
+      return [];
+    });
+    const prisma = client({
+      givingFactFindMany: vi.fn(async () => [
+        {
+          householdRockId: 501,
+        },
+      ]),
+      rockPersonFindMany,
+    });
+
+    await listPeople(
+      {
+        filterDefinition: {
+          conditions: [
+            {
+              field: "householdGivingState",
+              operator: "EQUALS",
+              type: "condition",
+              value: "STILL_GIVING",
+            },
+          ],
+          mode: "all",
+          type: "group",
+        },
+        first: 10,
+      },
+      adminUser,
+      prisma,
+    );
+
+    expect(rockPersonFindMany).toHaveBeenLastCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.arrayContaining([

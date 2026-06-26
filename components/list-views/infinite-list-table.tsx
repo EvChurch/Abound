@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { ListTable } from "@/components/list-views/list-table";
 import type { ListColumnKey } from "@/lib/list-views/columns";
+import type { PeopleViewMode } from "@/lib/list-views/page-params";
 import type {
   HouseholdListRow,
   HouseholdsConnection,
@@ -19,6 +20,7 @@ type InfiniteListTableProps =
       connection: PeopleConnection;
       kind: "people";
       queryString: string;
+      viewMode?: PeopleViewMode | null;
     }
   | {
       columns: ListColumnKey[];
@@ -29,12 +31,9 @@ type InfiniteListTableProps =
 
 type ListConnection = PeopleConnection | HouseholdsConnection;
 
-export function InfiniteListTable({
-  columns,
-  connection,
-  kind,
-  queryString,
-}: InfiniteListTableProps) {
+export function InfiniteListTable(props: InfiniteListTableProps) {
+  const { columns, connection, kind, queryString } = props;
+  const viewMode = kind === "people" ? props.viewMode : null;
   const [currentConnection, setCurrentConnection] =
     useState<ListConnection>(connection);
   const [isPending, startTransition] = useTransition();
@@ -95,6 +94,7 @@ export function InfiniteListTable({
           columns={columns}
           connection={currentConnection as PeopleConnection}
           kind="people"
+          viewMode={viewMode ?? "list"}
         />
       ) : (
         <ListTable

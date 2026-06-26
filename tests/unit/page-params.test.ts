@@ -41,7 +41,7 @@ describe("list view page params", () => {
 
   it("builds multi-selected lifecycle filters and preserves them from URLSearchParams", () => {
     const filter = buildPeopleFilter({
-      lifecycle: ["NEW", "HEALTHY"],
+      lifecycle: ["NEW", "HEALTHY", "LAPSED"],
     });
 
     expect(filter.conditions).toEqual([
@@ -49,15 +49,36 @@ describe("list view page params", () => {
         field: "lifecycle",
         operator: "IN",
         type: "condition",
-        value: ["NEW", "HEALTHY"],
+        value: ["NEW", "HEALTHY", "LAPSED"],
       },
     ]);
 
     const params = paramsFromSearch(
-      new URLSearchParams("lifecycle=NEW&lifecycle=HEALTHY"),
+      new URLSearchParams("lifecycle=NEW&lifecycle=HEALTHY&lifecycle=LAPSED"),
     );
 
-    expect(params.lifecycle).toEqual(["NEW", "HEALTHY"]);
+    expect(params.lifecycle).toEqual(["NEW", "HEALTHY", "LAPSED"]);
+  });
+
+  it("builds the household giving state people filter", () => {
+    const filter = buildPeopleFilter({
+      householdGivingState: "STILL_GIVING",
+    });
+
+    expect(filter.conditions).toEqual([
+      {
+        field: "householdGivingState",
+        operator: "EQUALS",
+        type: "condition",
+        value: "STILL_GIVING",
+      },
+    ]);
+
+    const params = paramsFromSearch(
+      new URLSearchParams("householdGivingState=STOPPED"),
+    );
+
+    expect(params.householdGivingState).toBe("STOPPED");
   });
 
   it("builds the pledge management people filter", () => {

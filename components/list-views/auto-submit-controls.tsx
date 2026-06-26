@@ -72,7 +72,9 @@ export function AutoSubmitSelect({
       className={className}
       defaultValue={defaultValue}
       name={name}
-      onValueChange={(_, form) => submitForm(form)}
+      onValueChange={(nextValue, form) =>
+        submitForm(form, { [name]: nextValue })
+      }
       options={options}
       rootClassName="relative w-full"
     />
@@ -104,7 +106,10 @@ function useRouteSubmit() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  return (form: HTMLFormElement | null) => {
+  return (
+    form: HTMLFormElement | null,
+    overrides: Record<string, string> = {},
+  ) => {
     if (!form) return;
 
     const action = form.getAttribute("action") || window.location.pathname;
@@ -119,12 +124,23 @@ function useRouteSubmit() {
       params.delete(name);
     }
 
+    for (const name of Object.keys(overrides)) {
+      params.delete(name);
+    }
+
     for (const [key, value] of new FormData(form).entries()) {
       if (typeof value !== "string" || value.length === 0) {
         continue;
       }
 
       params.append(key, value);
+    }
+
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value.length > 0) {
+        params.delete(key);
+        params.append(key, value);
+      }
     }
 
     const query = params.toString();

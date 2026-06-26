@@ -17,7 +17,7 @@ import {
 
 type LifecycleSnapshotDelegate = PrismaClient["givingLifecycleSnapshot"];
 type GivingFactDelegate = PrismaClient["givingFact"];
-type LifecycleFilterKind = GivingLifecycleKind | "HEALTHY";
+type LifecycleFilterKind = GivingLifecycleKind | "HEALTHY" | "LAPSED";
 
 export type LifecycleFilterResource = "PERSON" | "HOUSEHOLD";
 
@@ -87,7 +87,7 @@ function normalizeLifecycle(value: unknown) {
     .trim()
     .toUpperCase();
 
-  if (normalized === "HEALTHY") {
+  if (normalized === "HEALTHY" || normalized === "LAPSED") {
     return normalized;
   }
 
@@ -105,7 +105,8 @@ async function resolveSnapshotLifecycleIds(
 
   try {
     const storedLifecycles = lifecycles.filter(
-      (lifecycle): lifecycle is GivingLifecycleKind => lifecycle !== "HEALTHY",
+      (lifecycle): lifecycle is GivingLifecycleKind =>
+        lifecycle !== "HEALTHY" && lifecycle !== "LAPSED",
     );
     const matchingIds =
       storedLifecycles.length > 0
@@ -118,8 +119,11 @@ async function resolveSnapshotLifecycleIds(
     const healthyIds = lifecycles.includes("HEALTHY")
       ? await resolveHealthyLifecycleIds(resource, client)
       : [];
+    const lapsedIds = lifecycles.includes("LAPSED")
+      ? await resolveLapsedLifecycleIds(resource, client)
+      : [];
 
-    return uniqueNumbers([...matchingIds, ...healthyIds]);
+    return uniqueNumbers([...matchingIds, ...healthyIds, ...lapsedIds]);
   } catch (error) {
     if (isMissingLifecycleSnapshotTable(error)) {
       return null;
@@ -232,6 +236,36 @@ async function resolveHealthyLifecycleIds(
     .map(([rockId]) => rockId);
 }
 
+async function resolveLapsedLifecycleIds(
+  resource: LifecycleFilterResource,
+  client: LifecycleFilterClient,
+) {
+  const fundScope = client.platformFundSetting
+    ? await getPlatformFundScope(client)
+    : { enabledAccountRockIds: [], mode: "UNCONFIGURED" as const };
+  const facts = await client.givingFact.findMany({
+    orderBy: [{ occurredAt: "asc" }, { effectiveMonth: "asc" }, { id: "asc" }],
+    select: {
+      effectiveMonth: true,
+      householdRockId: true,
+      occurredAt: true,
+      personRockId: true,
+    },
+    where:
+      resource === "PERSON"
+        ? {
+            ...whereForEnabledPlatformFunds(fundScope),
+            personRockId: { not: null },
+          }
+        : {
+            ...whereForEnabledPlatformFunds(fundScope),
+            householdRockId: { not: null },
+          },
+  });
+
+  return lapsedIdsFromFacts(facts, resource);
+}
+
 async function resolveFactLifecycleIds(
   lifecycles: LifecycleFilterKind[],
   resource: LifecycleFilterResource,
@@ -279,7 +313,10 @@ async function resolveFactLifecycleIds(
     factsByRockId.set(rockId, group);
   }
 
-  return [...factsByRockId.entries()]
+  const lapsedIds = lifecycleSet.has("LAPSED")
+    ? lapsedIdsFromFacts(facts, resource)
+    : [];
+  const lifecycleIds = [...factsByRockId.entries()]
     .filter(([, groupedFacts]) => {
       const result = classifyGivingLifecycle(groupedFacts);
       const latestGiftAt = groupedFacts
@@ -296,6 +333,55 @@ async function resolveFactLifecycleIds(
       }
 
       return result.kind ? lifecycleSet.has(result.kind) : false;
+    })
+    .map(([rockId]) => rockId);
+
+  return uniqueNumbers([...lifecycleIds, ...lapsedIds]);
+}
+
+function lapsedIdsFromFacts(
+  facts: Array<{
+    effectiveMonth: Date;
+    householdRockId: number | null;
+    occurredAt: Date | null;
+    personRockId: number | null;
+  }>,
+  resource: LifecycleFilterResource,
+) {
+  const lapsedStart = subtractDays(new Date(), 270);
+  const factsByRockId = new Map<
+    number,
+    Array<{
+      effectiveMonth: Date;
+      occurredAt: Date | null;
+    }>
+  >();
+
+  for (const fact of facts) {
+    const rockId =
+      resource === "PERSON" ? fact.personRockId : fact.householdRockId;
+
+    if (!rockId) {
+      continue;
+    }
+
+    const group = factsByRockId.get(rockId) ?? [];
+    group.push(fact);
+    factsByRockId.set(rockId, group);
+  }
+
+  return [...factsByRockId.entries()]
+    .filter(([, groupedFacts]) => {
+      const latestGiftAt = groupedFacts
+        .map((fact) => fact.occurredAt ?? fact.effectiveMonth)
+        .sort((left, right) => right.getTime() - left.getTime())[0];
+      const givingMonths = new Set(
+        groupedFacts.map((fact) => monthKey(fact.effectiveMonth)),
+      );
+
+      return Boolean(
+        latestGiftAt && latestGiftAt < lapsedStart && givingMonths.size >= 3,
+      );
     })
     .map(([rockId]) => rockId);
 }
@@ -319,4 +405,11 @@ function isMissingLifecycleSnapshotTable(error: unknown) {
 
 function subtractDays(date: Date, days: number) {
   return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+function monthKey(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
 }

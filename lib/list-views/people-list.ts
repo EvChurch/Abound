@@ -9,6 +9,7 @@ import {
   type PledgeAnalysisRow,
   type PledgeFund,
 } from "@/lib/giving/pledges";
+import { classifyGivingLifecycle } from "@/lib/giving/lifecycle";
 import { summarizeGivingFacts, type GivingSummary } from "@/lib/giving/metrics";
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 import {
@@ -77,8 +78,16 @@ export type PersonListRow = {
   openTaskCount: number;
   lastSyncedAt: Date;
   givingSummary: GivingSummary | null;
+  givingPresence: GivingPresenceMonth[];
+  lastGiftMonth: string | null;
   pledgeSummary: PledgeListSummary | null;
   amountsHidden: boolean;
+};
+
+export type GivingPresenceMonth = {
+  key: string;
+  label: string;
+  state: "given" | "none" | "reduced";
 };
 
 export type PledgeListSummary = {
@@ -169,6 +178,10 @@ const personListSelect = {
   rockId: true,
 } satisfies Prisma.RockPersonSelect;
 
+const RECENT_HOUSEHOLD_GIVING_DAYS = 90;
+const RECENT_GIVING_DAYS = 90;
+const LAPSED_AFTER_DAYS = 270;
+
 type PersonListRecord = Prisma.RockPersonGetPayload<{
   select: typeof personListSelect;
 }>;
@@ -206,6 +219,11 @@ export async function listPeople(
     "PERSON",
     client,
   );
+  const householdGivingStateRockIds =
+    await resolveHouseholdGivingStateFilteredRockIds(
+      validation.definition,
+      client,
+    );
   const pledgeStateRockIds = await resolvePledgeStateFilteredRockIds(
     validation.definition,
     actor,
@@ -219,7 +237,10 @@ export async function listPeople(
     take: limit + 1,
     where: withRockIdFilter(
       filterToPersonWhere(validation.definition, actor),
-      intersectRockIds(lifecycleRockIds, pledgeStateRockIds),
+      intersectRockIds(
+        intersectRockIds(lifecycleRockIds, householdGivingStateRockIds),
+        pledgeStateRockIds,
+      ),
     ),
   });
   const pageRecords = records.slice(0, limit);
@@ -229,7 +250,16 @@ export async function listPeople(
         client,
       )
     : new Map<number, GivingSummary>();
+  const givingPresence = await givingPresenceByPerson(
+    pageRecords.map((record) => record.rockId),
+    canSeeGivingAmounts(actor.role),
+    client,
+  );
   const lifecycleLabels = await lifecycleLabelsByPerson(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
+  const lastGiftMonths = await lastGiftMonthByPerson(
     pageRecords.map((record) => record.rockId),
     client,
   );
@@ -252,8 +282,10 @@ export async function listPeople(
         record,
         actor,
         givingSummaries,
+        givingPresence,
         pledgeSummaries,
         lifecycleLabels,
+        lastGiftMonths,
       ),
     })),
     pageInfo: {
@@ -408,6 +440,8 @@ function conditionToPersonWhere(
       return { staffTasks: { some: { dueAt: dateWhere(condition) } } };
     case "lifecycle":
       return null;
+    case "householdGivingState":
+      return null;
     case "pledgeState":
       return null;
     case "givingRecency":
@@ -484,46 +518,268 @@ async function givingSummariesByPerson(
   );
 }
 
+async function givingPresenceByPerson(
+  personRockIds: number[],
+  canExposeAmountPattern: boolean,
+  client: PeopleListClient,
+) {
+  if (personRockIds.length === 0) {
+    return new Map<number, GivingPresenceMonth[]>();
+  }
+
+  const referenceDate = new Date();
+  const monthStarts = latestTwelveMonthStarts(referenceDate);
+  const facts = await client.givingFact.findMany({
+    orderBy: [
+      { personRockId: "asc" },
+      { effectiveMonth: "asc" },
+      { id: "asc" },
+    ],
+    select: {
+      amount: true,
+      effectiveMonth: true,
+      personRockId: true,
+    },
+    where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      effectiveMonth: {
+        gte: monthStarts[0],
+      },
+      personRockId: { in: personRockIds },
+    },
+  });
+  const totalsByPersonMonth = new Map<number, Map<string, number>>();
+
+  for (const fact of facts) {
+    if (!fact.personRockId) {
+      continue;
+    }
+
+    const personTotals =
+      totalsByPersonMonth.get(fact.personRockId) ?? new Map<string, number>();
+    const key = monthKey(fact.effectiveMonth);
+    personTotals.set(key, (personTotals.get(key) ?? 0) + Number(fact.amount));
+    totalsByPersonMonth.set(fact.personRockId, personTotals);
+  }
+
+  return new Map(
+    personRockIds.map((personRockId) => [
+      personRockId,
+      buildGivingPresenceMonths(
+        monthStarts,
+        totalsByPersonMonth.get(personRockId) ?? new Map<string, number>(),
+        canExposeAmountPattern,
+      ),
+    ]),
+  );
+}
+
+function buildGivingPresenceMonths(
+  monthStarts: Date[],
+  totalsByMonth: Map<string, number>,
+  canExposeAmountPattern: boolean,
+): GivingPresenceMonth[] {
+  const positiveTotals = monthStarts
+    .map((monthStart) => totalsByMonth.get(monthKey(monthStart)) ?? 0)
+    .filter((amount) => amount > 0);
+  const baseline =
+    positiveTotals.length === 0
+      ? 0
+      : positiveTotals.reduce((sum, amount) => sum + amount, 0) /
+        positiveTotals.length;
+
+  return monthStarts.map((monthStart) => {
+    const amount = totalsByMonth.get(monthKey(monthStart)) ?? 0;
+    const reduced =
+      canExposeAmountPattern &&
+      baseline > 0 &&
+      amount > 0 &&
+      amount < baseline * 0.5;
+
+    return {
+      key: monthKey(monthStart),
+      label: formatShortMonth(monthStart),
+      state: amount === 0 ? "none" : reduced ? "reduced" : "given",
+    };
+  });
+}
+
+async function lastGiftMonthByPerson(
+  personRockIds: number[],
+  client: PeopleListClient,
+) {
+  if (personRockIds.length === 0) {
+    return new Map<number, string>();
+  }
+
+  const facts = await client.givingFact.findMany({
+    orderBy: [
+      { personRockId: "asc" },
+      { occurredAt: "desc" },
+      { effectiveMonth: "desc" },
+      { id: "asc" },
+    ],
+    select: {
+      effectiveMonth: true,
+      occurredAt: true,
+      personRockId: true,
+    },
+    where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      personRockId: { in: personRockIds },
+    },
+  });
+  const latestByPerson = new Map<number, Date>();
+
+  for (const fact of facts) {
+    if (!fact.personRockId) {
+      continue;
+    }
+
+    const giftAt = fact.occurredAt ?? fact.effectiveMonth;
+    const latestGiftAt = latestByPerson.get(fact.personRockId);
+
+    if (!latestGiftAt || giftAt > latestGiftAt) {
+      latestByPerson.set(fact.personRockId, giftAt);
+    }
+  }
+
+  return new Map(
+    Array.from(latestByPerson.entries()).map(([personRockId, date]) => [
+      personRockId,
+      formatMonthYear(date),
+    ]),
+  );
+}
+
 async function lifecycleLabelsByPerson(
   personRockIds: number[],
   client: PeopleListClient,
 ) {
-  if (personRockIds.length === 0 || !client.givingLifecycleSnapshot) {
+  if (personRockIds.length === 0) {
     return new Map<number, ListLifecycleLabel[]>();
   }
 
-  const rows = await client.givingLifecycleSnapshot.findMany({
-    orderBy: [{ windowEndedAt: "desc" }, { lifecycle: "asc" }],
-    select: {
-      lifecycle: true,
-      personRockId: true,
-      summary: true,
-      windowEndedAt: true,
-    },
-    where: {
-      personRockId: { in: personRockIds },
-      resource: "PERSON",
-    },
-  });
   const labelsByPerson = new Map<number, ListLifecycleLabel[]>();
 
-  for (const row of rows) {
-    if (!row.personRockId) continue;
-
-    const group = labelsByPerson.get(row.personRockId) ?? [];
-    if (group.some((label) => label.lifecycle === row.lifecycle)) {
-      continue;
-    }
-
-    group.push({
-      lifecycle: row.lifecycle,
-      summary: row.summary,
-      windowEndedAt: row.windowEndedAt,
+  if (client.givingLifecycleSnapshot) {
+    const rows = await client.givingLifecycleSnapshot.findMany({
+      orderBy: [{ windowEndedAt: "desc" }, { lifecycle: "asc" }],
+      select: {
+        lifecycle: true,
+        personRockId: true,
+        summary: true,
+        windowEndedAt: true,
+      },
+      where: {
+        personRockId: { in: personRockIds },
+        resource: "PERSON",
+      },
     });
-    labelsByPerson.set(row.personRockId, group);
+
+    for (const row of rows) {
+      if (!row.personRockId) continue;
+
+      const group = labelsByPerson.get(row.personRockId) ?? [];
+      if (group.some((label) => label.lifecycle === row.lifecycle)) {
+        continue;
+      }
+
+      group.push({
+        lifecycle: row.lifecycle,
+        summary: row.summary,
+        windowEndedAt: row.windowEndedAt,
+      });
+      labelsByPerson.set(row.personRockId, group);
+    }
+  }
+
+  const computedLabels = await computedLifecycleLabelsByPerson(
+    personRockIds.filter((personRockId) => {
+      const labels = labelsByPerson.get(personRockId) ?? [];
+      return labels.length === 0;
+    }),
+    client,
+  );
+
+  for (const [personRockId, labels] of computedLabels) {
+    labelsByPerson.set(personRockId, labels);
   }
 
   return labelsByPerson;
+}
+
+async function computedLifecycleLabelsByPerson(
+  personRockIds: number[],
+  client: PeopleListClient,
+) {
+  if (personRockIds.length === 0) {
+    return new Map<number, ListLifecycleLabel[]>();
+  }
+
+  const facts = await client.givingFact.findMany({
+    orderBy: [
+      { personRockId: "asc" },
+      { effectiveMonth: "asc" },
+      { id: "asc" },
+    ],
+    select: {
+      amount: true,
+      effectiveMonth: true,
+      occurredAt: true,
+      personRockId: true,
+      reliabilityKind: true,
+    },
+    where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      personRockId: { in: personRockIds },
+    },
+  });
+  const factsByPerson = groupByPerson(facts);
+  const referenceDate = new Date();
+  const recentStart = subtractDays(referenceDate, RECENT_GIVING_DAYS);
+  const lapsedStart = subtractDays(referenceDate, LAPSED_AFTER_DAYS);
+
+  const computedLabels = new Map<number, ListLifecycleLabel[]>();
+
+  for (const personRockId of personRockIds) {
+    const personFacts = factsByPerson.get(personRockId) ?? [];
+    const classified = classifyGivingLifecycle(personFacts);
+
+    if (classified.kind) {
+      continue;
+    }
+
+    const latestGiftAt = latestGiftDate(personFacts);
+
+    if (latestGiftAt && latestGiftAt >= recentStart) {
+      computedLabels.set(personRockId, [
+        {
+          lifecycle: "HEALTHY",
+          summary: "Recent giving with no stronger lifecycle signal.",
+          windowEndedAt: latestGiftAt,
+        },
+      ]);
+      continue;
+    }
+
+    if (
+      latestGiftAt &&
+      latestGiftAt < lapsedStart &&
+      distinctGivingMonths(personFacts) >= 3
+    ) {
+      computedLabels.set(personRockId, [
+        {
+          lifecycle: "LAPSED",
+          summary:
+            "Prior multi-month giving, but no gift in the lapsed window.",
+          windowEndedAt: latestGiftAt,
+        },
+      ]);
+    }
+  }
+
+  return computedLabels;
 }
 
 async function pledgeSummariesByPerson(
@@ -727,6 +983,109 @@ async function resolvePledgeStateFilteredRockIds(
   );
 }
 
+async function resolveHouseholdGivingStateFilteredRockIds(
+  filter: FilterNode,
+  client: PeopleListClient,
+) {
+  const requestedStates = householdGivingStatesFromFilter(filter);
+
+  if (requestedStates.length === 0) {
+    return null;
+  }
+
+  const recentHouseholdRockIds = await recentGivingHouseholdRockIds(client);
+  const recentHouseholdSet = new Set(recentHouseholdRockIds);
+  const people = await client.rockPerson.findMany({
+    orderBy: [{ rockId: "asc" }],
+    select: {
+      givingGroupRockId: true,
+      primaryFamilyRockId: true,
+      rockId: true,
+    },
+  });
+  const requested = new Set(requestedStates);
+
+  return people
+    .filter((person) => {
+      const householdRockId =
+        person.givingGroupRockId ?? person.primaryFamilyRockId;
+      const stillGiving = householdRockId
+        ? recentHouseholdSet.has(householdRockId)
+        : false;
+
+      return (
+        (requested.has("STILL_GIVING") && stillGiving) ||
+        (requested.has("STOPPED") && !stillGiving)
+      );
+    })
+    .map((person) => person.rockId);
+}
+
+async function recentGivingHouseholdRockIds(client: PeopleListClient) {
+  const recentStart = subtractDays(new Date(), RECENT_HOUSEHOLD_GIVING_DAYS);
+  const facts = await client.givingFact.findMany({
+    orderBy: [
+      { householdRockId: "asc" },
+      { occurredAt: "desc" },
+      { effectiveMonth: "desc" },
+    ],
+    select: {
+      householdRockId: true,
+    },
+    where: {
+      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      householdRockId: { not: null },
+      OR: [
+        { occurredAt: { gte: recentStart } },
+        {
+          occurredAt: null,
+          effectiveMonth: { gte: recentStart },
+        },
+      ],
+    },
+  });
+
+  return [
+    ...new Set(
+      facts
+        .map((fact) => fact.householdRockId)
+        .filter((rockId): rockId is number => typeof rockId === "number"),
+    ),
+  ];
+}
+
+type HouseholdGivingStateFilter = "STILL_GIVING" | "STOPPED";
+
+function householdGivingStatesFromFilter(
+  node: FilterNode,
+): HouseholdGivingStateFilter[] {
+  if (node.type === "group") {
+    return node.conditions.flatMap(householdGivingStatesFromFilter);
+  }
+
+  if (node.field !== "householdGivingState") {
+    return [];
+  }
+
+  return valuesFromCondition(node)
+    .map(normalizeHouseholdGivingState)
+    .filter((value): value is HouseholdGivingStateFilter => Boolean(value));
+}
+
+function normalizeHouseholdGivingState(
+  value: unknown,
+): HouseholdGivingStateFilter | null {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "STILL_GIVING" || normalized === "STOPPED") {
+    return normalized;
+  }
+
+  return null;
+}
+
 type PledgeFilterState = "ACTIVE" | "DRAFT" | "REVIEW";
 
 function pledgeStatesFromFilter(node: FilterNode): PledgeFilterState[] {
@@ -882,18 +1241,78 @@ function groupByPerson<T extends { personRockId: number | null }>(items: T[]) {
   return groups;
 }
 
+function latestGiftDate(
+  facts: Array<{ effectiveMonth: Date; occurredAt: Date | null }>,
+) {
+  return facts
+    .map((fact) => fact.occurredAt ?? fact.effectiveMonth)
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+}
+
+function distinctGivingMonths(facts: Array<{ effectiveMonth: Date }>) {
+  return new Set(facts.map((fact) => monthKey(fact.effectiveMonth))).size;
+}
+
 function firstRecentMonthDate(referenceDate: Date) {
   return new Date(
     Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() - 11),
   );
 }
 
+function latestTwelveMonthStarts(referenceDate: Date) {
+  const currentMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1),
+  );
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(currentMonth);
+    date.setUTCMonth(currentMonth.getUTCMonth() - (11 - index));
+    return date;
+  });
+}
+
+function monthKey(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
+}
+
+function formatShortMonth(date: Date) {
+  if (date.getUTCFullYear() < new Date().getUTCFullYear()) {
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      timeZone: "UTC",
+      year: "2-digit",
+    }).format(date);
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatMonthYear(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(date);
+}
+
+function subtractDays(date: Date, days: number) {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
 function mapPersonRow(
   record: PersonListRecord,
   actor: LocalAppUser,
   givingSummaries: Map<number, GivingSummary>,
+  givingPresence: Map<number, GivingPresenceMonth[]>,
   pledgeSummaries: Map<number, PledgeListSummary>,
   lifecycleLabels: Map<number, ListLifecycleLabel[]>,
+  lastGiftMonths: Map<number, string>,
 ): PersonListRow {
   return {
     amountsHidden: !canSeeGivingAmounts(actor.role),
@@ -904,9 +1323,11 @@ function mapPersonRow(
     givingSummary: canSeeGivingAmounts(actor.role)
       ? (givingSummaries.get(record.rockId) ?? null)
       : null,
+    givingPresence: givingPresence.get(record.rockId) ?? [],
     pledgeSummary: hasPermission(actor.role, "pledges:manage")
       ? (pledgeSummaries.get(record.rockId) ?? null)
       : null,
+    lastGiftMonth: lastGiftMonths.get(record.rockId) ?? null,
     lastSyncedAt: record.lastSyncedAt,
     lifecycle: lifecycleLabels.get(record.rockId) ?? [],
     openTaskCount: record._count.staffTasks,
