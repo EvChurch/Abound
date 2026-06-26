@@ -73,4 +73,60 @@ describe("lifecycle filtering", () => {
       }),
     );
   });
+
+  it("resolves lapsed people from older multi-month giving facts", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-23T00:00:00.000Z"));
+
+    const client = {
+      givingFact: {
+        findMany: vi.fn(async () => [
+          {
+            effectiveMonth: new Date("2025-01-01T00:00:00.000Z"),
+            householdRockId: null,
+            occurredAt: new Date("2025-01-10T00:00:00.000Z"),
+            personRockId: 1,
+          },
+          {
+            effectiveMonth: new Date("2025-02-01T00:00:00.000Z"),
+            householdRockId: null,
+            occurredAt: new Date("2025-02-10T00:00:00.000Z"),
+            personRockId: 1,
+          },
+          {
+            effectiveMonth: new Date("2025-03-01T00:00:00.000Z"),
+            householdRockId: null,
+            occurredAt: new Date("2025-03-10T00:00:00.000Z"),
+            personRockId: 1,
+          },
+          {
+            effectiveMonth: new Date("2026-04-01T00:00:00.000Z"),
+            householdRockId: null,
+            occurredAt: new Date("2026-04-10T00:00:00.000Z"),
+            personRockId: 2,
+          },
+        ]),
+      },
+      givingLifecycleSnapshot: {
+        findMany: vi.fn(async () => []),
+      },
+      platformFundSetting: {
+        findMany: vi.fn(async () => [{ accountRockId: 169, enabled: true }]),
+      },
+    } as unknown as PrismaClient;
+
+    await expect(
+      resolveLifecycleFilteredRockIds(
+        {
+          field: "lifecycle",
+          operator: "EQUALS",
+          type: "condition",
+          value: "LAPSED",
+        },
+        "PERSON",
+        client,
+      ),
+    ).resolves.toEqual([1]);
+    expect(client.givingLifecycleSnapshot.findMany).not.toHaveBeenCalled();
+  });
 });

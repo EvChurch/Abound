@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalAppUser } from "@/lib/auth/types";
 import {
@@ -134,6 +134,15 @@ function serviceClient(overrides: Partial<PrismaClient> = {}) {
 }
 
 describe("giving pledge analysis", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-20T00:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("recommends a monthly pledge per fund for consistent giving", () => {
     const rows = buildPledgeAnalysisRows({
       facts: monthlyFacts(101, [
@@ -217,9 +226,6 @@ describe("giving pledge analysis", () => {
   });
 
   it("builds queue trends using the recommendation period cadence", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-04-20T00:00:00.000Z"));
-
     const client = serviceClient();
     vi.mocked(client.givingFact.findMany).mockResolvedValueOnce(
       weeklyFacts(101, [

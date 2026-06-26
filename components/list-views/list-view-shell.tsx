@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeartPulse, List } from "lucide-react";
 
 import {
   AutoSubmitChoice,
@@ -24,6 +25,7 @@ import type { FilterFieldDefinition } from "@/lib/list-views/filter-schema";
 import type {
   ListViewShellFilters,
   PageParamValue,
+  PeopleViewMode,
 } from "@/lib/list-views/page-params";
 import type { RecordStatusFilterOption } from "@/lib/list-views/record-status-options";
 
@@ -42,6 +44,7 @@ type ListViewShellProps =
       query?: string | null;
       connectionStatusOptions: ConnectionStatusFilterOption[];
       recordStatusOptions: RecordStatusFilterOption[];
+      viewMode?: PeopleViewMode;
     }
   | {
       campusOptions: CampusFilterOption[];
@@ -69,7 +72,13 @@ export function ListViewShell(props: ListViewShellProps) {
     lifecycle: props.lifecycle,
     query: props.query,
   });
-  const resetHref = props.kind === "people" ? "/people" : "/households";
+  const viewMode = props.kind === "people" ? (props.viewMode ?? "list") : null;
+  const resetHref =
+    props.kind === "people"
+      ? viewMode === "giving"
+        ? "/people?view=giving"
+        : "/people"
+      : "/households";
   const lifecycleValues = filterValues(props.lifecycle);
   const lifecycleCount = lifecycleValues.length;
   const audienceCount =
@@ -89,6 +98,11 @@ export function ListViewShell(props: ListViewShellProps) {
   const pledgeCount =
     props.kind === "people"
       ? filterValues(props.filters?.pledgeState).length
+      : 0;
+  const householdGivingCount =
+    props.kind === "people" &&
+    queryHasValue(props.filters?.householdGivingState)
+      ? 1
       : 0;
   const contactCount =
     props.kind === "people"
@@ -183,6 +197,13 @@ export function ListViewShell(props: ListViewShellProps) {
             id: "pledge-management",
             title: "Pledge",
           },
+          {
+            children: <HouseholdGivingPanel filters={props.filters} />,
+            count: householdGivingCount,
+            defaultOpen: householdGivingCount > 0,
+            id: "household-giving",
+            title: "Household giving",
+          },
         ]
       : []),
     {
@@ -206,6 +227,9 @@ export function ListViewShell(props: ListViewShellProps) {
           <div className="md:contents">
             <aside className="border-b border-app-border bg-app-surface md:fixed md:bottom-0 md:left-0 md:top-12 md:z-20 md:w-[300px] md:border-b-0 md:border-r xl:w-[320px]">
               <form action={action} className="flex h-full flex-col">
+                {viewMode === "giving" ? (
+                  <input name="view" type="hidden" value="giving" />
+                ) : null}
                 <div className="border-b border-app-border bg-app-background/60 px-3 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
@@ -244,6 +268,7 @@ export function ListViewShell(props: ListViewShellProps) {
                               lifecycle: props.lifecycle,
                               query: props.query,
                               target: filter.param,
+                              viewMode,
                             })}
                           >
                             x
@@ -305,6 +330,7 @@ export function ListViewShell(props: ListViewShellProps) {
                 lifecycle={props.lifecycle}
                 query={props.query}
                 selectedColumns={selectedColumns}
+                viewMode={viewMode}
               />
               {props.kind === "people" ? (
                 <InfiniteListTable
@@ -325,6 +351,7 @@ export function ListViewShell(props: ListViewShellProps) {
                     lifecycle: props.lifecycle,
                     query: props.query,
                   })}
+                  viewMode={viewMode}
                 />
               ) : (
                 <InfiniteListTable
@@ -361,6 +388,7 @@ function ListWorkspaceHeader({
   lifecycle,
   query,
   selectedColumns,
+  viewMode,
 }: {
   action: "/households" | "/people";
   ageGroup?: string | null;
@@ -369,6 +397,7 @@ function ListWorkspaceHeader({
   lifecycle?: PageParamValue | null;
   query?: string | null;
   selectedColumns: ListColumnKey[];
+  viewMode: PeopleViewMode | null;
 }) {
   return (
     <div className="flex min-h-16 items-center justify-between gap-3 border-b border-app-border bg-app-background px-4 py-3">
@@ -384,10 +413,84 @@ function ListWorkspaceHeader({
           lifecycle={lifecycle}
           query={query}
         />
-        <ColumnsMenu>
-          <ColumnPanel selectedColumns={selectedColumns} />
-        </ColumnsMenu>
+        <div className="flex items-center gap-2">
+          {kind === "people" ? (
+            <PeopleViewModeControl
+              action="/people"
+              ageGroup={ageGroup}
+              filters={filters}
+              lifecycle={lifecycle}
+              query={query}
+              selectedColumns={selectedColumns}
+              viewMode={viewMode ?? "list"}
+            />
+          ) : null}
+          <ColumnsMenu>
+            <ColumnPanel selectedColumns={selectedColumns} />
+          </ColumnsMenu>
+        </div>
       </form>
+    </div>
+  );
+}
+
+function PeopleViewModeControl({
+  action,
+  ageGroup,
+  filters,
+  lifecycle,
+  query,
+  selectedColumns,
+  viewMode,
+}: {
+  action: "/people";
+  ageGroup?: string | null;
+  filters?: ListViewShellFilters;
+  lifecycle?: PageParamValue | null;
+  query?: string | null;
+  selectedColumns: ListColumnKey[];
+  viewMode: PeopleViewMode;
+}) {
+  const options = [
+    { icon: List, label: "List", value: "list" },
+    { icon: HeartPulse, label: "Giving lifecycle", value: "giving" },
+  ] as const;
+
+  return (
+    <div
+      aria-label="People visual"
+      className="inline-flex h-9 overflow-hidden rounded-[6px] border border-app-border bg-app-surface shadow-[0_1px_2px_rgba(150,140,120,0.16)]"
+      role="group"
+    >
+      {options.map((option) => {
+        const Icon = option.icon;
+        const active = option.value === viewMode;
+
+        return (
+          <Link
+            aria-current={active ? "page" : undefined}
+            aria-label={option.label}
+            className={
+              active
+                ? "inline-flex min-w-9 items-center justify-center gap-1.5 border-r border-app-border bg-app-chip px-2.5 text-[12.5px] font-semibold text-app-foreground last:border-r-0"
+                : "inline-flex min-w-9 items-center justify-center gap-1.5 border-r border-app-border px-2.5 text-[12.5px] font-semibold text-app-muted transition hover:bg-app-soft hover:text-app-foreground last:border-r-0"
+            }
+            href={peopleViewModeHref({
+              action,
+              ageGroup,
+              filters,
+              lifecycle,
+              query,
+              selectedColumns,
+              viewMode: option.value,
+            })}
+            key={option.value}
+          >
+            <Icon aria-hidden="true" className="h-4 w-4" />
+            <span className="hidden lg:inline">{option.label}</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -398,6 +501,7 @@ const quickLifecycleFilters = [
   { label: "Reactivated", value: "REACTIVATED" },
   { label: "At risk", value: "AT_RISK" },
   { label: "Dropped", value: "DROPPED" },
+  { label: "Lapsed", value: "LAPSED" },
 ] as const;
 
 const booleanOptions = [
@@ -432,6 +536,12 @@ const pledgeStateOptions = [
   { label: "Review recommended pledge", value: "review" },
   { label: "Active pledge", value: "active" },
   { label: "Draft pledge", value: "draft" },
+] as const;
+
+const householdGivingStateOptions = [
+  { label: "Any household state", value: "" },
+  { label: "Still giving", value: "STILL_GIVING" },
+  { label: "Stopped", value: "STOPPED" },
 ] as const;
 
 const columnOptions: Array<{ label: string; value: ListColumnKey }> = [
@@ -522,6 +632,57 @@ function PledgeManagementPanel({
         value.toLowerCase(),
       )}
     />
+  );
+}
+
+function HouseholdGivingPanel({ filters }: { filters?: ListViewShellFilters }) {
+  return (
+    <PanelChoice
+      selectedValue={filters?.householdGivingState ?? ""}
+      label="Household state"
+      name="householdGivingState"
+      options={householdGivingStateOptions}
+    />
+  );
+}
+
+function PanelChoice({
+  label,
+  name,
+  options,
+  selectedValue,
+}: {
+  label: string;
+  name: string;
+  options: ReadonlyArray<{ label: string; value: string }>;
+  selectedValue: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="font-mono text-[10px] font-semibold uppercase leading-none text-app-muted">
+        {label}
+      </div>
+      <div className="grid gap-1 rounded-[6px] border border-app-border bg-app-background p-1.5">
+        {options.map((option) => (
+          <label
+            className="flex min-h-8 items-center justify-between gap-3 rounded-[5px] px-2 text-[13px] font-medium text-app-foreground hover:bg-app-chip"
+            key={option.value}
+          >
+            <span className="min-w-0 truncate">{option.label}</span>
+            <AutoSubmitChoice
+              key={`${name}:${option.value}:${
+                selectedValue === option.value ? "checked" : "unchecked"
+              }`}
+              className="h-4 w-4 shrink-0 accent-app-accent"
+              defaultChecked={selectedValue === option.value}
+              name={name}
+              type="radio"
+              value={option.value}
+            />
+          </label>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -819,6 +980,14 @@ function activeFilterChips({
     });
   }
 
+  if (filters?.householdGivingState?.trim()) {
+    chips.push({
+      label: "Household giving",
+      param: "householdGivingState",
+      value: householdGivingStateLabel(filters.householdGivingState.trim()),
+    });
+  }
+
   const pledgeStates = filterValues(filters?.pledgeState);
 
   if (pledgeStates.length > 0) {
@@ -869,6 +1038,7 @@ type ListFilterParam =
   | "connectGroup"
   | "emailCapable"
   | "emailStatus"
+  | "householdGivingState"
   | "lifecycle"
   | "pledgeState"
   | "q"
@@ -886,6 +1056,7 @@ function clearFilterHref({
   lifecycle,
   query,
   target,
+  viewMode,
 }: {
   action: "/households" | "/people";
   ageGroup?: string | null;
@@ -895,9 +1066,11 @@ function clearFilterHref({
   lifecycle?: PageParamValue | null;
   query?: string | null;
   target: ListFilterParam;
+  viewMode?: PeopleViewMode | null;
 }) {
   const params = new URLSearchParams();
 
+  if (viewMode === "giving") params.set("view", "giving");
   if (query) params.set("q", query);
   for (const value of filterValues(lifecycle)) {
     params.append("lifecycle", value);
@@ -913,6 +1086,37 @@ function clearFilterHref({
   return queryString ? `${action}?${queryString}` : action;
 }
 
+function peopleViewModeHref({
+  action,
+  ageGroup,
+  filters,
+  lifecycle,
+  query,
+  selectedColumns,
+  viewMode,
+}: {
+  action: "/people";
+  ageGroup?: string | null;
+  filters?: ListViewShellFilters;
+  lifecycle?: PageParamValue | null;
+  query?: string | null;
+  selectedColumns: ListColumnKey[];
+  viewMode: PeopleViewMode;
+}) {
+  const params = new URLSearchParams();
+
+  if (query) params.set("q", query);
+  for (const value of filterValues(lifecycle)) {
+    params.append("lifecycle", value);
+  }
+  if (ageGroup) params.set("ageGroup", ageGroup);
+  appendListFilterQuery(params, filters);
+  params.set("columns", selectedColumns.join(","));
+  params.set("view", viewMode);
+
+  return `${action}?${params.toString()}`;
+}
+
 function listFilterQuery(filters?: ListViewShellFilters) {
   return {
     ...(filters?.active ? { active: filters.active } : {}),
@@ -921,6 +1125,9 @@ function listFilterQuery(filters?: ListViewShellFilters) {
     ...(filters?.connectGroup ? { connectGroup: filters.connectGroup } : {}),
     ...(filters?.emailCapable ? { emailCapable: filters.emailCapable } : {}),
     ...(filters?.emailStatus ? { emailStatus: filters.emailStatus } : {}),
+    ...(filters?.householdGivingState
+      ? { householdGivingState: filters.householdGivingState }
+      : {}),
     ...(filterValues(filters?.pledgeState).length > 0
       ? { pledgeState: filterValues(filters?.pledgeState) }
       : {}),
@@ -956,6 +1163,15 @@ function householdRockStatusLabel(value: string) {
     any: "Any status",
     archived: "Archived",
     inactive: "Inactive",
+  };
+
+  return labels[value] ?? value;
+}
+
+function householdGivingStateLabel(value: string) {
+  const labels: Record<string, string> = {
+    STILL_GIVING: "Still giving",
+    STOPPED: "Stopped",
   };
 
   return labels[value] ?? value;
@@ -1010,6 +1226,7 @@ function lifecycleLabel(value: string) {
     AT_RISK: "At risk",
     DROPPED: "Dropped",
     HEALTHY: "Healthy",
+    LAPSED: "Lapsed",
     NEW: "New",
     REACTIVATED: "Reactivated",
   };

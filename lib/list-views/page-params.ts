@@ -20,12 +20,14 @@ export type PeopleListQueryParams = {
   connectionStatus?: PageParamValue;
   connectGroup?: string;
   emailStatus?: string;
+  householdGivingState?: string;
   lifecycle?: PageParamValue;
   pledgeState?: PageParamValue;
   q?: string;
   recordStatus?: PageParamValue;
   taskPriority?: string;
   taskStatus?: string;
+  view?: string;
 };
 
 export type HouseholdListQueryParams = {
@@ -52,6 +54,7 @@ export type ListViewShellFilters = {
   connectGroup?: string | null;
   emailCapable?: string | null;
   emailStatus?: string | null;
+  householdGivingState?: string | null;
   recordStatus?: PageParamValue | null;
   pledgeState?: PageParamValue | null;
   rockStatus?: string | null;
@@ -67,6 +70,7 @@ export function peopleFiltersFromParams(
     connectionStatus: params.connectionStatus,
     connectGroup: params.connectGroup,
     emailStatus: params.emailStatus,
+    householdGivingState: params.householdGivingState,
     pledgeState: params.pledgeState,
     recordStatus: params.recordStatus,
     taskPriority: params.taskPriority,
@@ -149,6 +153,15 @@ export function buildPeopleFilter(
   if (params.connectGroup === "true" || params.connectGroup === "false") {
     conditions.push(
       condition("activeConnectGroup", "EQUALS", params.connectGroup === "true"),
+    );
+  }
+
+  if (
+    params.householdGivingState === "STILL_GIVING" ||
+    params.householdGivingState === "STOPPED"
+  ) {
+    conditions.push(
+      condition("householdGivingState", "EQUALS", params.householdGivingState),
     );
   }
 
@@ -272,6 +285,12 @@ export function parseColumns(params: {
   return selected.length > 0 ? selected : defaultListColumns;
 }
 
+export type PeopleViewMode = "giving" | "list";
+
+export function parsePeopleViewMode(params: { view?: string }) {
+  return params.view === "giving" ? "giving" : "list";
+}
+
 export function paramsFromSearch(searchParams: URLSearchParams) {
   return {
     active: valueFromSearch(searchParams, "active"),
@@ -285,6 +304,7 @@ export function paramsFromSearch(searchParams: URLSearchParams) {
     connectGroup: valueFromSearch(searchParams, "connectGroup"),
     emailCapable: valueFromSearch(searchParams, "emailCapable"),
     emailStatus: valueFromSearch(searchParams, "emailStatus"),
+    householdGivingState: valueFromSearch(searchParams, "householdGivingState"),
     lifecycle: valuesFromSearch(searchParams, "lifecycle"),
     pledgeState: valuesFromSearch(searchParams, "pledgeState"),
     q: valueFromSearch(searchParams, "q"),
@@ -292,6 +312,7 @@ export function paramsFromSearch(searchParams: URLSearchParams) {
     rockStatus: valueFromSearch(searchParams, "rockStatus"),
     taskPriority: valueFromSearch(searchParams, "taskPriority"),
     taskStatus: valueFromSearch(searchParams, "taskStatus"),
+    view: valueFromSearch(searchParams, "view"),
   };
 }
 

@@ -106,6 +106,7 @@ describe("ListViewShell", () => {
       screen.queryByRole("checkbox", { name: "Any" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Healthy" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Lapsed" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "New" })).not.toBeChecked();
     expect(screen.queryByText("0 active")).not.toBeInTheDocument();
   });
@@ -195,6 +196,34 @@ describe("ListViewShell", () => {
     });
   });
 
+  it("renders icon links for switching the people visual", () => {
+    render(
+      <ListViewShell
+        ageGroup="ADULTS"
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "tasks"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        query="smith"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+        viewMode="list"
+      />,
+    );
+
+    const listLink = screen.getByRole("link", { name: "List" });
+    const givingLink = screen.getByRole("link", {
+      name: "Giving lifecycle",
+    });
+
+    expect(listLink).toHaveAttribute("aria-current", "page");
+    expect(givingLink).toHaveAttribute(
+      "href",
+      "/people?q=smith&ageGroup=ADULTS&columns=campus%2Ctasks&view=giving",
+    );
+  });
+
   it("shows lifecycle multi-select choices as checked when active", () => {
     render(
       <ListViewShell
@@ -203,17 +232,45 @@ describe("ListViewShell", () => {
         columns={["campus", "lifecycle", "tasks", "pledges"]}
         connection={emptyPeopleConnection}
         kind="people"
-        lifecycle={["NEW", "HEALTHY"]}
+        lifecycle={["NEW", "HEALTHY", "LAPSED"]}
         connectionStatusOptions={[]}
         recordStatusOptions={[]}
       />,
     );
 
     expect(screen.getByRole("checkbox", { name: "Healthy" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Lapsed" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "New" })).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: "Reactivated" }),
     ).not.toBeChecked();
+  });
+
+  it("renders the household giving filter from the giving lifecycle report", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        filters={{ householdGivingState: "STOPPED" }}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+        viewMode="giving"
+      />,
+    );
+
+    expect(screen.getAllByText("Household giving").length).toBeGreaterThan(0);
+    expect(screen.getByText("Stopped")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Household giving/ }));
+    expect(screen.getByRole("radio", { name: "Stopped" })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "Still giving" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Clear Household giving filter"),
+    ).toHaveAttribute("href", "/people?view=giving");
   });
 
   it("keeps the split list workspace active at the tablet breakpoint", () => {

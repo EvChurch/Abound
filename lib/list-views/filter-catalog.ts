@@ -24,6 +24,7 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("PEOPLE", "primaryCampusRockId", "Primary campus", "ID"),
   field("PEOPLE", "primaryHouseholdRockId", "Primary household", "ID"),
   field("PEOPLE", "givingHouseholdRockId", "Giving household", "ID"),
+  field("PEOPLE", "householdGivingState", "Household giving state", "ENUM"),
   field("PEOPLE", "ageGroup", "Adults or children", "ENUM"),
   field("PEOPLE", "activeConnectGroup", "Active Connect Group", "BOOLEAN"),
   field("PEOPLE", "taskStatus", "Task status", "ENUM"),

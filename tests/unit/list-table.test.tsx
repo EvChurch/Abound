@@ -40,6 +40,21 @@ const givingSummary = {
   totalGiven: "600.00",
 } satisfies PeopleConnection["edges"][number]["node"]["givingSummary"];
 
+const givingPresence = [
+  { key: "2025-07", label: "Jul", state: "given" },
+  { key: "2025-08", label: "Aug", state: "given" },
+  { key: "2025-09", label: "Sep", state: "reduced" },
+  { key: "2025-10", label: "Oct", state: "given" },
+  { key: "2025-11", label: "Nov", state: "given" },
+  { key: "2025-12", label: "Dec", state: "given" },
+  { key: "2026-01", label: "Jan", state: "given" },
+  { key: "2026-02", label: "Feb", state: "given" },
+  { key: "2026-03", label: "Mar", state: "given" },
+  { key: "2026-04", label: "Apr", state: "given" },
+  { key: "2026-05", label: "May", state: "none" },
+  { key: "2026-06", label: "Jun", state: "none" },
+] satisfies PeopleConnection["edges"][number]["node"]["givingPresence"];
+
 describe("ListTable", () => {
   it("shows Rock person connection status in the name column", () => {
     const connection: PeopleConnection = {
@@ -58,7 +73,9 @@ describe("ListTable", () => {
             displayName: "Jane Donor",
             email: "jane@example.com",
             emailActive: true,
+            givingPresence,
             givingSummary,
+            lastGiftMonth: "Apr 2026",
             lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
             lifecycle: [
               {
@@ -150,7 +167,10 @@ describe("ListTable", () => {
     expect(
       screen.getByTitle("General Fund $100/mo (Active)"),
     ).toBeInTheDocument();
-    expect(screen.getByText("At risk")).toHaveClass("text-amber-800");
+    expect(screen.getByText("At risk")).toHaveClass(
+      "border-amber-200",
+      "bg-amber-50",
+    );
     expect(screen.queryByText("0 tasks")).not.toBeInTheDocument();
     expect(screen.queryByText("AT RISK")).not.toBeInTheDocument();
     expect(screen.queryByText("Tasks")).not.toBeInTheDocument();
@@ -158,6 +178,61 @@ describe("ListTable", () => {
     expect(screen.queryByText("None")).not.toBeInTheDocument();
     expect(screen.queryByText("Campus")).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("renders the giving lifecycle people visual", () => {
+    const connection: PeopleConnection = {
+      appliedView: {
+        id: null,
+        name: "All people",
+        pageSize: 50,
+      },
+      edges: [
+        {
+          cursor: "person_1",
+          node: {
+            amountsHidden: false,
+            connectionStatus: "Member",
+            deceased: false,
+            displayName: "Jane Donor",
+            email: "jane@example.com",
+            emailActive: true,
+            givingPresence,
+            givingSummary,
+            lastGiftMonth: "Apr 2026",
+            lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+            lifecycle: [
+              {
+                lifecycle: "HEALTHY",
+                summary: "Recent giving with no stronger lifecycle signal.",
+                windowEndedAt: new Date("2026-04-20T00:00:00Z"),
+              },
+            ],
+            openTaskCount: 0,
+            pledgeSummary: null,
+            photoUrl: null,
+            primaryCampus: { name: "Central", rockId: 1, shortCode: "CEN" },
+            primaryHousehold: null,
+            recordStatus: "Active",
+            rockId: 101,
+          },
+        },
+      ],
+      pageInfo: {
+        endCursor: null,
+        hasNextPage: false,
+      },
+    };
+
+    render(
+      <ListTable connection={connection} kind="people" viewMode="giving" />,
+    );
+
+    expect(screen.getByText("Last gift")).toBeInTheDocument();
+    expect(screen.getByLabelText("Apr: Given")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sep: Reduced")).toBeInTheDocument();
+    expect(screen.getByLabelText("Jun: No gift")).toBeInTheDocument();
+    expect(screen.getByText("Healthy")).toBeInTheDocument();
   });
 
   it("omits empty person secondary details instead of showing placeholders", () => {
@@ -177,7 +252,9 @@ describe("ListTable", () => {
             displayName: "Pat Prospect",
             email: null,
             emailActive: null,
+            givingPresence: [],
             givingSummary: null,
+            lastGiftMonth: null,
             lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
             lifecycle: [],
             openTaskCount: 0,
@@ -228,7 +305,9 @@ describe("ListTable", () => {
             displayName: "Jamie Review",
             email: "jamie@example.com",
             emailActive: true,
+            givingPresence,
             givingSummary,
+            lastGiftMonth: "Apr 2026",
             lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
             lifecycle: [],
             openTaskCount: 0,
@@ -293,7 +372,9 @@ describe("ListTable", () => {
             displayName: "Jane Donor",
             email: "jane@example.com",
             emailActive: true,
+            givingPresence,
             givingSummary: currentMonthZeroSummary,
+            lastGiftMonth: "Apr 2026",
             lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
             lifecycle: [],
             openTaskCount: 0,

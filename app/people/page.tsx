@@ -12,6 +12,7 @@ import { getPersonRecordStatusFilterOptions } from "@/lib/list-views/record-stat
 import {
   buildPeopleFilter,
   parseColumns,
+  parsePeopleViewMode,
   peopleFiltersFromParams,
   type PeopleListQueryParams,
 } from "@/lib/list-views/page-params";
@@ -73,6 +74,7 @@ export default async function PeopleLookupPage({
       query={params.q}
       connectionStatusOptions={connectionStatusOptions}
       recordStatusOptions={recordStatusOptions}
+      viewMode={parsePeopleViewMode(params)}
     />
   );
 }
