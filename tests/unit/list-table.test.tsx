@@ -126,6 +126,7 @@ describe("ListTable", () => {
     expect(
       screen.getByText("Central · Member · jane@example.com"),
     ).toBeInTheDocument();
+    expect(screen.getByText("At risk")).toBeInTheDocument();
     expect(screen.getByLabelText("Pledges")).toBeInTheDocument();
     const sparkline = screen.getByRole("img", {
       name: "Giving trend over the last 12 months",

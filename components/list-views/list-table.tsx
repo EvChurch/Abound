@@ -101,7 +101,7 @@ function PeopleRow({
       >
         <div className="flex min-w-0 items-center gap-2.5">
           <PersonAvatar row={row} />
-          <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="min-w-0 flex-1 overflow-visible">
             <div className="min-w-0">
               <Link
                 className="block truncate font-semibold leading-tight text-app-accent"
@@ -368,7 +368,7 @@ function MiniChip({
 
   return (
     <span
-      className={`inline-flex h-5 items-center rounded-[5px] border px-1.5 text-[11px] font-medium ${className}`}
+      className={`inline-flex h-5 shrink-0 items-center rounded-[5px] border px-1.5 text-[11px] font-medium ${className}`}
     >
       {children}
     </span>
@@ -509,7 +509,7 @@ function MetadataLine({
   }
 
   return (
-    <div className="mt-1 flex h-5 min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden text-[12px] font-medium leading-tight text-app-foreground">
+    <div className="mt-1 flex h-5 min-w-0 flex-nowrap items-center gap-1.5 overflow-visible text-[12px] font-medium leading-tight text-app-foreground">
       {labels.length > 0 ? <LifecycleField labels={labels} /> : null}
       {visibleTaskCount !== null ? (
         <span className="text-app-muted">
@@ -529,7 +529,7 @@ function LifecycleField({
 
   return (
     <span
-      className="flex min-w-0 flex-nowrap gap-1.5 overflow-hidden"
+      className="flex min-w-0 shrink-0 flex-nowrap gap-1.5 overflow-visible"
       title={title}
     >
       {labels.map((label) => (
