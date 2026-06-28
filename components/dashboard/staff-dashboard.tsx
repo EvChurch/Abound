@@ -183,6 +183,7 @@ const movementLabels: Record<DashboardLifecycleKind, string> = {
   AT_RISK: "At-risk",
   DROPPED: "Dropped",
   HEALTHY: "Healthy",
+  LAPSED: "Lapsed",
   NEW: "New",
   REACTIVATED: "Reactivated",
 };
@@ -191,6 +192,7 @@ const movementDetails: Record<DashboardLifecycleKind, string> = {
   AT_RISK: "Usually gave regularly, but has not given for 90-180 days.",
   DROPPED: "Usually gave regularly, but has not given for 180-270 days.",
   HEALTHY: "Has given within the last 90 days and has no warning signal.",
+  LAPSED: "Prior multi-month giving, but no gift in the lapsed window.",
   NEW: "First recorded gift was within the last 90 days.",
   REACTIVATED: "Gave again after at least 180 quiet days.",
 };
@@ -226,6 +228,14 @@ function HouseholdMovementPanel({
       tone: "AT_RISK",
     },
     {
+      count: lifecycleCounts.LAPSED,
+      detail: movementDetails.LAPSED,
+      href: "/people?lifecycle=LAPSED",
+      key: "LAPSED",
+      label: movementLabels.LAPSED,
+      tone: "LAPSED",
+    },
+    {
       count: lifecycleCounts.REACTIVATED,
       detail: movementDetails.REACTIVATED,
       href: "/people?lifecycle=REACTIVATED",
@@ -249,7 +259,7 @@ function HouseholdMovementPanel({
         Giving lifecycle
       </h2>
 
-      <dl className="grid gap-3 md:grid-cols-5">
+      <dl className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((card) => (
           <MovementMetric
             key={card.key}
@@ -314,6 +324,7 @@ function movementTone(kind: MovementTone) {
     AT_RISK: "border-amber-700 bg-amber-50 text-amber-950",
     DROPPED: "border-rose-700 bg-rose-50 text-rose-950",
     HEALTHY: "border-emerald-700 bg-emerald-50 text-emerald-950",
+    LAPSED: "border-stone-700 bg-stone-50 text-stone-950",
     NEW: "border-sky-700 bg-sky-50 text-sky-950",
     REACTIVATED: "border-emerald-700 bg-emerald-50 text-emerald-950",
   } satisfies Record<MovementTone, string>;

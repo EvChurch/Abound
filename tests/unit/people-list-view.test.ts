@@ -17,6 +17,9 @@ const adminUser: LocalAppUser = {
 function client({
   givingFactFindMany = vi.fn(async () => []),
   givingPledgeFindMany = vi.fn(async () => []),
+  platformFundSettingFindMany = vi.fn(async () => [
+    { accountRockId: 20, enabled: true },
+  ]),
   pledgeDecisionFindMany = vi.fn(async () => []),
   rockFinancialAccountFindMany = vi.fn(async () => []),
   lifecycleSnapshotFindMany = vi.fn(async () => []),
@@ -25,6 +28,7 @@ function client({
   givingFactFindMany?: ReturnType<typeof vi.fn>;
   givingPledgeFindMany?: ReturnType<typeof vi.fn>;
   lifecycleSnapshotFindMany?: ReturnType<typeof vi.fn>;
+  platformFundSettingFindMany?: ReturnType<typeof vi.fn>;
   pledgeDecisionFindMany?: ReturnType<typeof vi.fn>;
   rockFinancialAccountFindMany?: ReturnType<typeof vi.fn>;
   rockPersonFindMany?: ReturnType<typeof vi.fn>;
@@ -44,6 +48,9 @@ function client({
     givingLifecycleSnapshot: {
       findMany: lifecycleSnapshotFindMany,
     },
+    platformFundSetting: {
+      findMany: platformFundSettingFindMany,
+    },
     rockFinancialAccount: {
       findMany: rockFinancialAccountFindMany,
     },
@@ -62,6 +69,9 @@ function client({
     };
     givingLifecycleSnapshot: {
       findMany: typeof lifecycleSnapshotFindMany;
+    };
+    platformFundSetting: {
+      findMany: typeof platformFundSettingFindMany;
     };
     rockFinancialAccount: {
       findMany: typeof rockFinancialAccountFindMany;
@@ -491,6 +501,45 @@ describe("people list view", () => {
       },
     ]);
     expect(connection.edges[0]?.node.lastGiftMonth).toBe("Mar 2025");
+  });
+
+  it("adds a computed never-given lifecycle label when no platform-fund facts exist", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-20T12:00:00Z"));
+
+    const prisma = client({
+      givingFactFindMany: vi.fn(async () => []),
+      lifecycleSnapshotFindMany: vi.fn(async () => []),
+      rockPersonFindMany: vi.fn(async () => [
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: { value: "Prospect" },
+          deceased: false,
+          email: null,
+          emailActive: null,
+          firstName: "Pat",
+          lastName: "Never",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 101,
+        },
+      ]),
+    });
+
+    const connection = await listPeople({ first: 10 }, adminUser, prisma);
+
+    expect(connection.edges[0]?.node.lifecycle).toEqual([
+      {
+        lifecycle: "NEVER_GIVEN",
+        summary: "No platform-fund giving activity is on record.",
+        windowEndedAt: new Date("2026-04-20T12:00:00Z"),
+      },
+    ]);
+    expect(connection.edges[0]?.node.lastGiftMonth).toBeNull();
   });
 
   it("filters people to rows with selected pledge management states", async () => {

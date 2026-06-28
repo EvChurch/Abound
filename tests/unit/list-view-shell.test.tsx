@@ -232,7 +232,7 @@ describe("ListViewShell", () => {
         columns={["campus", "lifecycle", "tasks", "pledges"]}
         connection={emptyPeopleConnection}
         kind="people"
-        lifecycle={["NEW", "HEALTHY", "LAPSED"]}
+        lifecycle={["NEW", "HEALTHY", "LAPSED", "NEVER_GIVEN"]}
         connectionStatusOptions={[]}
         recordStatusOptions={[]}
       />,
@@ -240,6 +240,7 @@ describe("ListViewShell", () => {
 
     expect(screen.getByRole("checkbox", { name: "Healthy" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Lapsed" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Never given" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "New" })).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: "Reactivated" }),

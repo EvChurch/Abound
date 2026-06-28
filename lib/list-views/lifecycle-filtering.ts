@@ -17,7 +17,7 @@ import {
 
 type LifecycleSnapshotDelegate = PrismaClient["givingLifecycleSnapshot"];
 type GivingFactDelegate = PrismaClient["givingFact"];
-type LifecycleFilterKind = GivingLifecycleKind | "HEALTHY" | "LAPSED";
+type LifecycleFilterKind = GivingLifecycleKind | "HEALTHY" | "NEVER_GIVEN";
 
 export type LifecycleFilterResource = "PERSON" | "HOUSEHOLD";
 
@@ -25,6 +25,8 @@ export type LifecycleFilterClient = {
   givingFact: GivingFactDelegate;
   givingLifecycleSnapshot?: LifecycleSnapshotDelegate;
   platformFundSetting?: PrismaClient["platformFundSetting"];
+  rockHousehold?: PrismaClient["rockHousehold"];
+  rockPerson?: PrismaClient["rockPerson"];
 };
 
 export async function resolveLifecycleFilteredRockIds(
@@ -87,7 +89,7 @@ function normalizeLifecycle(value: unknown) {
     .trim()
     .toUpperCase();
 
-  if (normalized === "HEALTHY" || normalized === "LAPSED") {
+  if (normalized === "HEALTHY" || normalized === "NEVER_GIVEN") {
     return normalized;
   }
 
@@ -106,7 +108,7 @@ async function resolveSnapshotLifecycleIds(
   try {
     const storedLifecycles = lifecycles.filter(
       (lifecycle): lifecycle is GivingLifecycleKind =>
-        lifecycle !== "HEALTHY" && lifecycle !== "LAPSED",
+        lifecycle !== "HEALTHY" && lifecycle !== "NEVER_GIVEN",
     );
     const matchingIds =
       storedLifecycles.length > 0
@@ -122,8 +124,16 @@ async function resolveSnapshotLifecycleIds(
     const lapsedIds = lifecycles.includes("LAPSED")
       ? await resolveLapsedLifecycleIds(resource, client)
       : [];
+    const neverGivenIds = lifecycles.includes("NEVER_GIVEN")
+      ? await resolveNeverGivenLifecycleIds(resource, client)
+      : [];
 
-    return uniqueNumbers([...matchingIds, ...healthyIds, ...lapsedIds]);
+    return uniqueNumbers([
+      ...matchingIds,
+      ...healthyIds,
+      ...lapsedIds,
+      ...neverGivenIds,
+    ]);
   } catch (error) {
     if (isMissingLifecycleSnapshotTable(error)) {
       return null;
@@ -131,6 +141,89 @@ async function resolveSnapshotLifecycleIds(
 
     throw error;
   }
+}
+
+async function resolveNeverGivenLifecycleIds(
+  resource: LifecycleFilterResource,
+  client: LifecycleFilterClient,
+) {
+  if (!client.givingLifecycleSnapshot) {
+    return [];
+  }
+
+  const fundScope = client.platformFundSetting
+    ? await getPlatformFundScope(client)
+    : { enabledAccountRockIds: [], mode: "UNCONFIGURED" as const };
+
+  if (fundScope.mode !== "CONFIGURED") {
+    return [];
+  }
+
+  const resourceRows =
+    resource === "PERSON"
+      ? await client.rockPerson?.findMany({
+          select: {
+            rockId: true,
+          },
+        })
+      : await client.rockHousehold?.findMany({
+          select: {
+            rockId: true,
+          },
+        });
+
+  if (!resourceRows) {
+    return [];
+  }
+
+  const [snapshotRows, factRows] = await Promise.all([
+    client.givingLifecycleSnapshot.findMany({
+      select: {
+        householdRockId: true,
+        personRockId: true,
+      },
+      where: {
+        resource,
+      },
+    }),
+    client.givingFact.findMany({
+      select: {
+        householdRockId: true,
+        personRockId: true,
+      },
+      where:
+        resource === "PERSON"
+          ? {
+              ...whereForEnabledPlatformFunds(fundScope),
+              personRockId: { not: null },
+            }
+          : {
+              ...whereForEnabledPlatformFunds(fundScope),
+              householdRockId: { not: null },
+            },
+    }),
+  ]);
+  const idsWithLifecycle = new Set(
+    snapshotRows
+      .map((row) =>
+        resource === "PERSON" ? row.personRockId : row.householdRockId,
+      )
+      .filter((rockId): rockId is number => typeof rockId === "number"),
+  );
+  const idsWithGivingFacts = new Set(
+    factRows
+      .map((row) =>
+        resource === "PERSON" ? row.personRockId : row.householdRockId,
+      )
+      .filter((rockId): rockId is number => typeof rockId === "number"),
+  );
+
+  return resourceRows
+    .map((row) => row.rockId)
+    .filter(
+      (rockId) =>
+        !idsWithLifecycle.has(rockId) && !idsWithGivingFacts.has(rockId),
+    );
 }
 
 async function idsForStoredLifecycleSnapshots(
@@ -316,6 +409,10 @@ async function resolveFactLifecycleIds(
   const lapsedIds = lifecycleSet.has("LAPSED")
     ? lapsedIdsFromFacts(facts, resource)
     : [];
+  const neverGivenIds =
+    lifecycleSet.has("NEVER_GIVEN") && client
+      ? await resolveNeverGivenLifecycleIds(resource, client)
+      : [];
   const lifecycleIds = [...factsByRockId.entries()]
     .filter(([, groupedFacts]) => {
       const result = classifyGivingLifecycle(groupedFacts);
@@ -336,7 +433,7 @@ async function resolveFactLifecycleIds(
     })
     .map(([rockId]) => rockId);
 
-  return uniqueNumbers([...lifecycleIds, ...lapsedIds]);
+  return uniqueNumbers([...lifecycleIds, ...lapsedIds, ...neverGivenIds]);
 }
 
 function lapsedIdsFromFacts(

@@ -193,6 +193,7 @@ const emptyLifecycleCounts = (): LifecycleCounts => ({
   AT_RISK: 0,
   DROPPED: 0,
   HEALTHY: 0,
+  LAPSED: 0,
   NEW: 0,
   REACTIVATED: 0,
 });

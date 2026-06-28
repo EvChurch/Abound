@@ -491,6 +491,7 @@ describe("giving metrics", () => {
       AT_RISK: 0,
       DROPPED: 0,
       HEALTHY: 0,
+      LAPSED: 0,
       NEW: 0,
       REACTIVATED: 0,
     });
@@ -583,6 +584,7 @@ describe("giving metrics", () => {
       AT_RISK: 0,
       DROPPED: 1,
       HEALTHY: 0,
+      LAPSED: 0,
       NEW: 2,
       REACTIVATED: 0,
     });

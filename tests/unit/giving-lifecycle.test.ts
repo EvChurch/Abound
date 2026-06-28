@@ -72,7 +72,7 @@ describe("giving lifecycle", () => {
     );
   });
 
-  it("does not keep long-stale giving history in the dropped lifecycle", () => {
+  it("classifies long-stale multi-month giving history as lapsed", () => {
     const result = classifyGivingLifecycle(
       [
         fact("2024-07-15"),
@@ -85,7 +85,10 @@ describe("giving lifecycle", () => {
       },
     );
 
-    expect(result.kind).toBeNull();
+    expect(result.kind).toBe("LAPSED");
+    expect(result.summary).toBe(
+      "Prior multi-month giving, but no gift in the lapsed window.",
+    );
   });
 
   it("does not classify one-off giving in the drop window as dropped", () => {

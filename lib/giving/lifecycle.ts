@@ -7,6 +7,7 @@ export const GIVING_LIFECYCLE_KINDS = [
   "REACTIVATED",
   "AT_RISK",
   "DROPPED",
+  "LAPSED",
 ] as const;
 
 export type GivingLifecycleKind = (typeof GIVING_LIFECYCLE_KINDS)[number];
@@ -33,6 +34,7 @@ export type GivingLifecycleOptions = {
   dormantWindowDays?: number;
   droppedConsistencyLookbackDays?: number;
   droppedWindowDays?: number;
+  lapsedWindowDays?: number;
   priorWindowDays?: number;
   referenceDate?: Date;
 };
@@ -57,6 +59,7 @@ const DEFAULT_OPTIONS = {
   dormantWindowDays: 180,
   droppedConsistencyLookbackDays: 365,
   droppedWindowDays: 180,
+  lapsedWindowDays: 270,
   priorWindowDays: 90,
 } as const;
 
@@ -96,6 +99,10 @@ export function classifyGivingLifecycle(
   const droppedWindowStart = subtractDays(
     merged.referenceDate,
     merged.droppedWindowDays,
+  );
+  const lapsedWindowStart = subtractDays(
+    merged.referenceDate,
+    merged.lapsedWindowDays,
   );
   const confirmedDroppedWindowStart = subtractDays(
     droppedWindowStart,
@@ -198,6 +205,17 @@ export function classifyGivingLifecycle(
     };
   }
 
+  if (
+    lastGiftAt < lapsedWindowStart &&
+    distinctGivingMonths(orderedFacts) >= 3
+  ) {
+    return {
+      financeDetail,
+      kind: "LAPSED",
+      summary: "Prior multi-month giving, but no gift in the lapsed window.",
+    };
+  }
+
   return {
     financeDetail,
     kind: null,
@@ -261,6 +279,12 @@ function hasRecurringOrConsistentPatternBefore(
     facts.filter((fact) => fact.giftAt < before),
     since,
   );
+}
+
+function distinctGivingMonths(
+  facts: Array<GivingLifecycleFact & { giftAt: Date }>,
+) {
+  return new Set(facts.map((fact) => monthKey(fact.effectiveMonth))).size;
 }
 
 function materiallyBelowPreviousPeriod(

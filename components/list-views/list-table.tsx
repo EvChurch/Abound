@@ -480,6 +480,7 @@ function lifecycleChipTone(value: string) {
     DROPPED: "red",
     HEALTHY: "green",
     LAPSED: "neutral",
+    NEVER_GIVEN: "neutral",
     NEW: "sky",
     REACTIVATED: "green",
   };
@@ -550,6 +551,7 @@ function formatLifecycle(value: string) {
     DROPPED: "Dropped",
     HEALTHY: "Healthy",
     LAPSED: "Lapsed",
+    NEVER_GIVEN: "Never given",
     NEW: "New",
     REACTIVATED: "Reactivated",
   };

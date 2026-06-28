@@ -62,6 +62,7 @@ const mocks = vi.hoisted(() => ({
       AT_RISK: 5,
       DROPPED: 7,
       HEALTHY: 42,
+      LAPSED: 4,
       NEW: 2,
       REACTIVATED: 3,
     },

@@ -122,6 +122,7 @@ enum GivingLifecycleKind {
   REACTIVATED
   AT_RISK
   DROPPED
+  LAPSED
 }
 
 enum DerivedCalculationKind {

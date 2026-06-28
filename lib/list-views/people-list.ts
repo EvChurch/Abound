@@ -717,6 +717,12 @@ async function computedLifecycleLabelsByPerson(
     return new Map<number, ListLifecycleLabel[]>();
   }
 
+  const fundScope = await getPlatformFundScope(client);
+
+  if (fundScope.mode !== "CONFIGURED") {
+    return new Map<number, ListLifecycleLabel[]>();
+  }
+
   const facts = await client.givingFact.findMany({
     orderBy: [
       { personRockId: "asc" },
@@ -731,7 +737,7 @@ async function computedLifecycleLabelsByPerson(
       reliabilityKind: true,
     },
     where: {
-      ...whereForEnabledPlatformFunds(await getPlatformFundScope(client)),
+      ...whereForEnabledPlatformFunds(fundScope),
       personRockId: { in: personRockIds },
     },
   });
@@ -746,7 +752,25 @@ async function computedLifecycleLabelsByPerson(
     const personFacts = factsByPerson.get(personRockId) ?? [];
     const classified = classifyGivingLifecycle(personFacts);
 
+    if (personFacts.length === 0) {
+      computedLabels.set(personRockId, [
+        {
+          lifecycle: "NEVER_GIVEN",
+          summary: "No platform-fund giving activity is on record.",
+          windowEndedAt: referenceDate,
+        },
+      ]);
+      continue;
+    }
+
     if (classified.kind) {
+      computedLabels.set(personRockId, [
+        {
+          lifecycle: classified.kind,
+          summary: classified.summary ?? "Current giving lifecycle signal.",
+          windowEndedAt: classified.financeDetail?.lastGiftAt ?? referenceDate,
+        },
+      ]);
       continue;
     }
 

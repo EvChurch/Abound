@@ -502,6 +502,7 @@ const quickLifecycleFilters = [
   { label: "At risk", value: "AT_RISK" },
   { label: "Dropped", value: "DROPPED" },
   { label: "Lapsed", value: "LAPSED" },
+  { label: "Never given", value: "NEVER_GIVEN" },
 ] as const;
 
 const booleanOptions = [
@@ -1227,6 +1228,7 @@ function lifecycleLabel(value: string) {
     DROPPED: "Dropped",
     HEALTHY: "Healthy",
     LAPSED: "Lapsed",
+    NEVER_GIVEN: "Never given",
     NEW: "New",
     REACTIVATED: "Reactivated",
   };

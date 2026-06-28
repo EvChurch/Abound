@@ -127,6 +127,70 @@ describe("lifecycle filtering", () => {
         client,
       ),
     ).resolves.toEqual([1]);
-    expect(client.givingLifecycleSnapshot.findMany).not.toHaveBeenCalled();
+    expect(client.givingLifecycleSnapshot.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          lifecycle: {
+            in: ["LAPSED"],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("resolves never-given people from synced people without giving facts or lifecycle snapshots", async () => {
+    const client = {
+      givingFact: {
+        findMany: vi.fn(async () => [
+          {
+            householdRockId: null,
+            personRockId: 1,
+          },
+        ]),
+      },
+      givingLifecycleSnapshot: {
+        findMany: vi.fn(async () => [
+          {
+            householdRockId: null,
+            personRockId: 2,
+          },
+        ]),
+      },
+      platformFundSetting: {
+        findMany: vi.fn(async () => [{ accountRockId: 169, enabled: true }]),
+      },
+      rockPerson: {
+        findMany: vi.fn(async () => [
+          { rockId: 1 },
+          { rockId: 2 },
+          { rockId: 3 },
+        ]),
+      },
+    } as unknown as PrismaClient;
+
+    await expect(
+      resolveLifecycleFilteredRockIds(
+        {
+          field: "lifecycle",
+          operator: "EQUALS",
+          type: "condition",
+          value: "NEVER_GIVEN",
+        },
+        "PERSON",
+        client,
+      ),
+    ).resolves.toEqual([3]);
+    expect(client.givingFact.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          accountRockId: {
+            in: [169],
+          },
+          personRockId: {
+            not: null,
+          },
+        }),
+      }),
+    );
   });
 });
