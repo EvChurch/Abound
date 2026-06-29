@@ -107,7 +107,7 @@ export function JobsDashboard({
         </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="grid gap-2">
-            <h1 className="text-[32px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
+            <h1 className="text-[28px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
               Jobs
             </h1>
             <p className="max-w-3xl text-[13px] leading-6 text-app-muted">
@@ -221,7 +221,7 @@ export function JobsDashboard({
               <h3 className="text-[12px] font-semibold uppercase text-app-muted">
                 Enqueue jobs
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <form action={enqueueRockFullSync}>
                   <button className={buttonClassName("primary")}>
                     Run full sync
@@ -235,7 +235,7 @@ export function JobsDashboard({
               </div>
               <form
                 action={enqueueRockPersonSync}
-                className="flex flex-wrap gap-2"
+                className="grid gap-2 sm:flex sm:flex-wrap"
               >
                 <input
                   className={inputClassName}
@@ -276,7 +276,7 @@ export function JobsDashboard({
                   placeholder="Schedule key (optional)"
                   type="text"
                 />
-                <div className="flex gap-2">
+                <div className="grid gap-2 sm:flex">
                   <button className={buttonClassName("secondary")}>
                     Save schedule
                   </button>
@@ -285,7 +285,7 @@ export function JobsDashboard({
 
               <form
                 action={unscheduleRockFullSync}
-                className="flex flex-wrap gap-2 rounded-[6px] border border-app-border p-3"
+                className="grid gap-2 rounded-[6px] border border-app-border p-3 sm:flex sm:flex-wrap"
               >
                 <input
                   className={inputClassName}
@@ -334,7 +334,7 @@ export function JobsDashboard({
 
               <form
                 action={unscheduleRockPersonSync}
-                className="flex flex-wrap gap-2 rounded-[6px] border border-app-border p-3"
+                className="grid gap-2 rounded-[6px] border border-app-border p-3 sm:flex sm:flex-wrap"
               >
                 <input
                   className={inputClassName}

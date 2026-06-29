@@ -15,6 +15,14 @@ type HouseholdPageProps = {
   }>;
 };
 
+export async function generateMetadata({ params }: HouseholdPageProps) {
+  const { rockId } = await params;
+
+  return {
+    title: `Household ${rockId}`,
+  };
+}
+
 export default async function HouseholdPage({
   params,
   searchParams,

@@ -24,7 +24,7 @@ export function FundSettings({
           </p>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="grid gap-2">
-              <h1 className="text-[32px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
+              <h1 className="text-[28px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
                 Funds
               </h1>
               <p className="max-w-3xl text-[13px] leading-6 text-app-muted">
@@ -82,7 +82,7 @@ export function FundSettings({
           </p>
         </div>
         <form action={onRebuild}>
-          <button className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-rose-300 bg-white px-3 text-[12.5px] font-semibold text-rose-900 hover:bg-rose-100">
+          <button className="inline-flex min-h-10 w-full items-center justify-center rounded-[6px] border border-rose-300 bg-white px-3 text-[12.5px] font-semibold text-rose-900 hover:bg-rose-100 sm:min-h-9 sm:w-auto">
             Recalculate reports
           </button>
         </form>

@@ -20,6 +20,10 @@ type PledgeRecommendationsPageProps = {
   }>;
 };
 
+export const metadata = {
+  title: "Pledge Recommendations",
+};
+
 export default async function PledgeRecommendationsPage({
   searchParams,
 }: PledgeRecommendationsPageProps) {
@@ -37,7 +41,7 @@ export default async function PledgeRecommendationsPage({
   if (!hasPermission(accessState.user.role, "pledges:manage")) {
     return (
       <main className="min-h-screen bg-app-background">
-        <div className="mx-auto grid max-w-3xl gap-4 px-7 py-12">
+        <div className="mx-auto grid max-w-3xl gap-4 px-4 py-10 sm:px-7 sm:py-12">
           <h1 className="text-3xl font-semibold tracking-normal">
             Pledge recommendations require finance or administrator access.
           </h1>
@@ -66,7 +70,7 @@ export default async function PledgeRecommendationsPage({
         canManageTools
         toolsActiveItem="pledge-recommendations"
       />
-      <div className="mx-auto max-w-[1280px] px-7 py-7">
+      <div className="mx-auto max-w-[1280px] px-4 py-5 sm:px-7 sm:py-7">
         <PledgeRecommendationsQueue
           acceptAction={acceptPledgeRecommendationAction}
           candidates={sortCandidates(candidates)}

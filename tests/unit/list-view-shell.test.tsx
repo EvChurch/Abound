@@ -293,7 +293,7 @@ describe("ListViewShell", () => {
     ).toHaveLength(1);
   });
 
-  it("bounds the right workspace so the list scrolls inside the page", () => {
+  it("bounds the right workspace on desktop while allowing page scroll on mobile", () => {
     render(
       <ListViewShell
         campusOptions={[]}
@@ -308,15 +308,19 @@ describe("ListViewShell", () => {
 
     expect(screen.getByTestId("list-table").parentElement).toHaveClass(
       "flex",
-      "h-full",
       "min-w-0",
       "flex-col",
+      "md:h-full",
+      "md:overflow-hidden",
+    );
+    expect(screen.getByTestId("list-table").parentElement).not.toHaveClass(
+      "h-full",
       "overflow-hidden",
     );
     expect(screen.getByTestId("list-table").closest("section")).toHaveClass(
-      "h-full",
       "min-h-0",
       "min-w-0",
+      "md:h-full",
     );
   });
 
@@ -364,7 +368,7 @@ describe("ListViewShell", () => {
     expect(screen.getByText("New, Healthy")).toBeInTheDocument();
     expect(screen.getAllByText("Age").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Adults").length).toBeGreaterThan(0);
-    expect(screen.getByText("4 active")).toBeInTheDocument();
+    expect(screen.getAllByText("4 active")).toHaveLength(2);
     expect(
       screen.getAllByRole("link", { name: /Clear .+ filter/ }),
     ).toHaveLength(4);

@@ -9,17 +9,17 @@ export function SyncStatus({ summary }: SyncStatusProps) {
   const runStatus = latestRun?.status ?? "NO_RUN";
 
   return (
-    <section className="mx-auto grid w-full max-w-[1280px] gap-8 px-7 py-7">
+    <section className="mx-auto grid w-full max-w-[1280px] gap-8 px-4 py-5 sm:px-7 sm:py-7">
       <div className="grid gap-4">
         <p className="text-sm font-bold uppercase text-app-accent-strong">
           Sync status
         </p>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
-            <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-normal sm:text-5xl">
+            <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-normal sm:text-5xl">
               Rock data import health.
             </h1>
-            <p className="mt-4 max-w-3xl text-lg leading-7 text-app-muted">
+            <p className="mt-4 max-w-3xl text-[15px] leading-7 text-app-muted sm:text-lg">
               Local reporting reads from synced data. Rock remains the source of
               truth, and this app only uses read-only API calls.
             </p>
@@ -77,7 +77,30 @@ export function SyncStatus({ summary }: SyncStatusProps) {
           </p>
         </div>
         {summary.recentRuns.length > 0 ? (
-          <div className="overflow-x-auto rounded-md border border-slate-300 bg-white">
+          <>
+          <div className="grid gap-2 md:hidden">
+            {summary.recentRuns.map((run) => (
+              <article
+                className="rounded-md border border-slate-300 bg-white p-4"
+                key={run.id}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <time className="text-sm font-bold text-app-foreground">
+                    {formatDateTime(run.startedAt)}
+                  </time>
+                  <span className={statusClassName(run.status)}>
+                    {statusLabel(run.status)}
+                  </span>
+                </div>
+                <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                  <RunMetric label="Read" value={run.recordsRead} />
+                  <RunMetric label="Written" value={run.recordsWritten} />
+                  <RunMetric label="Skipped" value={run.recordsSkipped} />
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-md border border-slate-300 bg-white md:block">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-300 bg-slate-50 text-xs font-bold uppercase text-app-muted">
                 <tr>
@@ -116,6 +139,7 @@ export function SyncStatus({ summary }: SyncStatusProps) {
               </tbody>
             </table>
           </div>
+          </>
         ) : (
           <EmptyPanel message="No Rock sync runs have been recorded yet." />
         )}
@@ -185,6 +209,17 @@ function Metric({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border border-slate-300 bg-white p-4">
       <dt className="text-sm font-bold text-app-muted">{label}</dt>
       <dd className="mt-2 text-3xl font-bold tabular-nums">
+        {formatNumber(value)}
+      </dd>
+    </div>
+  );
+}
+
+function RunMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <dt className="text-xs font-bold text-app-muted">{label}</dt>
+      <dd className="mt-1 font-bold tabular-nums text-app-foreground">
         {formatNumber(value)}
       </dd>
     </div>

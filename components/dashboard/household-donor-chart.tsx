@@ -55,7 +55,7 @@ export function HouseholdDonorChart({ trend }: HouseholdDonorChartProps) {
     <div className="grid gap-4">
       <div
         aria-label="Stacked line chart of household donors by campus for the last 24 months"
-        className="h-[380px] overflow-hidden rounded-[8px] border border-app-border bg-white p-4"
+        className="h-[280px] overflow-hidden rounded-[8px] border border-app-border bg-white p-3 sm:h-[340px] sm:p-4 lg:h-[380px]"
         role="img"
       >
         <ResponsiveContainer height="100%" width="100%">
@@ -63,20 +63,20 @@ export function HouseholdDonorChart({ trend }: HouseholdDonorChartProps) {
             data={rows}
             margin={{ bottom: 16, left: 4, right: 8, top: 12 }}
           >
-            <CartesianGrid stroke="oklch(0.94 0.005 70)" vertical />
+            <CartesianGrid stroke="oklch(0.94 0.005 70)" vertical={false} />
             <XAxis
               axisLine={false}
               dataKey="month"
               interval={0}
               minTickGap={0}
-              tick={{ fill: "oklch(0.58 0.008 60)", fontSize: 11 }}
+              tick={{ fill: "oklch(0.58 0.008 60)", fontSize: 10 }}
               tickFormatter={formatAxisMonthLabel}
               tickLine={false}
             />
             <YAxis
               allowDecimals={false}
               axisLine={false}
-              tick={{ fill: "oklch(0.58 0.008 60)", fontSize: 11 }}
+              tick={{ fill: "oklch(0.58 0.008 60)", fontSize: 10 }}
               tickFormatter={formatNumber}
               tickLine={false}
               width={42}

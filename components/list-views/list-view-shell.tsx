@@ -230,11 +230,45 @@ export function ListViewShell(props: ListViewShellProps) {
         canManageSettings={props.canManageSettings}
         canManageTools={props.canManageTools}
       />
-      <main className="h-[calc(100vh-48px)] min-h-0 overflow-hidden md:pl-[300px] xl:pl-[320px]">
-        <section className="h-full min-h-0 min-w-0">
-          <div className="h-full min-h-0 md:contents">
+      <main className="min-h-[calc(100vh-48px)] min-h-0 md:h-[calc(100vh-48px)] md:overflow-hidden md:pl-[300px] xl:pl-[320px]">
+        <section className="min-h-0 min-w-0 md:h-full">
+          <div className="min-h-0 md:contents md:h-full">
             <aside className="border-b border-app-border bg-app-surface md:fixed md:bottom-0 md:left-0 md:top-12 md:z-20 md:w-[300px] md:border-b-0 md:border-r xl:w-[320px]">
-              <form action={action} className="flex h-full flex-col">
+              <div className="flex h-full flex-col">
+                <input
+                  className="peer sr-only"
+                  id={`${props.kind}-mobile-filters-open`}
+                  type="checkbox"
+                />
+                <label
+                  className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 border-b border-app-border bg-app-background/70 px-4 py-3 text-[13px] font-semibold text-app-foreground md:hidden"
+                  htmlFor={`${props.kind}-mobile-filters-open`}
+                >
+                  <span>Filters</span>
+                  <span className="inline-flex items-center gap-2">
+                    {activeFilters.length > 0 ? (
+                      <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
+                        {activeFilters.length === 1
+                          ? "1 active"
+                          : `${activeFilters.length} active`}
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-app-border bg-app-surface px-2 py-0.5 text-[11px] font-semibold text-app-muted">
+                        Default
+                      </span>
+                    )}
+                    <span
+                      aria-hidden="true"
+                      className="text-[14px] text-app-muted"
+                    >
+                      +
+                    </span>
+                  </span>
+                </label>
+                <form
+                  action={action}
+                  className="hidden h-full flex-col peer-checked:flex md:flex"
+                >
                 {viewMode === "giving" ? (
                   <input name="view" type="hidden" value="giving" />
                 ) : null}
@@ -327,10 +361,11 @@ export function ListViewShell(props: ListViewShellProps) {
                     </Link>
                   </div>
                 ) : null}
-              </form>
+                </form>
+              </div>
             </aside>
 
-            <div className="flex h-full min-w-0 flex-col overflow-hidden">
+            <div className="flex min-w-0 flex-col md:h-full md:overflow-hidden">
               <ListWorkspaceHeader
                 action={action}
                 ageGroup={ageGroup}

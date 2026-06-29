@@ -9,6 +9,10 @@ import {
   getHouseholdDonorTrend,
 } from "@/lib/giving/metrics";
 
+export const metadata = {
+  title: "Dashboard",
+};
+
 export default async function HomePage() {
   const session = await auth0.getSession();
   const accessState = await getCurrentAccessState(session?.user);
@@ -19,15 +23,15 @@ export default async function HomePage() {
 
   if (accessState.status === "needs_access") {
     return (
-      <main className="min-h-screen px-7 py-12 sm:px-12">
+      <main className="min-h-screen px-4 py-10 sm:px-12 sm:py-12">
         <section className="grid max-w-3xl gap-5 py-8 sm:py-14">
           <p className="text-sm font-bold uppercase text-app-accent-strong">
             Access needed
           </p>
-          <h1 className="max-w-2xl text-4xl font-bold leading-tight tracking-normal sm:text-5xl">
+          <h1 className="max-w-2xl text-3xl font-bold leading-tight tracking-normal sm:text-5xl">
             You need administrator approval to continue.
           </h1>
-          <p className="max-w-2xl text-lg leading-7 text-app-muted">
+          <p className="max-w-2xl text-[15px] leading-7 text-app-muted sm:text-lg">
             Your Auth0 login worked, but this app requires a local user profile
             and role before sensitive data is visible.
           </p>

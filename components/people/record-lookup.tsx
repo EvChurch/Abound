@@ -7,7 +7,7 @@ export function LookupPage({ kind }: { kind: "person" | "household" }) {
   const otherLabel = kind === "person" ? "Household lookup" : "Person lookup";
 
   return (
-    <main className="min-h-screen bg-app-background px-7 py-7">
+    <main className="min-h-screen bg-app-background px-4 py-5 sm:px-7 sm:py-7">
       <section className="mx-auto grid max-w-[740px] gap-6">
         <div className="flex items-center gap-[10px] text-[13.5px] font-semibold text-app-foreground">
           <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-app-foreground font-mono text-[11px] font-semibold text-app-background">

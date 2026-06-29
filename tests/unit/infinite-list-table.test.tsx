@@ -71,7 +71,7 @@ describe("InfiniteListTable", () => {
     vi.unstubAllGlobals();
   });
 
-  it("fills remaining workspace height instead of using a full viewport height", () => {
+  it("uses the page scroll on mobile and fills the workspace on desktop", () => {
     const { container } = render(
       <InfiniteListTable
         columns={["campus", "lifecycle", "tasks", "pledges"]}
@@ -83,9 +83,11 @@ describe("InfiniteListTable", () => {
 
     expect(container.firstElementChild).toHaveClass(
       "min-h-0",
-      "flex-1",
-      "overflow-auto",
+      "md:flex-1",
+      "md:overflow-auto",
     );
+    expect(container.firstElementChild).not.toHaveClass("flex-1");
+    expect(container.firstElementChild).not.toHaveClass("overflow-auto");
     expect(container.firstElementChild).not.toHaveClass("h-[calc(100vh-48px)]");
   });
 

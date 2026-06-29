@@ -138,7 +138,7 @@ describe("SyncPage", () => {
     expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0);
     expect(screen.getByText("Records read")).toBeInTheDocument();
     expect(screen.getByText("Recent runs")).toBeInTheDocument();
-    expect(screen.getByText("Needs review")).toBeInTheDocument();
+    expect(screen.getAllByText("Needs review").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", { name: "Open issues" }),
     ).toBeInTheDocument();

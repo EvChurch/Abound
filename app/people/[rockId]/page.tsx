@@ -18,6 +18,14 @@ type PersonPageProps = {
   }>;
 };
 
+export async function generateMetadata({ params }: PersonPageProps) {
+  const { rockId } = await params;
+
+  return {
+    title: `Person ${rockId}`,
+  };
+}
+
 export default async function PersonPage({ params }: PersonPageProps) {
   const session = await auth0.getSession();
   const accessState = await getCurrentAccessState(session?.user);

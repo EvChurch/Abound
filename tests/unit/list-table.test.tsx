@@ -449,5 +449,10 @@ describe("ListTable", () => {
     expect(
       screen.getByText("2 members · Archived in Rock"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("listitem")).toHaveClass("min-h-16");
+    expect(screen.getByRole("link", { name: "Donor Household" })).toHaveClass(
+      "block",
+      "truncate",
+    );
   });
 });

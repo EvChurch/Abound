@@ -232,6 +232,9 @@ describe("PersonProfile", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText("Donor Family").length).toBeGreaterThan(0);
     expect(screen.getByText("Call Jane")).toBeInTheDocument();
+    expect(screen.getByText("Call Jane").closest(".grid")).toHaveClass(
+      "md:grid-cols-[var(--cols)]",
+    );
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThan(0);
     expect(screen.getByText("Current 12 months")).toBeInTheDocument();
     expect(screen.getByLabelText("Account")).toHaveTextContent("All accounts");

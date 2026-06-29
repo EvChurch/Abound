@@ -89,7 +89,7 @@ function PeopleRow({
 
   return (
     <article
-      className="box-border flex h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle"
+      className="box-border flex min-h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle md:h-[84px]"
       role="listitem"
     >
       <div
@@ -139,10 +139,10 @@ function PeopleGivingLifecycleRow({
 
   return (
     <article
-      className="box-border flex h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle"
+      className="box-border flex min-h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle md:h-[84px]"
       role="listitem"
     >
-      <div className="grid w-full min-w-0 grid-cols-[minmax(0,0.9fr)_minmax(190px,1.1fr)] items-center gap-3 md:grid-cols-[minmax(220px,0.9fr)_minmax(320px,1.15fr)]">
+      <div className="grid w-full min-w-0 gap-3 md:grid-cols-[minmax(220px,0.9fr)_minmax(320px,1.15fr)] md:items-center">
         <div className="flex min-w-0 items-center gap-2.5">
           <PersonAvatar row={row} />
           <div className="min-w-0 flex-1 overflow-hidden">
@@ -165,7 +165,7 @@ function PeopleGivingLifecycleRow({
           </div>
         </div>
 
-        <div className="grid min-w-0 overflow-visible gap-2">
+        <div className="grid min-w-0 overflow-visible gap-2 pl-[42px] md:pl-0">
           <div className="flex h-4 items-center overflow-hidden text-[12px] text-app-muted">
             <span>
               Last gift{" "}
@@ -190,7 +190,7 @@ function HouseholdRow({
 }) {
   return (
     <article
-      className="border-b border-app-border bg-app-surface px-4 py-2.5 text-[13px] transition-colors hover:bg-app-surface-subtle"
+      className="min-h-16 border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle"
       role="listitem"
     >
       <div className="flex min-w-0 items-start gap-2.5">
@@ -198,7 +198,7 @@ function HouseholdRow({
         <div className="min-w-0 flex-1">
           <div className="min-w-0">
             <Link
-              className="font-semibold leading-tight text-app-accent"
+              className="block truncate font-semibold leading-tight text-app-accent"
               href={`/households/${row.rockId}`}
             >
               {row.name}
@@ -510,7 +510,7 @@ function MetadataLine({
   }
 
   return (
-    <div className="mt-1 flex h-5 min-w-0 flex-nowrap items-center gap-1.5 overflow-visible text-[12px] font-medium leading-tight text-app-foreground">
+    <div className="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-1.5 overflow-visible text-[12px] font-medium leading-tight text-app-foreground md:h-5 md:flex-nowrap">
       {labels.length > 0 ? <LifecycleField labels={labels} /> : null}
       {visibleTaskCount !== null ? (
         <span className="text-app-muted">

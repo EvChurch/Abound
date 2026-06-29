@@ -90,7 +90,7 @@ export function PledgeRecommendationsQueue({
         </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="grid gap-2">
-            <h1 className="text-[32px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
+            <h1 className="text-[28px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
               Pledge Recommendations
             </h1>
             <p className="max-w-3xl text-[13px] leading-6 text-app-muted">
@@ -135,7 +135,7 @@ export function PledgeRecommendationsQueue({
                 }}
               >
                 <div
-                  className="pointer-events-none absolute bottom-0 right-0 z-0 w-32 translate-x-1 translate-y-2 opacity-70"
+                  className="pointer-events-none absolute bottom-0 right-0 z-0 hidden w-32 translate-x-1 translate-y-2 opacity-70 sm:block"
                   style={{
                     WebkitMaskImage:
                       "linear-gradient(to right, transparent 0%, black 40%)",
@@ -197,9 +197,9 @@ export function PledgeRecommendationsQueue({
                   />
                 </dl>
 
-                <div className="relative z-10 flex flex-wrap items-center gap-2">
+                <div className="relative z-10 grid gap-2 min-[420px]:flex min-[420px]:flex-wrap min-[420px]:items-center">
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-emerald-700 bg-emerald-50 px-3 text-[12px] font-semibold text-emerald-950 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-wait disabled:opacity-60"
+                    className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-emerald-700 bg-emerald-50 px-3 text-[12px] font-semibold text-emerald-950 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-wait disabled:opacity-60 min-[420px]:min-h-9"
                     onClick={() =>
                       void handleRecommendationAction(candidate, "accept")
                     }
@@ -209,7 +209,7 @@ export function PledgeRecommendationsQueue({
                   </button>
 
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[12px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/30 disabled:cursor-wait disabled:opacity-60"
+                    className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[12px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/30 disabled:cursor-wait disabled:opacity-60 min-[420px]:min-h-9"
                     onClick={() =>
                       void handleRecommendationAction(candidate, "deny")
                     }

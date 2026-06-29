@@ -44,7 +44,7 @@ export async function AppTopNav({
   return (
     <>
       <div className="fixed inset-x-0 top-0 z-30 h-12 border-b border-app-border bg-[oklch(0.99_0.003_75_/_0.92)] backdrop-blur-md [backdrop-filter:saturate(1.4)_blur(8px)]">
-        <div className="mx-auto flex h-full max-w-[1280px] flex-wrap items-center gap-5 px-7">
+        <div className="mx-auto flex h-full max-w-[1280px] items-center gap-3 px-3 sm:gap-5 sm:px-7">
           <Link
             className="flex items-center gap-[10px] text-[13.5px] font-semibold text-app-foreground"
             href="/"
@@ -56,7 +56,7 @@ export async function AppTopNav({
           </Link>
           <nav
             aria-label="Primary"
-            className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-[12.5px]"
+            className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto text-[12.5px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {links.map((link) => {
               const current = link.active === active;
@@ -66,8 +66,8 @@ export async function AppTopNav({
                   aria-current={current ? "page" : undefined}
                   className={
                     current
-                      ? "inline-flex h-8 items-center rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                      : "inline-flex h-8 items-center rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                      ? "inline-flex h-8 shrink-0 items-center rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                      : "inline-flex h-8 shrink-0 items-center rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
                   }
                   href={link.href}
                   key={link.href}
@@ -84,8 +84,8 @@ export async function AppTopNav({
               panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
               triggerClassName={
                 active === "people" || active === "households"
-                  ? "inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                  : "inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
               }
               trigger={
                 <>
@@ -127,8 +127,8 @@ export async function AppTopNav({
               panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
               triggerClassName={
                 active === "tools" || active === "communications"
-                  ? "inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                  : "inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
               }
               trigger={
                 <>
@@ -173,8 +173,8 @@ export async function AppTopNav({
                 panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
                 triggerClassName={
                   active === "settings"
-                    ? "inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                    : "inline-flex h-8 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                    ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
+                    : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
                 }
                 trigger={
                   <>
@@ -225,7 +225,7 @@ export async function AppTopNav({
           <DropdownPanel
             align="right"
             panelClassName="grid gap-2 rounded-[8px] border border-app-border bg-app-surface p-2 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
-            triggerClassName="inline-flex h-8 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12.5px] font-semibold text-app-foreground transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25"
+            triggerClassName="inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12.5px] font-semibold text-app-foreground transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25"
             trigger={
               <>
                 <ProfileAvatar
@@ -235,7 +235,9 @@ export async function AppTopNav({
                   size={20}
                   textClassName="text-[10px]"
                 />
-                <span className="max-w-32 truncate">{profile.name}</span>
+                <span className="hidden max-w-32 truncate sm:inline">
+                  {profile.name}
+                </span>
                 <svg
                   aria-hidden="true"
                   className="h-3.5 w-3.5 text-app-muted"

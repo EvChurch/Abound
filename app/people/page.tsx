@@ -22,6 +22,10 @@ type PeopleLookupPageProps = {
   searchParams: Promise<PeopleListQueryParams>;
 };
 
+export const metadata = {
+  title: "People",
+};
+
 export default async function PeopleLookupPage({
   searchParams,
 }: PeopleLookupPageProps) {

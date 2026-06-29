@@ -18,6 +18,16 @@ type CommunicationPrepDetailPageProps = {
   }>;
 };
 
+export async function generateMetadata({
+  params,
+}: CommunicationPrepDetailPageProps) {
+  const { id } = await params;
+
+  return {
+    title: `Communication ${id}`,
+  };
+}
+
 export default async function CommunicationPrepDetailPage({
   params,
 }: CommunicationPrepDetailPageProps) {
@@ -60,7 +70,7 @@ export default async function CommunicationPrepDetailPage({
         )}
         canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
       />
-      <main className="grid gap-6 px-7 py-7">
+      <main className="grid gap-6 px-4 py-5 sm:px-7 sm:py-7">
         <section className="grid gap-3">
           <Link
             className="w-fit text-[13px] font-semibold text-app-accent"
@@ -70,7 +80,7 @@ export default async function CommunicationPrepDetailPage({
           </Link>
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
             <div className="grid gap-2">
-              <h1 className="text-[34px] font-semibold leading-tight tracking-normal text-app-foreground">
+              <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-app-foreground sm:text-[34px]">
                 {prep.title}
               </h1>
               <p className="max-w-4xl text-[13px] leading-6 text-app-muted">
@@ -176,7 +186,7 @@ export default async function CommunicationPrepDetailPage({
                   name="reviewNotes"
                 />
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 min-[380px]:grid-cols-2">
                 <StatusButton status="READY_FOR_REVIEW">Ready</StatusButton>
                 <StatusButton status="APPROVED">Approve</StatusButton>
                 <StatusButton status="HANDED_OFF">Hand off</StatusButton>

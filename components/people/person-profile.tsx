@@ -212,7 +212,7 @@ export function RecordShell({
         </DelayedStickySummary>
       ) : null}
 
-      <div className="mx-auto max-w-[1280px] px-7 pb-20 pt-7">
+      <div className="mx-auto max-w-[1280px] px-4 pb-20 pt-5 sm:px-7 sm:pt-7">
         <div className="mb-4" id="record-main-header">
           {header}
         </div>
@@ -301,16 +301,16 @@ export function MiniHouseholdAvatar({
 
 function PersonHeader({ profile }: { profile: RockPersonProfile }) {
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex min-w-0 items-start gap-3 sm:gap-4">
       <PersonAvatar profile={profile} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="mb-[10px] flex items-center gap-2">
           <span className="text-[11px] font-medium uppercase text-app-faint">
             Person
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-[14px] gap-y-2">
-          <h1 className="m-0 text-[28px] font-semibold leading-[1.15] tracking-[-0.3px] text-app-foreground">
+          <h1 className="m-0 min-w-0 text-[24px] font-semibold leading-[1.15] tracking-normal text-app-foreground sm:text-[28px]">
             {profile.displayName}
           </h1>
           <div className="flex flex-wrap items-center gap-2 pt-px">
@@ -370,16 +370,16 @@ export function HouseholdHeader({
   name: string;
 }) {
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex min-w-0 items-start gap-3 sm:gap-4">
       <HouseholdAvatar name={name} people={avatarPeople} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="mb-[10px] flex items-center gap-2">
           <span className="text-[11px] font-medium uppercase text-app-faint">
             Household
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-[14px] gap-y-2">
-          <h1 className="m-0 text-[28px] font-semibold leading-[1.15] tracking-[-0.3px] text-app-foreground">
+          <h1 className="m-0 min-w-0 text-[24px] font-semibold leading-[1.15] tracking-normal text-app-foreground sm:text-[28px]">
             {name}
           </h1>
           <div className="flex flex-wrap items-center gap-2 pt-px">
@@ -459,7 +459,7 @@ function ViewTabs({
   personHref?: string;
 }) {
   return (
-    <div className="mb-5 flex gap-1 border-b border-app-border">
+    <div className="mb-5 flex gap-1 overflow-x-auto border-b border-app-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <Tab active={activeView === "person"} href={personHref}>
         Person
       </Tab>
@@ -480,7 +480,7 @@ function Tab({
   href?: string;
 }) {
   const className =
-    "mb-[-1px] border-b-2 px-[14px] py-2 text-[13px] font-medium " +
+    "mb-[-1px] shrink-0 border-b-2 px-[14px] py-2 text-[13px] font-medium " +
     (active
       ? "border-app-accent text-app-foreground"
       : "border-transparent text-app-faint hover:text-app-foreground");
@@ -1115,30 +1115,34 @@ function TasksTable({
     : "20px_minmax(220px,2.5fr)_90px_90px_120px_100px";
 
   return (
-    <div className="overflow-x-auto rounded-[6px] border border-app-border-faint">
-      <div className={`min-w-[760px] [--cols:${cols}]`}>
+    <div className="rounded-[6px] border border-app-border-faint md:overflow-x-auto">
+      <div className={`md:min-w-[760px] md:[--cols:${cols}]`}>
         <TaskHeader showLinkedPerson={showLinkedPerson} />
-        {open.map((task) => (
-          <TaskRow
-            key={task.id}
-            linkedPerson={onOpenPerson?.(task)}
-            showLinkedPerson={showLinkedPerson}
-            task={task}
-          />
-        ))}
+        <div className="grid divide-y divide-app-border-faint md:block md:divide-y-0">
+          {open.map((task) => (
+            <TaskRow
+              key={task.id}
+              linkedPerson={onOpenPerson?.(task)}
+              showLinkedPerson={showLinkedPerson}
+              task={task}
+            />
+          ))}
+        </div>
         {closed.length > 0 ? (
           <div className="border-y border-app-border-faint bg-app-soft px-3 py-[7px] text-[11px] uppercase tracking-[0.3px] text-app-faint">
             Completed
           </div>
         ) : null}
-        {closed.map((task) => (
-          <TaskRow
-            key={task.id}
-            linkedPerson={onOpenPerson?.(task)}
-            showLinkedPerson={showLinkedPerson}
-            task={task}
-          />
-        ))}
+        <div className="grid divide-y divide-app-border-faint md:block md:divide-y-0">
+          {closed.map((task) => (
+            <TaskRow
+              key={task.id}
+              linkedPerson={onOpenPerson?.(task)}
+              showLinkedPerson={showLinkedPerson}
+              task={task}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1146,7 +1150,7 @@ function TasksTable({
 
 function TaskHeader({ showLinkedPerson }: { showLinkedPerson: boolean }) {
   return (
-    <div className="grid grid-cols-[var(--cols)] gap-3 border-b border-app-border-faint bg-app-soft px-3 py-2 text-[11px] font-medium uppercase tracking-[0.2px] text-app-faint">
+    <div className="hidden grid-cols-[var(--cols)] gap-3 border-b border-app-border-faint bg-app-soft px-3 py-2 text-[11px] font-medium uppercase tracking-[0.2px] text-app-faint md:grid">
       <div />
       <div>Title</div>
       <div>Status</div>
@@ -1170,9 +1174,9 @@ function TaskRow({
   const done = isDoneTask(task);
 
   return (
-    <div className="grid grid-cols-[var(--cols)] items-center gap-3 border-b border-app-border-faint px-3 py-[9px] text-[13px] last:border-b-0 hover:bg-app-soft">
+    <div className="grid gap-3 px-3 py-3 text-[13px] hover:bg-app-soft md:grid-cols-[var(--cols)] md:items-center md:border-b md:border-app-border-faint md:py-[9px] md:last:border-b-0">
       <span
-        className={`flex h-[14px] w-[14px] items-center justify-center rounded-[3px] border-[1.5px] text-[10px] leading-none ${
+        className={`flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border-[1.5px] text-[10px] leading-none ${
           done
             ? "border-app-accent bg-app-accent text-white"
             : "border-app-border-strong"
@@ -1181,7 +1185,7 @@ function TaskRow({
         {done ? "✓" : null}
       </span>
       <div
-        className={`min-w-0 truncate ${
+        className={`min-w-0 md:truncate ${
           done
             ? "text-app-faint line-through"
             : "text-app-foreground no-underline"
@@ -1189,21 +1193,23 @@ function TaskRow({
       >
         <Mono dim>{task.id}</Mono> &nbsp; {task.title}
       </div>
-      <Badge subtle tone={done ? "inactive" : "accent"}>
-        {formatEnum(task.status)}
-      </Badge>
-      <Badge subtle tone={task.priority === "HIGH" ? "high" : "neutral"}>
-        {formatEnum(task.priority)}
-      </Badge>
+      <div className="flex flex-wrap gap-2 md:contents">
+        <Badge subtle tone={done ? "inactive" : "accent"}>
+          {formatEnum(task.status)}
+        </Badge>
+        <Badge subtle tone={task.priority === "HIGH" ? "high" : "neutral"}>
+          {formatEnum(task.priority)}
+        </Badge>
+      </div>
       {showLinkedPerson ? (
-        <div className="min-w-0 truncate text-[12.5px] text-app-muted">
+        <div className="min-w-0 text-[12.5px] text-app-muted md:truncate">
           {linkedPerson ?? <span className="text-app-border-strong">-</span>}
         </div>
       ) : null}
       <div className="text-[12.5px] text-app-muted tabular-nums">
         {task.dueAt ? formatDate(task.dueAt) : "No due date"}
       </div>
-      <div className="text-right text-[12.5px] text-app-faint">
+      <div className="text-[12.5px] text-app-faint md:text-right">
         {task.assignedToName ?? task.assignedToEmail ?? "Unassigned"}
       </div>
     </div>
@@ -1236,10 +1242,13 @@ function ProfileRail({
   children: React.ReactNode;
   offset?: "default" | "belowStickySummary";
 }) {
-  const stickyClass = offset === "belowStickySummary" ? "top-[100px]" : "top-6";
+  const stickyClass =
+    offset === "belowStickySummary" ? "lg:top-[100px]" : "lg:top-6";
 
   return (
-    <aside className={`sticky ${stickyClass} flex flex-col gap-4 self-start`}>
+    <aside
+      className={`flex flex-col gap-4 self-start lg:sticky ${stickyClass}`}
+    >
       {children}
     </aside>
   );

@@ -18,6 +18,10 @@ type HouseholdLookupPageProps = {
   searchParams: Promise<HouseholdListQueryParams>;
 };
 
+export const metadata = {
+  title: "Households",
+};
+
 export default async function HouseholdLookupPage({
   searchParams,
 }: HouseholdLookupPageProps) {

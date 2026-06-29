@@ -17,6 +17,10 @@ type CommunicationsPageProps = {
   }>;
 };
 
+export const metadata = {
+  title: "Communications",
+};
+
 export default async function CommunicationsPage({
   searchParams,
 }: CommunicationsPageProps) {
@@ -44,9 +48,9 @@ export default async function CommunicationsPage({
         )}
         canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
       />
-      <main className="grid gap-6 px-7 py-7">
+      <main className="grid gap-6 px-4 py-5 sm:px-7 sm:py-7">
         <section className="grid gap-3">
-          <h1 className="text-[34px] font-semibold leading-tight tracking-normal text-app-foreground">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-app-foreground sm:text-[34px]">
             Communications
           </h1>
           <p className="max-w-4xl text-[13px] leading-6 text-app-muted">
@@ -83,7 +87,17 @@ export default async function CommunicationsPage({
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="grid divide-y divide-app-border md:hidden">
+              {preps.map((prep) => (
+                <CommunicationPrepCard
+                  highlighted={prep.id === params.created}
+                  key={prep.id}
+                  prep={prep}
+                />
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-left text-[13px]">
                 <thead className="text-[11px] uppercase text-app-muted">
                   <tr>
@@ -105,10 +119,93 @@ export default async function CommunicationsPage({
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
       </main>
     </div>
+  );
+}
+
+function CommunicationPrepCard({
+  highlighted,
+  prep,
+}: {
+  highlighted: boolean;
+  prep: CommunicationPrepRecord;
+}) {
+  const preview = audiencePreviewFromRecord(prep).slice(0, 2);
+
+  return (
+    <article
+      className={
+        highlighted
+          ? "grid gap-3 bg-app-accent/10 px-4 py-4"
+          : "grid gap-3 px-4 py-4"
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Link
+            className="block truncate font-semibold text-app-accent"
+            href={`/communications/${prep.id}`}
+          >
+            {prep.title}
+          </Link>
+          <p className="mt-1 text-[12px] leading-5 text-app-muted">
+            {prep.segmentSummary}
+          </p>
+        </div>
+        <StatusBadge status={prep.status} />
+      </div>
+
+      <dl className="grid grid-cols-2 gap-2 text-[12px]">
+        <div className="rounded-[6px] border border-app-border bg-app-background px-3 py-2">
+          <dt className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+            Audience
+          </dt>
+          <dd className="mt-1 font-semibold text-app-foreground">
+            {prep.audienceSize}
+            {prep.audienceTruncated ? "+" : ""}{" "}
+            {prep.audienceResource.toLowerCase()}
+          </dd>
+        </div>
+        <div className="rounded-[6px] border border-app-border bg-app-background px-3 py-2">
+          <dt className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+            Handoff
+          </dt>
+          <dd className="mt-1 truncate font-semibold text-app-foreground">
+            {prep.handoffTarget ?? "Not selected"}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="grid gap-2">
+        {preview.length > 0 ? (
+          preview.map((member) => (
+            <Link
+              className="rounded-[6px] border border-app-border-faint bg-app-background px-3 py-2 text-[12px] font-semibold text-app-accent"
+              href={
+                member.resource === "PERSON"
+                  ? `/people/${member.rockId}`
+                  : `/households/${member.rockId}`
+              }
+              key={`${member.resource}:${member.rockId}`}
+            >
+              {member.displayName}
+            </Link>
+          ))
+        ) : (
+          <span className="text-[12px] text-app-muted">
+            No matching audience members.
+          </span>
+        )}
+      </div>
+
+      <span className="font-mono text-[11px] uppercase text-app-faint">
+        Created {formatDate(prep.createdAt)}
+      </span>
+    </article>
   );
 }
 

@@ -7,6 +7,10 @@ import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { hasPermission } from "@/lib/auth/roles";
 import { getSyncStatusSummary } from "@/lib/sync/status";
 
+export const metadata = {
+  title: "Sync Status",
+};
+
 export default async function SyncPage() {
   const session = await auth0.getSession();
   const accessState = await getCurrentAccessState(session?.user);

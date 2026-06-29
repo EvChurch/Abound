@@ -32,7 +32,7 @@ export function UserManagementSettings({
             Settings
           </p>
           <div className="grid gap-2">
-            <h1 className="text-[32px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
+            <h1 className="text-[28px] font-semibold leading-[1.12] tracking-normal text-app-foreground sm:text-[42px]">
               Users
             </h1>
             <p className="max-w-3xl text-[13px] leading-6 text-app-muted">
@@ -103,17 +103,17 @@ function AccessRequestCard({
       </RecordIdentity>
 
       {isPending ? (
-        <div className="flex flex-wrap gap-2">
-          <form action={approveAction} className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
+          <form action={approveAction} className="grid gap-2 sm:flex sm:flex-wrap">
             <input name="requestId" type="hidden" value={request.id} />
             <RoleSelect defaultValue="FINANCE" />
-            <button className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-app-accent bg-app-accent px-3 text-[12.5px] font-semibold text-white">
+            <button className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-app-accent bg-app-accent px-3 text-[12.5px] font-semibold text-white sm:min-h-9">
               Approve
             </button>
           </form>
           <form action={denyAction}>
             <input name="requestId" type="hidden" value={request.id} />
-            <button className="inline-flex min-h-9 items-center justify-center rounded-[6px] border border-app-border bg-app-surface px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground">
+            <button className="inline-flex min-h-10 w-full items-center justify-center rounded-[6px] border border-app-border bg-app-surface px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground sm:min-h-9 sm:w-auto">
               Deny
             </button>
           </form>
@@ -162,7 +162,7 @@ function UserActionsMenu({
   user: ManagedAppUser;
 }) {
   return (
-    <div className="justify-self-end">
+    <div className="justify-self-start lg:justify-self-end">
       <DropdownPanel
         align="right"
         panelClassName="w-60 rounded-[8px] border border-app-border bg-app-background p-3 shadow-lg"
