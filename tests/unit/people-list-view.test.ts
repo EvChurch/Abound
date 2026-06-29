@@ -22,6 +22,7 @@ function client({
   ]),
   pledgeDecisionFindMany = vi.fn(async () => []),
   rockFinancialAccountFindMany = vi.fn(async () => []),
+  rockPersonCount = vi.fn(async () => 0),
   lifecycleSnapshotFindMany = vi.fn(async () => []),
   rockPersonFindMany = vi.fn(async () => []),
 }: {
@@ -31,6 +32,7 @@ function client({
   platformFundSettingFindMany?: ReturnType<typeof vi.fn>;
   pledgeDecisionFindMany?: ReturnType<typeof vi.fn>;
   rockFinancialAccountFindMany?: ReturnType<typeof vi.fn>;
+  rockPersonCount?: ReturnType<typeof vi.fn>;
   rockPersonFindMany?: ReturnType<typeof vi.fn>;
 } = {}) {
   const findMany = rockPersonFindMany;
@@ -55,6 +57,7 @@ function client({
       findMany: rockFinancialAccountFindMany,
     },
     rockPerson: {
+      count: rockPersonCount,
       findMany,
     },
   } as unknown as PrismaClient & {
@@ -77,6 +80,7 @@ function client({
       findMany: typeof rockFinancialAccountFindMany;
     };
     rockPerson: {
+      count: typeof rockPersonCount;
       findMany: typeof findMany;
     };
   };
@@ -117,6 +121,22 @@ describe("people list view", () => {
         }),
       }),
     );
+  });
+
+  it("returns filtered and total people counts", async () => {
+    const rockPersonCount = vi
+      .fn()
+      .mockResolvedValueOnce(7)
+      .mockResolvedValueOnce(42);
+    const prisma = client({ rockPersonCount });
+
+    const connection = await listPeople({ first: 10 }, adminUser, prisma);
+
+    expect(connection.resultCount).toEqual({
+      filtered: 7,
+      total: 42,
+    });
+    expect(rockPersonCount).toHaveBeenCalledTimes(2);
   });
 
   it("allows filtering to children explicitly", async () => {

@@ -49,6 +49,10 @@ const emptyPeopleConnection: PeopleConnection = {
     endCursor: null,
     hasNextPage: false,
   },
+  resultCount: {
+    filtered: 12,
+    total: 3456,
+  },
 };
 
 describe("ListViewShell", () => {
@@ -86,6 +90,44 @@ describe("ListViewShell", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "North" })).toBeInTheDocument();
     expect(screen.getAllByText("North")).toHaveLength(3);
+  });
+
+  it("shows the filtered and total people count under the heading", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    expect(screen.getByText("Showing 12 of 3,456 people")).toBeInTheDocument();
+  });
+
+  it("bounds the right workspace so the list scrolls inside the page", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    expect(screen.getByTestId("list-table").parentElement).toHaveClass(
+      "flex",
+      "h-full",
+      "min-w-0",
+      "flex-col",
+      "overflow-hidden",
+    );
   });
 
   it("renders lifecycle signals as multi-select choices without an any option", () => {

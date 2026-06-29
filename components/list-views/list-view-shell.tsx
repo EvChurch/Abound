@@ -321,10 +321,11 @@ export function ListViewShell(props: ListViewShellProps) {
               </form>
             </aside>
 
-            <div className="min-w-0 overflow-hidden">
+            <div className="flex h-full min-w-0 flex-col overflow-hidden">
               <ListWorkspaceHeader
                 action={action}
                 ageGroup={ageGroup}
+                connection={props.connection}
                 filters={props.filters}
                 kind={props.kind}
                 lifecycle={props.lifecycle}
@@ -383,6 +384,7 @@ export function ListViewShell(props: ListViewShellProps) {
 function ListWorkspaceHeader({
   action,
   ageGroup,
+  connection,
   filters,
   kind,
   lifecycle,
@@ -392,6 +394,7 @@ function ListWorkspaceHeader({
 }: {
   action: "/households" | "/people";
   ageGroup?: string | null;
+  connection: HouseholdsConnection | PeopleConnection;
   filters?: ListViewShellFilters;
   kind: "households" | "people";
   lifecycle?: PageParamValue | null;
@@ -399,12 +402,22 @@ function ListWorkspaceHeader({
   selectedColumns: ListColumnKey[];
   viewMode: PeopleViewMode | null;
 }) {
+  const countSummary =
+    kind === "people"
+      ? peopleCountSummary(connection as PeopleConnection)
+      : null;
+
   return (
-    <div className="flex min-h-16 items-center justify-between gap-3 border-b border-app-border bg-app-background px-4 py-3">
+    <div className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-app-border bg-app-background px-4 py-3">
       <div className="min-w-0">
         <h1 className="text-[18px] font-semibold leading-tight text-app-foreground">
           {kind === "people" ? "People" : "Households"}
         </h1>
+        {countSummary ? (
+          <p className="mt-0.5 text-[12px] font-medium text-app-muted">
+            {countSummary}
+          </p>
+        ) : null}
       </div>
       <form action={action} className="shrink-0">
         <PreservedQueryInputs
@@ -432,6 +445,21 @@ function ListWorkspaceHeader({
       </form>
     </div>
   );
+}
+
+function peopleCountSummary(connection: PeopleConnection) {
+  if (!connection.resultCount) {
+    return null;
+  }
+
+  const filtered = formatCount(connection.resultCount.filtered);
+  const total = formatCount(connection.resultCount.total);
+
+  return `Showing ${filtered} of ${total} people`;
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
 function PeopleViewModeControl({

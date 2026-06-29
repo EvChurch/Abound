@@ -109,6 +109,10 @@ export type PeopleConnection = {
     node: PersonListRow;
   }>;
   pageInfo: PageInfo;
+  resultCount?: {
+    filtered: number;
+    total: number;
+  };
 };
 
 type ListCampus = {
@@ -229,20 +233,30 @@ export async function listPeople(
     actor,
     client,
   );
-  const records = await client.rockPerson.findMany({
-    cursor: cursor ? { rockId: cursor.rockId } : undefined,
-    orderBy: [{ rockId: "asc" }],
-    select: personListSelect,
-    skip: cursor ? 1 : 0,
-    take: limit + 1,
-    where: withRockIdFilter(
-      filterToPersonWhere(validation.definition, actor),
-      intersectRockIds(
-        intersectRockIds(lifecycleRockIds, householdGivingStateRockIds),
-        pledgeStateRockIds,
-      ),
+  const filteredWhere = withRockIdFilter(
+    filterToPersonWhere(validation.definition, actor),
+    intersectRockIds(
+      intersectRockIds(lifecycleRockIds, householdGivingStateRockIds),
+      pledgeStateRockIds,
     ),
-  });
+  );
+  const totalWhere = filterToPersonWhere(createEmptyFilter(), actor);
+  const [records, filteredCount, totalCount] = await Promise.all([
+    client.rockPerson.findMany({
+      cursor: cursor ? { rockId: cursor.rockId } : undefined,
+      orderBy: [{ rockId: "asc" }],
+      select: personListSelect,
+      skip: cursor ? 1 : 0,
+      take: limit + 1,
+      where: filteredWhere,
+    }),
+    client.rockPerson.count({
+      where: filteredWhere,
+    }),
+    client.rockPerson.count({
+      where: totalWhere,
+    }),
+  ]);
   const pageRecords = records.slice(0, limit);
   const givingSummaries = canSeeGivingAmounts(actor.role)
     ? await givingSummariesByPerson(
@@ -293,6 +307,10 @@ export async function listPeople(
         ? encodeRockIdCursor({ rockId: pageRecords.at(-1)!.rockId })
         : null,
       hasNextPage: records.length > limit,
+    },
+    resultCount: {
+      filtered: filteredCount,
+      total: totalCount,
     },
   };
 }

@@ -88,7 +88,7 @@ export function InfiniteListTable(props: InfiniteListTableProps) {
   ]);
 
   return (
-    <div className="h-[calc(100vh-48px)] overflow-auto">
+    <div className="min-h-0 flex-1 overflow-auto">
       {kind === "people" ? (
         <ListTable
           columns={columns}
