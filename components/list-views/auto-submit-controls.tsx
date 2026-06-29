@@ -91,6 +91,7 @@ export function AutoSubmitSelect({
       hideSelectedLabel={hideSelectedLabel}
       menuClassName={menuClassName}
       name={name}
+      key={`${name}:${defaultValue ?? ""}`}
       onValueChange={(nextValue, form) =>
         submitForm(form, { [name]: submittedValue?.(nextValue) ?? nextValue })
       }

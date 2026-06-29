@@ -160,7 +160,12 @@ describe("ListViewShell", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
-    fireEvent.click(screen.getByRole("option", { name: "Last name" }));
+    expect(
+      screen.getByRole("option", {
+        name: "First name: A-Z (click for Z-A)",
+      }),
+    ).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("option", { name: "Last name: A-Z" }));
 
     const [href, options] = navigationMocks.replace.mock.calls[0] as [
       string,
@@ -192,7 +197,12 @@ describe("ListViewShell", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
-    fireEvent.click(screen.getByRole("option", { name: "Last name (A-Z)" }));
+    const activeSort = screen.getByRole("option", {
+      name: "Last name: A-Z (click for Z-A)",
+    });
+
+    expect(activeSort).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(activeSort);
 
     const [href] = navigationMocks.replace.mock.calls[0] as [
       string,
@@ -202,6 +212,44 @@ describe("ListViewShell", () => {
     expect(href).toContain("q=smith");
     expect(href).toContain("sort=lastName%3Adesc");
     expect(href).not.toContain("after=");
+  });
+
+  it("refreshes sort highlighting when the selected sort changes", () => {
+    const { rerender } = render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        sort="lastName:desc"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    rerender(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
+
+    expect(
+      screen.getByRole("option", {
+        name: "First name: A-Z (click for Z-A)",
+      }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getByRole("option", { name: "Last name: A-Z" }),
+    ).toHaveAttribute("aria-selected", "false");
   });
 
   it("bounds the right workspace so the list scrolls inside the page", () => {

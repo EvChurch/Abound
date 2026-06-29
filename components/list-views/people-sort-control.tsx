@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownAZ } from "lucide-react";
+import { ArrowDownAZ, ArrowDownZA } from "lucide-react";
 
 import { AutoSubmitSelect } from "@/components/list-views/auto-submit-controls";
 import {
@@ -24,11 +24,14 @@ export function PeopleSortControl({ sort }: { sort: PeopleSortParam }) {
     ...option,
     label:
       option.value === sort.field
-        ? `${option.label} (${sortDirectionLabel(sort.direction)})`
-        : option.label,
+        ? `${option.label}: ${sortDirectionLabel(sort.direction)} (click for ${sortDirectionLabel(
+            oppositeSortDirection(sort.direction),
+          )})`
+        : `${option.label}: A-Z`,
     value:
       option.value === sort.field ? encodePeopleSortParam(sort) : option.value,
   }));
+  const SortIcon = sort.direction === "desc" ? ArrowDownZA : ArrowDownAZ;
 
   return (
     <AutoSubmitSelect
@@ -37,14 +40,16 @@ export function PeopleSortControl({ sort }: { sort: PeopleSortParam }) {
       defaultValue={encodePeopleSortParam(sort)}
       hideChevron
       hideSelectedLabel
-      menuClassName="fixed z-30 w-40 rounded-[8px] border border-app-border bg-app-background p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+      menuClassName="fixed z-30 w-64 rounded-[8px] border border-app-border bg-app-background p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
       name="sort"
       options={options}
       rootClassName="relative hidden sm:inline-block"
       submittedValue={(value) => nextPeopleSortValue(value, sort)}
-      title="Sort people"
+      title={`Sort people: ${sortDirectionLabel(sort.direction)}. Select the active option again for ${sortDirectionLabel(
+        oppositeSortDirection(sort.direction),
+      )}.`}
       triggerIcon={
-        <ArrowDownAZ aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
+        <SortIcon aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
       }
     />
   );
@@ -65,4 +70,8 @@ function nextPeopleSortValue(value: string, current: PeopleSortParam) {
 
 function sortDirectionLabel(direction: PeopleSortParam["direction"]) {
   return direction === "asc" ? "A-Z" : "Z-A";
+}
+
+function oppositeSortDirection(direction: PeopleSortParam["direction"]) {
+  return direction === "asc" ? "desc" : "asc";
 }
