@@ -174,6 +174,36 @@ describe("ListViewShell", () => {
     expect(options).toEqual({ scroll: false });
   });
 
+  it("toggles sort direction when selecting the active sort again", () => {
+    navigationMocks.search = "q=smith&sort=lastName&after=cursor_1";
+
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        query="smith"
+        sort="lastName"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
+    fireEvent.click(screen.getByRole("option", { name: "Last name (A-Z)" }));
+
+    const [href] = navigationMocks.replace.mock.calls[0] as [
+      string,
+      { scroll: boolean },
+    ];
+
+    expect(href).toContain("q=smith");
+    expect(href).toContain("sort=lastName%3Adesc");
+    expect(href).not.toContain("after=");
+  });
+
   it("bounds the right workspace so the list scrolls inside the page", () => {
     render(
       <ListViewShell

@@ -22,6 +22,7 @@ type SelectProps = {
   name: string;
   options: ReadonlyArray<{ label: string; value: string }>;
   rootClassName?: string;
+  submittedValue?: (value: string) => string;
   title?: string;
   triggerIcon?: ReactNode;
 };
@@ -75,6 +76,7 @@ export function AutoSubmitSelect({
   name,
   options,
   rootClassName,
+  submittedValue,
   title,
   triggerIcon,
 }: SelectProps) {
@@ -90,7 +92,7 @@ export function AutoSubmitSelect({
       menuClassName={menuClassName}
       name={name}
       onValueChange={(nextValue, form) =>
-        submitForm(form, { [name]: nextValue })
+        submitForm(form, { [name]: submittedValue?.(nextValue) ?? nextValue })
       }
       options={options}
       rootClassName={rootClassName ?? "relative w-full"}

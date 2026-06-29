@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPeopleFilter,
+  encodePeopleSortParam,
   paramsFromSearch,
+  parsePeopleSortParam,
 } from "@/lib/list-views/page-params";
 
 describe("list view page params", () => {
@@ -38,6 +40,24 @@ describe("list view page params", () => {
     expect(params.connectionStatus).toEqual(["Attendee", "Member"]);
     expect(params.recordStatus).toEqual(["Active", "Pending"]);
     expect(params.savedViewId).toBe("view_123");
+  });
+
+  it("parses people sort field and direction params", () => {
+    expect(parsePeopleSortParam(undefined)).toEqual({
+      direction: "asc",
+      field: "firstName",
+    });
+    expect(parsePeopleSortParam("lastName")).toEqual({
+      direction: "asc",
+      field: "lastName",
+    });
+    expect(parsePeopleSortParam("lastName:desc")).toEqual({
+      direction: "desc",
+      field: "lastName",
+    });
+    expect(
+      encodePeopleSortParam({ direction: "desc", field: "firstName" }),
+    ).toBe("firstName:desc");
   });
 
   it("builds multi-selected lifecycle filters and preserves them from URLSearchParams", () => {

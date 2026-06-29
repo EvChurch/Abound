@@ -32,6 +32,14 @@ export type PeopleListQueryParams = {
   view?: string;
 };
 
+export type PeopleSortDirection = "asc" | "desc";
+export type PeopleSortField = "firstName" | "lastName";
+
+export type PeopleSortParam = {
+  direction: PeopleSortDirection;
+  field: PeopleSortField;
+};
+
 export type HouseholdListQueryParams = {
   active?: string;
   after?: string;
@@ -291,6 +299,20 @@ export type PeopleViewMode = "giving" | "list";
 
 export function parsePeopleViewMode(params: { view?: string }) {
   return params.view === "giving" ? "giving" : "list";
+}
+
+export function parsePeopleSortParam(value?: string | null): PeopleSortParam {
+  const [fieldValue, directionValue] = String(value ?? "").split(":");
+  const field: PeopleSortField =
+    fieldValue === "lastName" ? "lastName" : "firstName";
+  const direction: PeopleSortDirection =
+    directionValue?.toLowerCase() === "desc" ? "desc" : "asc";
+
+  return { direction, field };
+}
+
+export function encodePeopleSortParam(sort: PeopleSortParam) {
+  return sort.direction === "desc" ? `${sort.field}:desc` : sort.field;
 }
 
 export function paramsFromSearch(searchParams: URLSearchParams) {

@@ -8,6 +8,7 @@ import {
   buildHouseholdFilter,
   buildPeopleFilter,
   paramsFromSearch,
+  parsePeopleSortParam,
 } from "@/lib/list-views/page-params";
 
 type RouteContext = {
@@ -66,9 +67,12 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 function sortDefinitionFromParam(value: string | undefined) {
-  if (value === "lastName") {
-    return { direction: "ASC", field: "lastName" };
-  }
+  if (!value) return undefined;
 
-  return value ? { direction: "ASC", field: "firstName" } : undefined;
+  const sort = parsePeopleSortParam(value);
+
+  return {
+    direction: sort.direction.toUpperCase(),
+    field: sort.field,
+  };
 }
