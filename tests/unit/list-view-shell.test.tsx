@@ -159,7 +159,7 @@ describe("ListViewShell", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "sort" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
     fireEvent.click(screen.getByRole("option", { name: "Last name" }));
 
     const [href, options] = navigationMocks.replace.mock.calls[0] as [
@@ -286,7 +286,11 @@ describe("ListViewShell", () => {
     expect(screen.getByRole("heading", { name: "People" })).toBeInTheDocument();
     expect(screen.queryByText("All people")).not.toBeInTheDocument();
     expect(screen.queryByText("Default")).not.toBeInTheDocument();
-    const columnsButton = screen.getByRole("button", { name: /Display/ });
+    expect(screen.queryByText("Display")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sort")).not.toBeInTheDocument();
+    const columnsButton = screen.getByRole("button", {
+      name: "Display columns",
+    });
 
     expect(columnsButton).toHaveAttribute("aria-expanded", "false");
 
@@ -330,6 +334,8 @@ describe("ListViewShell", () => {
       name: "Giving lifecycle",
     });
 
+    expect(screen.queryByText("List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Giving lifecycle")).not.toBeInTheDocument();
     expect(listLink).toHaveAttribute("aria-current", "page");
     expect(givingLink).toHaveAttribute(
       "href",

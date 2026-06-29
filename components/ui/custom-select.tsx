@@ -1,7 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 type SelectOption = {
@@ -14,12 +21,16 @@ type CustomSelectProps = {
   className?: string;
   defaultValue?: string;
   disabled?: boolean;
+  hideChevron?: boolean;
+  hideSelectedLabel?: boolean;
   menuClassName?: string;
   name?: string;
   onValueChange?: (value: string, form: HTMLFormElement | null) => void;
   options: ReadonlyArray<SelectOption>;
   placeholder?: string;
   rootClassName?: string;
+  title?: string;
+  triggerIcon?: ReactNode;
   value?: string;
 };
 
@@ -28,12 +39,16 @@ export function CustomSelect({
   className,
   defaultValue,
   disabled = false,
+  hideChevron = false,
+  hideSelectedLabel = false,
   menuClassName,
   name,
   onValueChange,
   options,
   placeholder = "Select",
   rootClassName,
+  title,
+  triggerIcon,
   value,
 }: CustomSelectProps) {
   const generatedId = useId();
@@ -128,25 +143,31 @@ export function CustomSelect({
         className={buttonClassName}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
+        title={title}
         type="button"
       >
-        <span className="truncate text-left">
-          {selectedOption?.label ?? placeholder}
-        </span>
-        <svg
-          aria-hidden="true"
-          className={`h-4 w-4 shrink-0 text-app-muted transition-transform duration-200 ${open ? "rotate-180" : "rotate-0"}`}
-          fill="none"
-          viewBox="0 0 20 20"
-        >
-          <path
-            d="m5 7.5 5 5 5-5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.6"
-          />
-        </svg>
+        {triggerIcon}
+        {hideSelectedLabel ? null : (
+          <span className="truncate text-left">
+            {selectedOption?.label ?? placeholder}
+          </span>
+        )}
+        {hideChevron ? null : (
+          <svg
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-app-muted transition-transform duration-200 ${open ? "rotate-180" : "rotate-0"}`}
+            fill="none"
+            viewBox="0 0 20 20"
+          >
+            <path
+              d="m5 7.5 5 5 5-5"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.6"
+            />
+          </svg>
+        )}
       </button>
       {typeof document !== "undefined"
         ? createPortal(

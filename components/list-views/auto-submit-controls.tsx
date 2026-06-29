@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { CustomSelect } from "@/components/ui/custom-select";
 
@@ -13,10 +13,17 @@ type InputProps = {
 };
 
 type SelectProps = {
+  ariaLabel?: string;
   className: string;
   defaultValue?: string;
+  hideChevron?: boolean;
+  hideSelectedLabel?: boolean;
+  menuClassName?: string;
   name: string;
   options: ReadonlyArray<{ label: string; value: string }>;
+  rootClassName?: string;
+  title?: string;
+  triggerIcon?: ReactNode;
 };
 
 type ChoiceProps = {
@@ -59,24 +66,36 @@ export function AutoSubmitInput({
 }
 
 export function AutoSubmitSelect({
+  ariaLabel,
   className,
   defaultValue,
+  hideChevron,
+  hideSelectedLabel,
+  menuClassName,
   name,
   options,
+  rootClassName,
+  title,
+  triggerIcon,
 }: SelectProps) {
   const submitForm = useRouteSubmit();
 
   return (
     <CustomSelect
-      ariaLabel={name}
+      ariaLabel={ariaLabel ?? name}
       className={className}
       defaultValue={defaultValue}
+      hideChevron={hideChevron}
+      hideSelectedLabel={hideSelectedLabel}
+      menuClassName={menuClassName}
       name={name}
       onValueChange={(nextValue, form) =>
         submitForm(form, { [name]: nextValue })
       }
       options={options}
-      rootClassName="relative w-full"
+      rootClassName={rootClassName ?? "relative w-full"}
+      title={title}
+      triggerIcon={triggerIcon}
     />
   );
 }

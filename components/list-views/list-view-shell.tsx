@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeartPulse, List } from "lucide-react";
+import { ArrowDownAZ, HeartPulse, List } from "lucide-react";
 
 import {
   AutoSubmitChoice,
@@ -489,15 +489,21 @@ const peopleSortOptions: ReadonlyArray<{
 
 function PeopleSortControl({ sort }: { sort: PeopleSortOption }) {
   return (
-    <label className="hidden items-center gap-2 text-[12px] font-semibold text-app-muted sm:flex">
-      <span>Sort</span>
-      <AutoSubmitSelect
-        className="min-h-9 rounded-[6px] border border-app-border bg-app-surface px-2.5 text-[13px] font-semibold text-app-foreground outline-none focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
-        defaultValue={sort}
-        name="sort"
-        options={peopleSortOptions}
-      />
-    </label>
+    <AutoSubmitSelect
+      ariaLabel="Sort people"
+      className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-app-border bg-app-surface text-app-foreground outline-none transition hover:border-app-accent hover:bg-app-chip focus-visible:ring-2 focus-visible:ring-app-accent/25"
+      defaultValue={sort}
+      hideChevron
+      hideSelectedLabel
+      menuClassName="fixed z-30 w-40 rounded-[8px] border border-app-border bg-app-background p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+      name="sort"
+      options={peopleSortOptions}
+      rootClassName="relative hidden sm:inline-block"
+      title="Sort people"
+      triggerIcon={
+        <ArrowDownAZ aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
+      }
+    />
   );
 }
 
@@ -541,8 +547,8 @@ function PeopleViewModeControl({
             aria-label={option.label}
             className={
               active
-                ? "inline-flex min-w-9 items-center justify-center gap-1.5 border-r border-app-border bg-app-chip px-2.5 text-[12.5px] font-semibold text-app-foreground last:border-r-0"
-                : "inline-flex min-w-9 items-center justify-center gap-1.5 border-r border-app-border px-2.5 text-[12.5px] font-semibold text-app-muted transition hover:bg-app-soft hover:text-app-foreground last:border-r-0"
+                ? "inline-flex h-9 w-9 items-center justify-center border-r border-app-border bg-app-chip text-app-foreground last:border-r-0"
+                : "inline-flex h-9 w-9 items-center justify-center border-r border-app-border text-app-muted transition hover:bg-app-soft hover:text-app-foreground last:border-r-0"
             }
             href={peopleViewModeHref({
               action,
@@ -555,9 +561,9 @@ function PeopleViewModeControl({
               viewMode: option.value,
             })}
             key={option.value}
+            title={option.label}
           >
             <Icon aria-hidden="true" className="h-4 w-4" />
-            <span className="hidden lg:inline">{option.label}</span>
           </Link>
         );
       })}
