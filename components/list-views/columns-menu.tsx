@@ -18,11 +18,7 @@ export function ColumnsMenu({ children }: { children: ReactNode }) {
         title="Display columns"
         type="button"
       >
-        <Columns3
-          aria-hidden="true"
-          className="h-4 w-4"
-          strokeWidth={2.4}
-        />
+        <Columns3 aria-hidden="true" className="h-4 w-4" strokeWidth={2.4} />
       </button>
       <AnimatePresence initial={false}>
         {open ? (
