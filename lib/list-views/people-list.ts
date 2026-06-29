@@ -401,8 +401,9 @@ function personSortOrderBy(
     case "email":
     case "firstName":
     case "lastName":
-    case "lastSyncedAt":
     case "nickName":
+      return { [field]: { nulls: "last", sort: direction } };
+    case "lastSyncedAt":
     case "rockId":
       return { [field]: direction };
     default:

@@ -169,7 +169,35 @@ describe("people list view", () => {
 
     expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: [{ lastName: "desc" }, { rockId: "asc" }],
+        orderBy: [
+          { lastName: { nulls: "last", sort: "desc" } },
+          { rockId: "asc" },
+        ],
+      }),
+    );
+  });
+
+  it("sorts nullable person name fields after populated names", async () => {
+    const prisma = client();
+
+    await listPeople(
+      {
+        first: 10,
+        sortDefinition: {
+          direction: "ASC",
+          field: "firstName",
+        },
+      },
+      adminUser,
+      prisma,
+    );
+
+    expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [
+          { firstName: { nulls: "last", sort: "asc" } },
+          { rockId: "asc" },
+        ],
       }),
     );
   });

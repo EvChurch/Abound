@@ -611,8 +611,8 @@ function fixtureToNormalized(
         ? campusIds.get(person.campusFixtureId)
         : null,
       photoRockId: person.photoId,
-      firstName: person.givenName,
-      lastName: person.familyName,
+      firstName: normalizeRockText(person.givenName),
+      lastName: normalizeRockText(person.familyName),
       email: person.email,
       emailActive: person.email ? true : null,
       deceased: !person.isActive,
@@ -987,9 +987,9 @@ function rockPersonSliceToNormalized(
         ? person.PrimaryCampusId
         : null,
     photoRockId: person.PhotoId,
-    firstName: person.FirstName,
-    nickName: person.NickName,
-    lastName: person.LastName,
+    firstName: normalizeRockText(person.FirstName),
+    nickName: normalizeRockText(person.NickName),
+    lastName: normalizeRockText(person.LastName),
     email: person.Email,
     emailActive: person.IsEmailActive,
     recordStatusValueRockId:
@@ -1402,6 +1402,12 @@ function toDate(value?: string | Date | null) {
   const date = value instanceof Date ? value : new Date(value);
 
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function normalizeRockText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : null;
 }
 
 function centsToDecimal(cents: number) {
