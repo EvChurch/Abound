@@ -104,7 +104,10 @@ function AccessRequestCard({
 
       {isPending ? (
         <div className="grid gap-2 sm:flex sm:flex-wrap">
-          <form action={approveAction} className="grid gap-2 sm:flex sm:flex-wrap">
+          <form
+            action={approveAction}
+            className="grid gap-2 sm:flex sm:flex-wrap"
+          >
             <input name="requestId" type="hidden" value={request.id} />
             <RoleSelect defaultValue="FINANCE" />
             <button className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-app-accent bg-app-accent px-3 text-[12.5px] font-semibold text-white sm:min-h-9">

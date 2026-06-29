@@ -99,7 +99,9 @@ describe("Communications pages", () => {
     expect(
       screen.getByRole("heading", { name: "Communications" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Spring follow-up" })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", { name: "Spring follow-up" }),
+    ).toHaveLength(2);
     expect(screen.getByRole("table")).toHaveClass("min-w-[1040px]");
     expect(mocks.navSpy).toHaveBeenCalledWith(
       expect.objectContaining({

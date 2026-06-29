@@ -78,67 +78,67 @@ export function SyncStatus({ summary }: SyncStatusProps) {
         </div>
         {summary.recentRuns.length > 0 ? (
           <>
-          <div className="grid gap-2 md:hidden">
-            {summary.recentRuns.map((run) => (
-              <article
-                className="rounded-md border border-slate-300 bg-white p-4"
-                key={run.id}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <time className="text-sm font-bold text-app-foreground">
-                    {formatDateTime(run.startedAt)}
-                  </time>
-                  <span className={statusClassName(run.status)}>
-                    {statusLabel(run.status)}
-                  </span>
-                </div>
-                <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                  <RunMetric label="Read" value={run.recordsRead} />
-                  <RunMetric label="Written" value={run.recordsWritten} />
-                  <RunMetric label="Skipped" value={run.recordsSkipped} />
-                </dl>
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto rounded-md border border-slate-300 bg-white md:block">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-300 bg-slate-50 text-xs font-bold uppercase text-app-muted">
-                <tr>
-                  <th className="px-4 py-3">Started</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Read</th>
-                  <th className="px-4 py-3">Written</th>
-                  <th className="px-4 py-3">Skipped</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.recentRuns.map((run) => (
-                  <tr
-                    className="border-b border-slate-200 last:border-b-0"
-                    key={run.id}
-                  >
-                    <td className="px-4 py-3 text-app-muted">
+            <div className="grid gap-2 md:hidden">
+              {summary.recentRuns.map((run) => (
+                <article
+                  className="rounded-md border border-slate-300 bg-white p-4"
+                  key={run.id}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <time className="text-sm font-bold text-app-foreground">
                       {formatDateTime(run.startedAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={statusClassName(run.status)}>
-                        {statusLabel(run.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {formatNumber(run.recordsRead)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {formatNumber(run.recordsWritten)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {formatNumber(run.recordsSkipped)}
-                    </td>
+                    </time>
+                    <span className={statusClassName(run.status)}>
+                      {statusLabel(run.status)}
+                    </span>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <RunMetric label="Read" value={run.recordsRead} />
+                    <RunMetric label="Written" value={run.recordsWritten} />
+                    <RunMetric label="Skipped" value={run.recordsSkipped} />
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto rounded-md border border-slate-300 bg-white md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-slate-300 bg-slate-50 text-xs font-bold uppercase text-app-muted">
+                  <tr>
+                    <th className="px-4 py-3">Started</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Read</th>
+                    <th className="px-4 py-3">Written</th>
+                    <th className="px-4 py-3">Skipped</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {summary.recentRuns.map((run) => (
+                    <tr
+                      className="border-b border-slate-200 last:border-b-0"
+                      key={run.id}
+                    >
+                      <td className="px-4 py-3 text-app-muted">
+                        {formatDateTime(run.startedAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={statusClassName(run.status)}>
+                          {statusLabel(run.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatNumber(run.recordsRead)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatNumber(run.recordsWritten)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatNumber(run.recordsSkipped)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
           <EmptyPanel message="No Rock sync runs have been recorded yet." />

@@ -269,98 +269,98 @@ export function ListViewShell(props: ListViewShellProps) {
                   action={action}
                   className="hidden h-full flex-col peer-checked:flex md:flex"
                 >
-                {viewMode === "giving" ? (
-                  <input name="view" type="hidden" value="giving" />
-                ) : null}
-                <div className="border-b border-app-border bg-app-background/60 px-3 py-3">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
-                      Filters
-                    </span>
-                    {activeFilters.length > 0 ? (
-                      <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
-                        {activeFilters.length === 1
-                          ? "1 active"
-                          : `${activeFilters.length} active`}
+                  {viewMode === "giving" ? (
+                    <input name="view" type="hidden" value="giving" />
+                  ) : null}
+                  <div className="border-b border-app-border bg-app-background/60 px-3 py-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+                        Filters
                       </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {activeFilters.length > 0 ? (
-                      activeFilters.map((filter) => (
-                        <span
-                          className="inline-flex min-h-8 max-w-full items-stretch overflow-hidden rounded-[6px] border border-app-border bg-app-surface text-[12px] font-medium leading-none text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)]"
-                          key={`${filter.label}:${filter.value}`}
-                        >
-                          <span className="inline-flex min-w-0 items-center gap-2 px-2.5 py-1.5">
-                            <span className="shrink-0 font-mono text-[10px] font-semibold uppercase text-app-muted">
-                              {filter.label}
-                            </span>
-                            <span className="truncate">{filter.value}</span>
-                          </span>
-                          <Link
-                            aria-label={`Clear ${filter.label} filter`}
-                            className="inline-flex w-7 shrink-0 items-center justify-center border-l border-app-border text-[13px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
-                            href={clearFilterHref({
-                              action,
-                              ageGroup,
-                              columns: selectedColumns,
-                              columnsChanged,
-                              filters: props.filters,
-                              lifecycle: props.lifecycle,
-                              query: props.query,
-                              sort,
-                              target: filter.param,
-                              viewMode,
-                            })}
-                          >
-                            x
-                          </Link>
+                      {activeFilters.length > 0 ? (
+                        <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
+                          {activeFilters.length === 1
+                            ? "1 active"
+                            : `${activeFilters.length} active`}
                         </span>
-                      ))
-                    ) : (
-                      <span className="inline-flex min-h-8 items-center rounded-[6px] border border-dashed border-app-border bg-app-surface px-2.5 text-[12px] font-medium leading-none text-app-muted">
-                        Default view
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {activeFilters.length > 0 ? (
+                        activeFilters.map((filter) => (
+                          <span
+                            className="inline-flex min-h-8 max-w-full items-stretch overflow-hidden rounded-[6px] border border-app-border bg-app-surface text-[12px] font-medium leading-none text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)]"
+                            key={`${filter.label}:${filter.value}`}
+                          >
+                            <span className="inline-flex min-w-0 items-center gap-2 px-2.5 py-1.5">
+                              <span className="shrink-0 font-mono text-[10px] font-semibold uppercase text-app-muted">
+                                {filter.label}
+                              </span>
+                              <span className="truncate">{filter.value}</span>
+                            </span>
+                            <Link
+                              aria-label={`Clear ${filter.label} filter`}
+                              className="inline-flex w-7 shrink-0 items-center justify-center border-l border-app-border text-[13px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                              href={clearFilterHref({
+                                action,
+                                ageGroup,
+                                columns: selectedColumns,
+                                columnsChanged,
+                                filters: props.filters,
+                                lifecycle: props.lifecycle,
+                                query: props.query,
+                                sort,
+                                target: filter.param,
+                                viewMode,
+                              })}
+                            >
+                              x
+                            </Link>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex min-h-8 items-center rounded-[6px] border border-dashed border-app-border bg-app-surface px-2.5 text-[12px] font-medium leading-none text-app-muted">
+                          Default view
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 border-b border-app-border bg-app-surface px-3 py-3">
+                    <div className="grid gap-2">
+                      <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+                        Search
                       </span>
-                    )}
+                      <label className="grid gap-2">
+                        <span className="sr-only">Search</span>
+                        <AutoSubmitInput
+                          className="min-h-9 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[13px] text-app-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] outline-none placeholder:text-app-muted/75 focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
+                          defaultValue={props.query ?? ""}
+                          name="q"
+                          placeholder={
+                            props.kind === "people"
+                              ? "Name or email"
+                              : "Household name"
+                          }
+                        />
+                      </label>
+                    </div>
                   </div>
-                </div>
 
-                <div className="shrink-0 border-b border-app-border bg-app-surface px-3 py-3">
-                  <div className="grid gap-2">
-                    <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
-                      Search
-                    </span>
-                    <label className="grid gap-2">
-                      <span className="sr-only">Search</span>
-                      <AutoSubmitInput
-                        className="min-h-9 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[13px] text-app-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] outline-none placeholder:text-app-muted/75 focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
-                        defaultValue={props.query ?? ""}
-                        name="q"
-                        placeholder={
-                          props.kind === "people"
-                            ? "Name or email"
-                            : "Household name"
-                        }
-                      />
-                    </label>
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <FilterAccordion items={accordionItems} />
                   </div>
-                </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <FilterAccordion items={accordionItems} />
-                </div>
-
-                {activeFilters.length > 0 || columnsChanged ? (
-                  <div className="shrink-0 border-t border-app-border bg-app-background/60 px-3 py-3">
-                    <Link
-                      className="inline-flex min-h-9 w-full items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground"
-                      href={resetHref}
-                    >
-                      Reset
-                    </Link>
-                  </div>
-                ) : null}
+                  {activeFilters.length > 0 || columnsChanged ? (
+                    <div className="shrink-0 border-t border-app-border bg-app-background/60 px-3 py-3">
+                      <Link
+                        className="inline-flex min-h-9 w-full items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground"
+                        href={resetHref}
+                      >
+                        Reset
+                      </Link>
+                    </div>
+                  ) : null}
                 </form>
               </div>
             </aside>

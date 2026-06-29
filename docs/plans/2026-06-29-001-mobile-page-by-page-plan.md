@@ -228,13 +228,13 @@ Recommended viewport checks:
 
 ## Risks And Mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Mobile nav accidentally exposes hidden role-gated routes | Keep nav item construction permission-aware and add render tests. Server-side route guards remain mandatory. |
-| List filters become less efficient for staff power users | Preserve desktop rail behavior and use mobile-specific disclosure only below the chosen breakpoint. |
-| Nested scroll changes break infinite loading | Verify sentinel behavior after changing scroll containers; add a focused test if practical. |
-| Financial data appears in compact summaries for Pastoral Care | Reuse existing `amountsHidden` and role checks; test hidden states where components change. |
-| Charts overflow or become unreadable | Give chart containers stable responsive dimensions and verify rendered output on mobile. |
+| Risk                                                          | Mitigation                                                                                                   |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Mobile nav accidentally exposes hidden role-gated routes      | Keep nav item construction permission-aware and add render tests. Server-side route guards remain mandatory. |
+| List filters become less efficient for staff power users      | Preserve desktop rail behavior and use mobile-specific disclosure only below the chosen breakpoint.          |
+| Nested scroll changes break infinite loading                  | Verify sentinel behavior after changing scroll containers; add a focused test if practical.                  |
+| Financial data appears in compact summaries for Pastoral Care | Reuse existing `amountsHidden` and role checks; test hidden states where components change.                  |
+| Charts overflow or become unreadable                          | Give chart containers stable responsive dimensions and verify rendered output on mobile.                     |
 
 ## Open Questions
 

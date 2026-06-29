@@ -88,37 +88,37 @@ export default async function CommunicationsPage({
             </div>
           ) : (
             <>
-            <div className="grid divide-y divide-app-border md:hidden">
-              {preps.map((prep) => (
-                <CommunicationPrepCard
-                  highlighted={prep.id === params.created}
-                  key={prep.id}
-                  prep={prep}
-                />
-              ))}
-            </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-left text-[13px]">
-                <thead className="text-[11px] uppercase text-app-muted">
-                  <tr>
-                    <TableHead>Prep</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Audience</TableHead>
-                    <TableHead>Handoff</TableHead>
-                    <TableHead>Preview</TableHead>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preps.map((prep) => (
-                    <CommunicationPrepRow
-                      highlighted={prep.id === params.created}
-                      key={prep.id}
-                      prep={prep}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              <div className="grid divide-y divide-app-border md:hidden">
+                {preps.map((prep) => (
+                  <CommunicationPrepCard
+                    highlighted={prep.id === params.created}
+                    key={prep.id}
+                    prep={prep}
+                  />
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-left text-[13px]">
+                  <thead className="text-[11px] uppercase text-app-muted">
+                    <tr>
+                      <TableHead>Prep</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Audience</TableHead>
+                      <TableHead>Handoff</TableHead>
+                      <TableHead>Preview</TableHead>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preps.map((prep) => (
+                      <CommunicationPrepRow
+                        highlighted={prep.id === params.created}
+                        key={prep.id}
+                        prep={prep}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </section>
