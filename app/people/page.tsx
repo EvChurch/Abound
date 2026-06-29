@@ -87,9 +87,5 @@ function sortDefinitionFromParam(value: string | undefined) {
     return { direction: "ASC", field: "lastName" };
   }
 
-  if (value === "lifecycle") {
-    return { direction: "ASC", field: "lifecycle" };
-  }
-
   return value ? { direction: "ASC", field: "firstName" } : undefined;
 }

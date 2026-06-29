@@ -477,7 +477,7 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
-type PeopleSortOption = "firstName" | "lastName" | "lifecycle";
+type PeopleSortOption = "firstName" | "lastName";
 
 const peopleSortOptions: ReadonlyArray<{
   label: string;
@@ -485,7 +485,6 @@ const peopleSortOptions: ReadonlyArray<{
 }> = [
   { label: "First name", value: "firstName" },
   { label: "Last name", value: "lastName" },
-  { label: "Lifecycle signal", value: "lifecycle" },
 ];
 
 function PeopleSortControl({ sort }: { sort: PeopleSortOption }) {
@@ -1303,7 +1302,7 @@ function queryHasValue(value?: string | string[] | null) {
 }
 
 function normalizePeopleSort(value?: string | null): PeopleSortOption {
-  return value === "lastName" || value === "lifecycle" ? value : "firstName";
+  return value === "lastName" ? value : "firstName";
 }
 
 function titleCase(value: string) {
