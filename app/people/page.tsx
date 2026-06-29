@@ -51,6 +51,8 @@ export default async function PeopleLookupPage({
         after: params.after,
         filterDefinition,
         first: 50,
+        savedViewId: params.savedViewId,
+        sortDefinition: sortDefinitionFromParam(params.sort),
       },
       accessState.user,
     ),
@@ -72,9 +74,22 @@ export default async function PeopleLookupPage({
       kind="people"
       lifecycle={params.lifecycle}
       query={params.q}
+      sort={params.sort}
       connectionStatusOptions={connectionStatusOptions}
       recordStatusOptions={recordStatusOptions}
       viewMode={parsePeopleViewMode(params)}
     />
   );
+}
+
+function sortDefinitionFromParam(value: string | undefined) {
+  if (value === "lastName") {
+    return { direction: "ASC", field: "lastName" };
+  }
+
+  if (value === "lifecycle") {
+    return { direction: "ASC", field: "lifecycle" };
+  }
+
+  return value ? { direction: "ASC", field: "firstName" } : undefined;
 }

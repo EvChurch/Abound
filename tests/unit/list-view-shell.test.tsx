@@ -5,12 +5,20 @@ import { ListViewShell } from "@/components/list-views/list-view-shell";
 import type { HouseholdsConnection } from "@/lib/list-views/households-list";
 import type { PeopleConnection } from "@/lib/list-views/people-list";
 
+const infiniteListTableMocks = vi.hoisted(() => ({
+  props: vi.fn(),
+}));
+
 vi.mock("@/components/navigation/app-top-nav", () => ({
   AppTopNav: () => <nav aria-label="Primary">Top nav</nav>,
 }));
 
 vi.mock("@/components/list-views/infinite-list-table", () => ({
-  InfiniteListTable: () => <div data-testid="list-table" />,
+  InfiniteListTable: (props: unknown) => {
+    infiniteListTableMocks.props(props);
+
+    return <div data-testid="list-table" />;
+  },
 }));
 
 const navigationMocks = vi.hoisted(() => ({
@@ -57,6 +65,7 @@ const emptyPeopleConnection: PeopleConnection = {
 
 describe("ListViewShell", () => {
   beforeEach(() => {
+    infiniteListTableMocks.props.mockClear();
     navigationMocks.replace.mockClear();
     navigationMocks.search = "";
   });
@@ -106,6 +115,63 @@ describe("ListViewShell", () => {
     );
 
     expect(screen.getByText("Showing 12 of 3,456 people")).toBeInTheDocument();
+  });
+
+  it("carries the saved view id into infinite-loading requests", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={{
+          ...emptyPeopleConnection,
+          appliedView: {
+            ...emptyPeopleConnection.appliedView,
+            id: "view_123",
+          },
+        }}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    expect(infiniteListTableMocks.props).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryString: expect.stringContaining("savedViewId=view_123"),
+      }),
+    );
+  });
+
+  it("soft-navigates sort changes from the people header and clears pagination", () => {
+    navigationMocks.search = "q=smith&after=cursor_1";
+
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        query="smith"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "sort" }));
+    fireEvent.click(screen.getByRole("option", { name: "Last name" }));
+
+    const [href, options] = navigationMocks.replace.mock.calls[0] as [
+      string,
+      { scroll: boolean },
+    ];
+
+    expect(href).toContain("/people?");
+    expect(href).toContain("q=smith");
+    expect(href).toContain("sort=lastName");
+    expect(href).not.toContain("after=");
+    expect(options).toEqual({ scroll: false });
   });
 
   it("bounds the right workspace so the list scrolls inside the page", () => {

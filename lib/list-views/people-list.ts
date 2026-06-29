@@ -50,6 +50,7 @@ export type ListViewInput = {
   filterDefinition?: unknown;
   first?: number | null;
   savedViewId?: string | null;
+  sortDefinition?: unknown;
 };
 
 export type PageInfo = {
@@ -190,6 +191,8 @@ type PersonListRecord = Prisma.RockPersonGetPayload<{
   select: typeof personListSelect;
 }>;
 
+type PeopleSortDirection = "asc" | "desc";
+
 export async function listPeople(
   input: ListViewInput,
   actor: LocalAppUser,
@@ -241,22 +244,28 @@ export async function listPeople(
     ),
   );
   const totalWhere = filterToPersonWhere(createEmptyFilter(), actor);
-  const [records, filteredCount, totalCount] = await Promise.all([
-    client.rockPerson.findMany({
-      cursor: cursor ? { rockId: cursor.rockId } : undefined,
-      orderBy: [{ rockId: "asc" }],
-      select: personListSelect,
-      skip: cursor ? 1 : 0,
-      take: limit + 1,
-      where: filteredWhere,
-    }),
-    client.rockPerson.count({
-      where: filteredWhere,
-    }),
-    client.rockPerson.count({
-      where: totalWhere,
-    }),
-  ]);
+  const sortDefinition = input.sortDefinition ?? savedView?.sortDefinition;
+  const sort = parsePeopleSortDefinition(sortDefinition) ?? {
+    direction: "asc" as const,
+    field: "firstName",
+  };
+  const [records, filteredCount, totalCount] =
+    sort.field === "lifecycle"
+      ? await lifecycleSortedPeoplePage({
+          client,
+          cursorRockId: cursor?.rockId ?? null,
+          filteredWhere,
+          limit,
+          totalWhere,
+        })
+      : await prismaSortedPeoplePage({
+          client,
+          cursorRockId: cursor?.rockId ?? null,
+          filteredWhere,
+          limit,
+          orderBy: personOrderByFromSort(sort),
+          totalWhere,
+        });
   const pageRecords = records.slice(0, limit);
   const givingSummaries = canSeeGivingAmounts(actor.role)
     ? await givingSummariesByPerson(
@@ -355,6 +364,183 @@ function intersectRockIds(left: number[] | null, right: number[] | null) {
   const rightSet = new Set(right);
 
   return left.filter((rockId) => rightSet.has(rockId));
+}
+
+function personOrderByFromSort(
+  sort: NonNullable<ReturnType<typeof parsePeopleSortDefinition>>,
+): Prisma.RockPersonOrderByWithRelationInput[] {
+  const primary = personSortOrderBy(sort.field, sort.direction);
+
+  if (!primary) {
+    return [{ firstName: "asc" }, { rockId: "asc" }];
+  }
+
+  return sort.field === "rockId" ? [primary] : [primary, { rockId: "asc" }];
+}
+
+function parsePeopleSortDefinition(sortDefinition: unknown) {
+  if (!isRecord(sortDefinition)) {
+    return null;
+  }
+
+  const field =
+    typeof sortDefinition.field === "string" ? sortDefinition.field : null;
+  const direction = peopleSortDirection(sortDefinition.direction);
+
+  if (!field || !direction) {
+    return null;
+  }
+
+  return { direction, field };
+}
+
+function peopleSortDirection(value: unknown): PeopleSortDirection | null {
+  const normalized = String(value ?? "").toLowerCase();
+
+  return normalized === "asc" || normalized === "desc" ? normalized : null;
+}
+
+function personSortOrderBy(
+  field: string,
+  direction: PeopleSortDirection,
+): Prisma.RockPersonOrderByWithRelationInput | null {
+  switch (field) {
+    case "connectionStatus":
+      return { connectionStatus: { value: direction } };
+    case "email":
+    case "firstName":
+    case "lastName":
+    case "lastSyncedAt":
+    case "nickName":
+    case "rockId":
+      return { [field]: direction };
+    case "lifecycle":
+      return null;
+    default:
+      return null;
+  }
+}
+
+async function prismaSortedPeoplePage({
+  client,
+  cursorRockId,
+  filteredWhere,
+  limit,
+  orderBy,
+  totalWhere,
+}: {
+  client: PeopleListClient;
+  cursorRockId: number | null;
+  filteredWhere: Prisma.RockPersonWhereInput;
+  limit: number;
+  orderBy: Prisma.RockPersonOrderByWithRelationInput[];
+  totalWhere: Prisma.RockPersonWhereInput;
+}) {
+  return Promise.all([
+    client.rockPerson.findMany({
+      cursor: cursorRockId ? { rockId: cursorRockId } : undefined,
+      orderBy,
+      select: personListSelect,
+      skip: cursorRockId ? 1 : 0,
+      take: limit + 1,
+      where: filteredWhere,
+    }),
+    client.rockPerson.count({
+      where: filteredWhere,
+    }),
+    client.rockPerson.count({
+      where: totalWhere,
+    }),
+  ]);
+}
+
+async function lifecycleSortedPeoplePage({
+  client,
+  cursorRockId,
+  filteredWhere,
+  limit,
+  totalWhere,
+}: {
+  client: PeopleListClient;
+  cursorRockId: number | null;
+  filteredWhere: Prisma.RockPersonWhereInput;
+  limit: number;
+  totalWhere: Prisma.RockPersonWhereInput;
+}) {
+  const [idRows, totalCount] = await Promise.all([
+    client.rockPerson.findMany({
+      orderBy: [{ firstName: "asc" }, { rockId: "asc" }],
+      select: {
+        rockId: true,
+      },
+      where: filteredWhere,
+    }),
+    client.rockPerson.count({
+      where: totalWhere,
+    }),
+  ]);
+  const orderedIds = await lifecycleSortedRockIds(
+    idRows.map((row) => row.rockId),
+    client,
+  );
+  const cursorIndex = cursorRockId ? orderedIds.indexOf(cursorRockId) : -1;
+  const pageIds = orderedIds.slice(
+    cursorIndex + 1,
+    cursorIndex + 1 + limit + 1,
+  );
+  const records =
+    pageIds.length > 0
+      ? await client.rockPerson.findMany({
+          select: personListSelect,
+          where: {
+            rockId: {
+              in: pageIds,
+            },
+          },
+        })
+      : [];
+  const positionById = new Map(pageIds.map((rockId, index) => [rockId, index]));
+
+  records.sort(
+    (left, right) =>
+      (positionById.get(left.rockId) ?? 0) -
+      (positionById.get(right.rockId) ?? 0),
+  );
+
+  return [records, orderedIds.length, totalCount] as const;
+}
+
+async function lifecycleSortedRockIds(
+  personRockIds: number[],
+  client: PeopleListClient,
+) {
+  const lifecycleLabels = await lifecycleLabelsByPerson(personRockIds, client);
+
+  return [...personRockIds].sort((left, right) => {
+    const rankDelta =
+      lifecycleSortRank(lifecycleLabels.get(left)?.[0]?.lifecycle) -
+      lifecycleSortRank(lifecycleLabels.get(right)?.[0]?.lifecycle);
+
+    return rankDelta || left - right;
+  });
+}
+
+function lifecycleSortRank(value: string | undefined) {
+  const ranks: Record<string, number> = {
+    HEALTHY: 0,
+    NEW: 1,
+    REACTIVATED: 2,
+    AT_RISK: 3,
+    DROPPED: 4,
+    LAPSED: 5,
+    NEVER_GIVEN: 6,
+  };
+
+  return value ? (ranks[value] ?? 7) : 7;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function nodeToPersonWhere(

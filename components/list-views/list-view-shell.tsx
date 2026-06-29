@@ -42,6 +42,7 @@ type ListViewShellProps =
       kind: "people";
       lifecycle?: PageParamValue | null;
       query?: string | null;
+      sort?: string | null;
       connectionStatusOptions: ConnectionStatusFilterOption[];
       recordStatusOptions: RecordStatusFilterOption[];
       viewMode?: PeopleViewMode;
@@ -73,6 +74,7 @@ export function ListViewShell(props: ListViewShellProps) {
     query: props.query,
   });
   const viewMode = props.kind === "people" ? (props.viewMode ?? "list") : null;
+  const sort = props.kind === "people" ? normalizePeopleSort(props.sort) : null;
   const resetHref =
     props.kind === "people"
       ? viewMode === "giving"
@@ -267,6 +269,7 @@ export function ListViewShell(props: ListViewShellProps) {
                               filters: props.filters,
                               lifecycle: props.lifecycle,
                               query: props.query,
+                              sort,
                               target: filter.param,
                               viewMode,
                             })}
@@ -331,6 +334,7 @@ export function ListViewShell(props: ListViewShellProps) {
                 lifecycle={props.lifecycle}
                 query={props.query}
                 selectedColumns={selectedColumns}
+                sort={sort}
                 viewMode={viewMode}
               />
               {props.kind === "people" ? (
@@ -343,6 +347,8 @@ export function ListViewShell(props: ListViewShellProps) {
                     filters: props.filters,
                     lifecycle: props.lifecycle,
                     query: props.query,
+                    savedViewId: props.connection.appliedView.id,
+                    sort,
                   })}`}
                   kind="people"
                   queryString={infiniteQueryString({
@@ -351,6 +357,8 @@ export function ListViewShell(props: ListViewShellProps) {
                     filters: props.filters,
                     lifecycle: props.lifecycle,
                     query: props.query,
+                    savedViewId: props.connection.appliedView.id,
+                    sort,
                   })}
                   viewMode={viewMode}
                 />
@@ -390,6 +398,7 @@ function ListWorkspaceHeader({
   lifecycle,
   query,
   selectedColumns,
+  sort,
   viewMode,
 }: {
   action: "/households" | "/people";
@@ -400,6 +409,7 @@ function ListWorkspaceHeader({
   lifecycle?: PageParamValue | null;
   query?: string | null;
   selectedColumns: ListColumnKey[];
+  sort?: PeopleSortOption | null;
   viewMode: PeopleViewMode | null;
 }) {
   const countSummary =
@@ -425,18 +435,23 @@ function ListWorkspaceHeader({
           filters={filters}
           lifecycle={lifecycle}
           query={query}
+          sort={sort}
         />
         <div className="flex items-center gap-2">
           {kind === "people" ? (
-            <PeopleViewModeControl
-              action="/people"
-              ageGroup={ageGroup}
-              filters={filters}
-              lifecycle={lifecycle}
-              query={query}
-              selectedColumns={selectedColumns}
-              viewMode={viewMode ?? "list"}
-            />
+            <>
+              <PeopleSortControl sort={sort ?? "firstName"} />
+              <PeopleViewModeControl
+                action="/people"
+                ageGroup={ageGroup}
+                filters={filters}
+                lifecycle={lifecycle}
+                query={query}
+                selectedColumns={selectedColumns}
+                sort={sort}
+                viewMode={viewMode ?? "list"}
+              />
+            </>
           ) : null}
           <ColumnsMenu>
             <ColumnPanel selectedColumns={selectedColumns} />
@@ -462,6 +477,31 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+type PeopleSortOption = "firstName" | "lastName" | "lifecycle";
+
+const peopleSortOptions: ReadonlyArray<{
+  label: string;
+  value: PeopleSortOption;
+}> = [
+  { label: "First name", value: "firstName" },
+  { label: "Last name", value: "lastName" },
+  { label: "Lifecycle signal", value: "lifecycle" },
+];
+
+function PeopleSortControl({ sort }: { sort: PeopleSortOption }) {
+  return (
+    <label className="hidden items-center gap-2 text-[12px] font-semibold text-app-muted sm:flex">
+      <span>Sort</span>
+      <AutoSubmitSelect
+        className="min-h-9 rounded-[6px] border border-app-border bg-app-surface px-2.5 text-[13px] font-semibold text-app-foreground outline-none focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
+        defaultValue={sort}
+        name="sort"
+        options={peopleSortOptions}
+      />
+    </label>
+  );
+}
+
 function PeopleViewModeControl({
   action,
   ageGroup,
@@ -469,6 +509,7 @@ function PeopleViewModeControl({
   lifecycle,
   query,
   selectedColumns,
+  sort,
   viewMode,
 }: {
   action: "/people";
@@ -477,6 +518,7 @@ function PeopleViewModeControl({
   lifecycle?: PageParamValue | null;
   query?: string | null;
   selectedColumns: ListColumnKey[];
+  sort?: PeopleSortOption | null;
   viewMode: PeopleViewMode;
 }) {
   const options = [
@@ -510,6 +552,7 @@ function PeopleViewModeControl({
               lifecycle,
               query,
               selectedColumns,
+              sort,
               viewMode: option.value,
             })}
             key={option.value}
@@ -780,14 +823,17 @@ function PreservedQueryInputs({
   filters,
   lifecycle,
   query,
+  sort,
 }: {
   ageGroup?: string | null;
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
   query?: string | null;
+  sort?: PeopleSortOption | null;
 }) {
   const entries: Array<[string, string]> = [];
 
+  if (sort && sort !== "firstName") entries.push(["sort", sort]);
   if (query) entries.push(["q", query]);
   for (const value of filterValues(lifecycle)) {
     entries.push(["lifecycle", value]);
@@ -1084,6 +1130,7 @@ function clearFilterHref({
   filters,
   lifecycle,
   query,
+  sort,
   target,
   viewMode,
 }: {
@@ -1094,12 +1141,14 @@ function clearFilterHref({
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
   query?: string | null;
+  sort?: PeopleSortOption | null;
   target: ListFilterParam;
   viewMode?: PeopleViewMode | null;
 }) {
   const params = new URLSearchParams();
 
   if (viewMode === "giving") params.set("view", "giving");
+  if (sort && sort !== "firstName") params.set("sort", sort);
   if (query) params.set("q", query);
   for (const value of filterValues(lifecycle)) {
     params.append("lifecycle", value);
@@ -1122,6 +1171,7 @@ function peopleViewModeHref({
   lifecycle,
   query,
   selectedColumns,
+  sort,
   viewMode,
 }: {
   action: "/people";
@@ -1130,10 +1180,12 @@ function peopleViewModeHref({
   lifecycle?: PageParamValue | null;
   query?: string | null;
   selectedColumns: ListColumnKey[];
+  sort?: PeopleSortOption | null;
   viewMode: PeopleViewMode;
 }) {
   const params = new URLSearchParams();
 
+  if (sort && sort !== "firstName") params.set("sort", sort);
   if (query) params.set("q", query);
   for (const value of filterValues(lifecycle)) {
     params.append("lifecycle", value);
@@ -1212,15 +1264,23 @@ function infiniteQueryString({
   filters,
   lifecycle,
   query,
+  savedViewId,
+  sort,
 }: {
   ageGroup?: string | null;
   columns: ListColumnKey[];
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
   query?: string | null;
+  savedViewId?: string | null;
+  sort?: PeopleSortOption | null;
 }) {
   const params = new URLSearchParams();
 
+  if (savedViewId) params.set("savedViewId", savedViewId);
+  if (sort && (sort !== "firstName" || savedViewId)) {
+    params.set("sort", sort);
+  }
   if (query) params.set("q", query);
   for (const value of filterValues(lifecycle)) {
     params.append("lifecycle", value);
@@ -1240,6 +1300,10 @@ function filterValues(value?: string | string[] | null) {
 
 function queryHasValue(value?: string | string[] | null) {
   return filterValues(value).length > 0;
+}
+
+function normalizePeopleSort(value?: string | null): PeopleSortOption {
+  return value === "lastName" || value === "lifecycle" ? value : "firstName";
 }
 
 function titleCase(value: string) {

@@ -40,6 +40,8 @@ export async function GET(request: Request, context: RouteContext) {
         after: params.after,
         filterDefinition: buildPeopleFilter(params),
         first: 50,
+        savedViewId: params.savedViewId,
+        sortDefinition: sortDefinitionFromParam(params.sort),
       },
       accessState.user,
     );
@@ -61,4 +63,16 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({ error: "Unknown list view." }, { status: 404 });
+}
+
+function sortDefinitionFromParam(value: string | undefined) {
+  if (value === "lastName") {
+    return { direction: "ASC", field: "lastName" };
+  }
+
+  if (value === "lifecycle") {
+    return { direction: "ASC", field: "lifecycle" };
+  }
+
+  return value ? { direction: "ASC", field: "firstName" } : undefined;
 }

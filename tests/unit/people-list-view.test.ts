@@ -25,6 +25,7 @@ function client({
   rockPersonCount = vi.fn(async () => 0),
   lifecycleSnapshotFindMany = vi.fn(async () => []),
   rockPersonFindMany = vi.fn(async () => []),
+  savedListViewFindFirst = vi.fn(async () => null),
 }: {
   givingFactFindMany?: ReturnType<typeof vi.fn>;
   givingPledgeFindMany?: ReturnType<typeof vi.fn>;
@@ -34,6 +35,7 @@ function client({
   rockFinancialAccountFindMany?: ReturnType<typeof vi.fn>;
   rockPersonCount?: ReturnType<typeof vi.fn>;
   rockPersonFindMany?: ReturnType<typeof vi.fn>;
+  savedListViewFindFirst?: ReturnType<typeof vi.fn>;
 } = {}) {
   const findMany = rockPersonFindMany;
 
@@ -60,6 +62,9 @@ function client({
       count: rockPersonCount,
       findMany,
     },
+    savedListView: {
+      findFirst: savedListViewFindFirst,
+    },
   } as unknown as PrismaClient & {
     givingFact: {
       findMany: typeof givingFactFindMany;
@@ -82,6 +87,9 @@ function client({
     rockPerson: {
       count: typeof rockPersonCount;
       findMany: typeof findMany;
+    };
+    savedListView: {
+      findFirst: typeof savedListViewFindFirst;
     };
   };
 }
@@ -137,6 +145,135 @@ describe("people list view", () => {
       total: 42,
     });
     expect(rockPersonCount).toHaveBeenCalledTimes(2);
+  });
+
+  it("applies saved view sorting with a stable rock id tie-breaker", async () => {
+    const prisma = client({
+      savedListViewFindFirst: vi.fn(async () => ({
+        filterDefinition: {
+          conditions: [],
+          mode: "all",
+          type: "group",
+        },
+        id: "view_123",
+        name: "Sorted people",
+        pageSize: 10,
+        sortDefinition: {
+          direction: "DESC",
+          field: "lastName",
+        },
+      })),
+    });
+
+    await listPeople({ first: 10, savedViewId: "view_123" }, adminUser, prisma);
+
+    expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ lastName: "desc" }, { rockId: "asc" }],
+      }),
+    );
+  });
+
+  it("sorts people by lifecycle signal across paged results", async () => {
+    const rockPersonFindMany = vi.fn(async (args?: unknown) => {
+      const select = (args as { select?: Record<string, unknown> } | undefined)
+        ?.select;
+
+      if (select && Object.keys(select).length === 1 && select.rockId) {
+        return [{ rockId: 3 }, { rockId: 1 }, { rockId: 2 }];
+      }
+
+      return [
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: null,
+          deceased: false,
+          email: null,
+          emailActive: null,
+          firstName: "Healthy",
+          lastName: "Person",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 1,
+        },
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: null,
+          deceased: false,
+          email: null,
+          emailActive: null,
+          firstName: "Dropped",
+          lastName: "Person",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 2,
+        },
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: null,
+          deceased: false,
+          email: null,
+          emailActive: null,
+          firstName: "New",
+          lastName: "Person",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 3,
+        },
+      ];
+    });
+    const prisma = client({
+      lifecycleSnapshotFindMany: vi.fn(async () => [
+        {
+          lifecycle: "DROPPED",
+          personRockId: 2,
+          summary: "Previously at-risk giving now appears dropped.",
+          windowEndedAt: new Date("2026-04-20T00:00:00Z"),
+        },
+        {
+          lifecycle: "NEW",
+          personRockId: 3,
+          summary: "First giving activity appears in the current window.",
+          windowEndedAt: new Date("2026-04-20T00:00:00Z"),
+        },
+      ]),
+      rockPersonFindMany,
+    });
+
+    const connection = await listPeople(
+      {
+        first: 10,
+        sortDefinition: {
+          direction: "ASC",
+          field: "lifecycle",
+        },
+      },
+      adminUser,
+      prisma,
+    );
+
+    expect(connection.edges.map((edge) => edge.node.rockId)).toEqual([3, 2, 1]);
+    expect(rockPersonFindMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          rockId: {
+            in: [3, 2, 1],
+          },
+        },
+      }),
+    );
   });
 
   it("allows filtering to children explicitly", async () => {

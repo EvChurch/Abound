@@ -25,6 +25,8 @@ export type PeopleListQueryParams = {
   pledgeState?: PageParamValue;
   q?: string;
   recordStatus?: PageParamValue;
+  savedViewId?: string;
+  sort?: string;
   taskPriority?: string;
   taskStatus?: string;
   view?: string;
@@ -310,6 +312,8 @@ export function paramsFromSearch(searchParams: URLSearchParams) {
     q: valueFromSearch(searchParams, "q"),
     recordStatus: valuesFromSearch(searchParams, "recordStatus"),
     rockStatus: valueFromSearch(searchParams, "rockStatus"),
+    savedViewId: valueFromSearch(searchParams, "savedViewId"),
+    sort: valueFromSearch(searchParams, "sort"),
     taskPriority: valueFromSearch(searchParams, "taskPriority"),
     taskStatus: valueFromSearch(searchParams, "taskStatus"),
     view: valueFromSearch(searchParams, "view"),

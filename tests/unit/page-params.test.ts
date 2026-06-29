@@ -31,12 +31,13 @@ describe("list view page params", () => {
   it("preserves repeated people status params from URLSearchParams", () => {
     const params = paramsFromSearch(
       new URLSearchParams(
-        "connectionStatus=Attendee&connectionStatus=Member&recordStatus=Active&recordStatus=Pending",
+        "connectionStatus=Attendee&connectionStatus=Member&recordStatus=Active&recordStatus=Pending&savedViewId=view_123",
       ),
     );
 
     expect(params.connectionStatus).toEqual(["Attendee", "Member"]);
     expect(params.recordStatus).toEqual(["Active", "Pending"]);
+    expect(params.savedViewId).toBe("view_123");
   });
 
   it("builds multi-selected lifecycle filters and preserves them from URLSearchParams", () => {
