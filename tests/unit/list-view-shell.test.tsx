@@ -128,6 +128,11 @@ describe("ListViewShell", () => {
       "flex-col",
       "overflow-hidden",
     );
+    expect(screen.getByTestId("list-table").closest("section")).toHaveClass(
+      "h-full",
+      "min-h-0",
+      "min-w-0",
+    );
   });
 
   it("renders lifecycle signals as multi-select choices without an any option", () => {

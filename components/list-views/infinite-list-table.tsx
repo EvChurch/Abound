@@ -39,6 +39,7 @@ export function InfiniteListTable(props: InfiniteListTableProps) {
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingCursorRef = useRef<string | null>(null);
+  const loadStatus = nextLoadStatus(currentConnection, kind, isPending);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -108,11 +109,30 @@ export function InfiniteListTable(props: InfiniteListTableProps) {
           className="flex min-h-16 items-center justify-center border-t border-app-border bg-app-surface text-[12px] font-medium text-app-muted"
           ref={sentinelRef}
         >
-          {isPending ? "Loading more..." : null}
+          {loadStatus}
         </div>
       ) : null}
     </div>
   );
+}
+
+function nextLoadStatus(
+  connection: ListConnection,
+  kind: "households" | "people",
+  isPending: boolean,
+) {
+  const loaded = connection.edges.length;
+  const nextLoadedCount = loaded + connection.appliedView.pageSize;
+  const cappedCount =
+    kind === "people" && "resultCount" in connection && connection.resultCount
+      ? Math.min(nextLoadedCount, connection.resultCount.filtered)
+      : nextLoadedCount;
+  const resourceLabel = kind === "people" ? "people" : "households";
+  const formattedCount = new Intl.NumberFormat("en-US").format(cappedCount);
+
+  return isPending
+    ? `Loading up to ${formattedCount} ${resourceLabel}...`
+    : `Scroll to load up to ${formattedCount} ${resourceLabel}`;
 }
 
 async function fetchNextConnection(

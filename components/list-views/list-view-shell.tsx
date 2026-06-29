@@ -222,9 +222,9 @@ export function ListViewShell(props: ListViewShellProps) {
         canManageSettings={props.canManageSettings}
         canManageTools={props.canManageTools}
       />
-      <main className="h-[calc(100vh-48px)] overflow-hidden md:pl-[300px] xl:pl-[320px]">
-        <section className="min-w-0">
-          <div className="md:contents">
+      <main className="h-[calc(100vh-48px)] min-h-0 overflow-hidden md:pl-[300px] xl:pl-[320px]">
+        <section className="h-full min-h-0 min-w-0">
+          <div className="h-full min-h-0 md:contents">
             <aside className="border-b border-app-border bg-app-surface md:fixed md:bottom-0 md:left-0 md:top-12 md:z-20 md:w-[300px] md:border-b-0 md:border-r xl:w-[320px]">
               <form action={action} className="flex h-full flex-col">
                 {viewMode === "giving" ? (
