@@ -28,6 +28,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Use pnpm as the package manager. Keep `pnpm-lock.yaml` committed.
 - Use Tailwind CSS for styling. Avoid hand-rolled component styling unless there is a clear reason Tailwind utilities do not fit.
 - Husky runs pre-commit checks. Keep hooks fast and focused on lint/typecheck unless the project later chooses broader gates.
+- Commit-time checks must include `pnpm format:check` before lint/typecheck so formatting failures are caught before CI and production deploy attempts.
 - Favor clear service boundaries around Rock sync, giving analytics, task workflows, communication workflows, donor-facing APIs, auth, and AI assistance.
 
 ## Engineering Standards
@@ -59,6 +60,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Test: `pnpm test`
 - Format: `pnpm format`
 - Check formatting: `pnpm format:check`
+- Commit hook verification: `.husky/pre-commit` must run `pnpm format:check`, `pnpm lint`, and `pnpm typecheck` in that order.
 - Generate Prisma client: `pnpm prisma:generate`
 - Run development migrations: `pnpm prisma:migrate`
 - Seed bootstrap admin data: `pnpm prisma:seed`
