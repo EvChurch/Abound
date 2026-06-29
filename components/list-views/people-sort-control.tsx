@@ -5,7 +5,6 @@ import { ArrowDownAZ, ArrowDownZA } from "lucide-react";
 import { AutoSubmitSelect } from "@/components/list-views/auto-submit-controls";
 import {
   encodePeopleSortParam,
-  parsePeopleSortParam,
   type PeopleSortParam,
 } from "@/lib/list-views/page-params";
 
@@ -20,17 +19,31 @@ const peopleSortOptions: ReadonlyArray<{
 ];
 
 export function PeopleSortControl({ sort }: { sort: PeopleSortParam }) {
-  const options = peopleSortOptions.map((option) => ({
-    ...option,
-    label:
-      option.value === sort.field
-        ? `${option.label}: ${sortDirectionLabel(sort.direction)} (click for ${sortDirectionLabel(
-            oppositeSortDirection(sort.direction),
-          )})`
-        : `${option.label}: A-Z`,
-    value:
-      option.value === sort.field ? encodePeopleSortParam(sort) : option.value,
-  }));
+  const options = peopleSortOptions.flatMap((option) => {
+    const mainOption = {
+      label: option.label,
+      value: encodePeopleSortParam({
+        direction: "asc",
+        field: option.value,
+      }),
+    };
+
+    if (option.value !== sort.field) {
+      return [mainOption];
+    }
+
+    return [
+      mainOption,
+      {
+        indent: true,
+        label: `Reverse (${sortDirectionLabel("desc")})`,
+        value: encodePeopleSortParam({
+          direction: "desc",
+          field: option.value,
+        }),
+      },
+    ];
+  });
   const SortIcon = sort.direction === "desc" ? ArrowDownZA : ArrowDownAZ;
 
   return (
@@ -44,10 +57,7 @@ export function PeopleSortControl({ sort }: { sort: PeopleSortParam }) {
       name="sort"
       options={options}
       rootClassName="relative hidden sm:inline-block"
-      submittedValue={(value) => nextPeopleSortValue(value, sort)}
-      title={`Sort people: ${sortDirectionLabel(sort.direction)}. Select the active option again for ${sortDirectionLabel(
-        oppositeSortDirection(sort.direction),
-      )}.`}
+      title={`Sort people: ${sortDirectionLabel(sort.direction)}`}
       triggerIcon={
         <SortIcon aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
       }
@@ -55,23 +65,6 @@ export function PeopleSortControl({ sort }: { sort: PeopleSortParam }) {
   );
 }
 
-function nextPeopleSortValue(value: string, current: PeopleSortParam) {
-  const selected = parsePeopleSortParam(value);
-
-  if (selected.field !== current.field) {
-    return encodePeopleSortParam({ direction: "asc", field: selected.field });
-  }
-
-  return encodePeopleSortParam({
-    direction: current.direction === "asc" ? "desc" : "asc",
-    field: current.field,
-  });
-}
-
 function sortDirectionLabel(direction: PeopleSortParam["direction"]) {
   return direction === "asc" ? "A-Z" : "Z-A";
-}
-
-function oppositeSortDirection(direction: PeopleSortParam["direction"]) {
-  return direction === "asc" ? "desc" : "asc";
 }

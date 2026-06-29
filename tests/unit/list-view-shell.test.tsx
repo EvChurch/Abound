@@ -162,10 +162,16 @@ describe("ListViewShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
     expect(
       screen.getByRole("option", {
-        name: "First name: A-Z (click for Z-A)",
+        name: "First name",
       }),
     ).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("option", { name: "Last name: A-Z" }));
+    expect(
+      screen.getByRole("option", { name: "Reverse (Z-A)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("option", { name: "Reverse (Z-A)" }),
+    ).toHaveLength(1);
+    fireEvent.click(screen.getByRole("option", { name: "Last name" }));
 
     const [href, options] = navigationMocks.replace.mock.calls[0] as [
       string,
@@ -179,7 +185,7 @@ describe("ListViewShell", () => {
     expect(options).toEqual({ scroll: false });
   });
 
-  it("toggles sort direction when selecting the active sort again", () => {
+  it("shows a reverse sub-item for the active sort field", () => {
     navigationMocks.search = "q=smith&sort=lastName&after=cursor_1";
 
     render(
@@ -198,11 +204,17 @@ describe("ListViewShell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
     const activeSort = screen.getByRole("option", {
-      name: "Last name: A-Z (click for Z-A)",
+      name: "Last name",
     });
 
     expect(activeSort).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(activeSort);
+    expect(
+      screen.getByRole("option", { name: "Reverse (Z-A)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("option", { name: "Reverse (Z-A)" }),
+    ).toHaveLength(1);
+    fireEvent.click(screen.getByRole("option", { name: "Reverse (Z-A)" }));
 
     const [href] = navigationMocks.replace.mock.calls[0] as [
       string,
@@ -244,12 +256,41 @@ describe("ListViewShell", () => {
 
     expect(
       screen.getByRole("option", {
-        name: "First name: A-Z (click for Z-A)",
+        name: "First name",
       }),
     ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: "Last name" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("highlights the reverse sub-item when descending is selected", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        sort="firstName:desc"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort people" }));
+
+    expect(screen.getByRole("option", { name: "First name" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
     expect(
-      screen.getByRole("option", { name: "Last name: A-Z" }),
-    ).toHaveAttribute("aria-selected", "false");
+      screen.getByRole("option", { name: "Reverse (Z-A)" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getAllByRole("option", { name: "Reverse (Z-A)" }),
+    ).toHaveLength(1);
   });
 
   it("bounds the right workspace so the list scrolls inside the page", () => {

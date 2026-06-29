@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 type SelectOption = {
+  indent?: boolean;
   label: string;
   value: string;
 };
@@ -197,8 +198,12 @@ export function CustomSelect({
                             aria-selected={active}
                             className={
                               active
-                                ? "flex w-full items-center justify-between rounded-[6px] bg-app-chip px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-app-foreground"
-                                : "flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-[12.5px] text-app-muted transition hover:bg-app-soft hover:text-app-foreground"
+                                ? `flex w-full items-center justify-between rounded-[6px] bg-app-chip py-1.5 pr-2.5 text-left text-[12.5px] font-semibold text-app-foreground ${
+                                    option.indent ? "pl-6" : "pl-2.5"
+                                  }`
+                                : `flex w-full items-center justify-between rounded-[6px] py-1.5 pr-2.5 text-left text-[12.5px] text-app-muted transition hover:bg-app-soft hover:text-app-foreground ${
+                                    option.indent ? "pl-6" : "pl-2.5"
+                                  }`
                             }
                             onClick={() => {
                               if (value === undefined) {

@@ -20,7 +20,7 @@ type SelectProps = {
   hideSelectedLabel?: boolean;
   menuClassName?: string;
   name: string;
-  options: ReadonlyArray<{ label: string; value: string }>;
+  options: ReadonlyArray<{ indent?: boolean; label: string; value: string }>;
   rootClassName?: string;
   submittedValue?: (value: string) => string;
   title?: string;
