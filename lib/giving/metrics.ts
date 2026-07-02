@@ -57,9 +57,11 @@ export type MonthlyGiving = {
 export type HouseholdDonorTrend = {
   atRiskHouseholdDonors: number;
   campusSeries: CampusHouseholdDonorSeries[];
+  growingConnectionStatusLifecycle: ConnectionStatusLifecycleSummary;
   lifecycleCounts: LifecycleCounts;
   movement: HouseholdMovementSummary;
   months: MonthlyHouseholdDonorCount[];
+  neverGivenConnectionStatusCount: number;
   sourceExplanation: string;
   totalHouseholdDonors: number;
 };
@@ -77,9 +79,18 @@ export type GivingPerAdult = {
   windowStartedMonth: string;
 };
 
-export type DashboardLifecycleKind = GivingLifecycleKind | "HEALTHY";
+export type DashboardLifecycleKind =
+  | GivingLifecycleKind
+  | "HEALTHY"
+  | "NEVER_GIVEN";
 
 export type LifecycleCounts = Record<DashboardLifecycleKind, number>;
+
+export type ConnectionStatusLifecycleSummary = {
+  lifecycleCounts: LifecycleCounts;
+  statusLabel: string;
+  totalPeople: number;
+};
 
 export type HouseholdMovementKind =
   | "DROPPED"
@@ -182,6 +193,12 @@ const HOUSEHOLD_MOVEMENT_SOURCE_EXPLANATION =
 const GIVING_PER_ADULT_SOURCE_EXPLANATION =
   "Total platform-fund giving for the last 12 completed months divided by active Adult household members in households that gave during that window.";
 
+const NEVER_GIVEN_CONNECTION_STATUSES = new Set([
+  "attending",
+  "growing",
+  "joining",
+]);
+
 const emptyMovementCounts = (): Record<HouseholdMovementKind, number> => ({
   DROPPED: 0,
   NEW: 0,
@@ -195,8 +212,16 @@ const emptyLifecycleCounts = (): LifecycleCounts => ({
   HEALTHY: 0,
   LAPSED: 0,
   NEW: 0,
+  NEVER_GIVEN: 0,
   REACTIVATED: 0,
 });
+
+const emptyGrowingConnectionStatusLifecycle =
+  (): ConnectionStatusLifecycleSummary => ({
+    lifecycleCounts: emptyLifecycleCounts(),
+    statusLabel: "Growing",
+    totalPeople: 0,
+  });
 
 export async function getPersonGivingSummary(
   personRockId: number,
@@ -279,13 +304,20 @@ export async function getHouseholdDonorTrend(
       },
     },
   });
+  const lifecycleSummary = await dashboardPersonLifecycleSummary(
+    client,
+    fundScope,
+    referenceDate,
+  );
 
   return withPlatformFundTrendSourceExplanation(
     summarizeHouseholdDonorTrend(
       facts,
       referenceDate,
       await campusNamesForFacts(facts, client),
-      await personLifecycleCounts(client, fundScope, referenceDate),
+      lifecycleSummary.lifecycleCounts,
+      lifecycleSummary.growingConnectionStatusLifecycle,
+      lifecycleSummary.neverGivenConnectionStatusCount,
     ),
     fundScope,
   );
@@ -527,6 +559,8 @@ export function summarizeHouseholdDonorTrend(
   referenceDate = new Date(),
   campusNames = new Map<number, CampusName>(),
   lifecycleCounts = emptyLifecycleCounts(),
+  growingConnectionStatusLifecycle = emptyGrowingConnectionStatusLifecycle(),
+  neverGivenConnectionStatusCount = 0,
 ): HouseholdDonorTrend {
   const monthKeys = lastTwentyFourCompletedMonthKeys(referenceDate);
   const monthKeySet = new Set(monthKeys);
@@ -620,24 +654,26 @@ export function summarizeHouseholdDonorTrend(
             (right.campusRockId ?? Number.MAX_SAFE_INTEGER)
         );
       }),
+    growingConnectionStatusLifecycle,
     movement: summarizeHouseholdMovement(facts, monthKeys, campusNames),
     lifecycleCounts,
     months: monthKeys.map((key) => ({
       householdDonorCount: householdIdsByMonth.get(key)?.size ?? 0,
       month: key,
     })),
+    neverGivenConnectionStatusCount,
     sourceExplanation: HOUSEHOLD_DONOR_SOURCE_EXPLANATION,
     totalHouseholdDonors: totalHouseholdIds.size,
   };
 }
 
-async function personLifecycleCounts(
+async function dashboardPersonLifecycleSummary(
   client: PrismaClient,
   fundScope: Awaited<ReturnType<typeof getPlatformFundScope>>,
   referenceDate: Date,
 ) {
   try {
-    const [snapshotRows, factRows] = await Promise.all([
+    const [snapshotRows, factRows, personRows] = await Promise.all([
       client.givingLifecycleSnapshot.findMany({
         select: {
           lifecycle: true,
@@ -664,45 +700,219 @@ async function personLifecycleCounts(
           },
         },
       }),
+      client.rockPerson.findMany({
+        select: {
+          connectionStatus: {
+            select: {
+              value: true,
+            },
+          },
+          rockId: true,
+        },
+      }),
     ]);
-    const personIdsByLifecycle = new Map<GivingLifecycleKind, Set<number>>();
-    const personIdsWithLifecycle = new Set<number>();
-
-    for (const row of snapshotRows) {
-      if (row.personRockId && GIVING_LIFECYCLE_KINDS.includes(row.lifecycle)) {
-        const people = personIdsByLifecycle.get(row.lifecycle) ?? new Set();
-        people.add(row.personRockId);
-        personIdsByLifecycle.set(row.lifecycle, people);
-        personIdsWithLifecycle.add(row.personRockId);
-      }
-    }
-    const counts = emptyLifecycleCounts();
-
-    for (const lifecycle of GIVING_LIFECYCLE_KINDS) {
-      counts[lifecycle] = personIdsByLifecycle.get(lifecycle)?.size ?? 0;
-    }
-
-    counts.HEALTHY = healthyPersonCount({
+    const allPersonRockIds = new Set(personRows.map((person) => person.rockId));
+    const lifecycleCounts = lifecycleCountsFromRows({
+      allPersonRockIds,
       factRows,
-      personIdsWithLifecycle,
       referenceDate,
+      snapshotRows,
+    });
+    const growingPersonRockIds = new Set(
+      personRows
+        .filter(
+          (person) =>
+            person.connectionStatus?.value.trim().toLowerCase() === "growing",
+        )
+        .map((person) => person.rockId),
+    );
+    const neverGivenCategoryPersonRockIds = new Set(
+      personRows
+        .filter(
+          (person) =>
+            person.connectionStatus?.value &&
+            NEVER_GIVEN_CONNECTION_STATUSES.has(
+              person.connectionStatus.value.trim().toLowerCase(),
+            ),
+        )
+        .map((person) => person.rockId),
+    );
+    const neverGivenCategoryLifecycleCounts = lifecycleCountsFromRows({
+      allPersonRockIds: neverGivenCategoryPersonRockIds,
+      eligiblePersonRockIds: neverGivenCategoryPersonRockIds,
+      factRows,
+      referenceDate,
+      snapshotRows,
     });
 
-    return counts;
+    return {
+      growingConnectionStatusLifecycle: {
+        lifecycleCounts: lifecycleCountsFromRows({
+          allPersonRockIds: growingPersonRockIds,
+          eligiblePersonRockIds: growingPersonRockIds,
+          factRows,
+          referenceDate,
+          snapshotRows,
+        }),
+        statusLabel: "Growing",
+        totalPeople: growingPersonRockIds.size,
+      },
+      lifecycleCounts,
+      neverGivenConnectionStatusCount:
+        neverGivenCategoryLifecycleCounts.NEVER_GIVEN,
+    };
   } catch (error) {
     if (isMissingLifecycleSnapshotTable(error)) {
-      return emptyLifecycleCounts();
+      return {
+        growingConnectionStatusLifecycle:
+          emptyGrowingConnectionStatusLifecycle(),
+        lifecycleCounts: emptyLifecycleCounts(),
+        neverGivenConnectionStatusCount: 0,
+      };
     }
 
     throw error;
   }
 }
 
+function lifecycleCountsFromRows({
+  allPersonRockIds,
+  eligiblePersonRockIds,
+  factRows,
+  referenceDate,
+  snapshotRows,
+}: {
+  allPersonRockIds?: Set<number>;
+  eligiblePersonRockIds?: Set<number>;
+  factRows: Array<{
+    effectiveMonth: Date;
+    occurredAt: Date | null;
+    personRockId: number | null;
+  }>;
+  referenceDate: Date;
+  snapshotRows: Array<{
+    lifecycle: GivingLifecycleKind;
+    personRockId: number | null;
+  }>;
+}) {
+  const personIdsByLifecycle = new Map<GivingLifecycleKind, Set<number>>();
+  const personIdsWithLifecycle = new Set<number>();
+
+  for (const row of snapshotRows) {
+    if (
+      row.personRockId &&
+      GIVING_LIFECYCLE_KINDS.includes(row.lifecycle) &&
+      (!eligiblePersonRockIds || eligiblePersonRockIds.has(row.personRockId))
+    ) {
+      const people = personIdsByLifecycle.get(row.lifecycle) ?? new Set();
+      people.add(row.personRockId);
+      personIdsByLifecycle.set(row.lifecycle, people);
+      personIdsWithLifecycle.add(row.personRockId);
+    }
+  }
+  const counts = emptyLifecycleCounts();
+
+  for (const lifecycle of GIVING_LIFECYCLE_KINDS) {
+    counts[lifecycle] = personIdsByLifecycle.get(lifecycle)?.size ?? 0;
+  }
+
+  counts.LAPSED = lapsedPersonCount({
+    eligiblePersonRockIds,
+    factRows,
+    lapsedPersonIds: personIdsByLifecycle.get("LAPSED") ?? new Set(),
+    personIdsWithLifecycle,
+    referenceDate,
+  });
+  counts.HEALTHY = healthyPersonCount({
+    eligiblePersonRockIds,
+    factRows,
+    personIdsWithLifecycle,
+    referenceDate,
+  });
+  counts.NEVER_GIVEN = neverGivenPersonCount({
+    factRows,
+    personIdsWithLifecycle,
+    personRockIds: allPersonRockIds ?? eligiblePersonRockIds ?? new Set(),
+  });
+
+  return counts;
+}
+
+function lapsedPersonCount({
+  eligiblePersonRockIds,
+  factRows,
+  lapsedPersonIds,
+  personIdsWithLifecycle,
+  referenceDate,
+}: {
+  eligiblePersonRockIds?: Set<number>;
+  factRows: Array<{
+    effectiveMonth: Date;
+    occurredAt: Date | null;
+    personRockId: number | null;
+  }>;
+  lapsedPersonIds: Set<number>;
+  personIdsWithLifecycle: Set<number>;
+  referenceDate: Date;
+}) {
+  const lapsedStart = subtractDays(referenceDate, 270);
+  const factsByPerson = new Map<
+    number,
+    Array<{
+      effectiveMonth: Date;
+      giftAt: Date;
+    }>
+  >();
+
+  for (const fact of factRows) {
+    if (!fact.personRockId) {
+      continue;
+    }
+
+    if (
+      eligiblePersonRockIds &&
+      !eligiblePersonRockIds.has(fact.personRockId)
+    ) {
+      continue;
+    }
+
+    const personFacts = factsByPerson.get(fact.personRockId) ?? [];
+    personFacts.push({
+      effectiveMonth: fact.effectiveMonth,
+      giftAt: fact.occurredAt ?? fact.effectiveMonth,
+    });
+    factsByPerson.set(fact.personRockId, personFacts);
+  }
+
+  const lapsedIds = new Set(lapsedPersonIds);
+
+  for (const [personRockId, personFacts] of factsByPerson.entries()) {
+    if (personIdsWithLifecycle.has(personRockId)) {
+      continue;
+    }
+
+    const latestGiftAt = personFacts
+      .map((fact) => fact.giftAt)
+      .sort((left, right) => right.getTime() - left.getTime())[0];
+    const givingMonths = new Set(
+      personFacts.map((fact) => monthKey(fact.effectiveMonth)),
+    );
+
+    if (latestGiftAt && latestGiftAt < lapsedStart && givingMonths.size >= 3) {
+      lapsedIds.add(personRockId);
+    }
+  }
+
+  return lapsedIds.size;
+}
+
 function healthyPersonCount({
+  eligiblePersonRockIds,
   factRows,
   personIdsWithLifecycle,
   referenceDate,
 }: {
+  eligiblePersonRockIds?: Set<number>;
   factRows: Array<{
     effectiveMonth: Date;
     occurredAt: Date | null;
@@ -719,6 +929,13 @@ function healthyPersonCount({
       continue;
     }
 
+    if (
+      eligiblePersonRockIds &&
+      !eligiblePersonRockIds.has(fact.personRockId)
+    ) {
+      continue;
+    }
+
     const giftAt = fact.occurredAt ?? fact.effectiveMonth;
     const currentLatest = latestGiftAtByPerson.get(fact.personRockId);
 
@@ -732,6 +949,33 @@ function healthyPersonCount({
       latestGiftAt >= recentStart &&
       latestGiftAt <= referenceDate &&
       !personIdsWithLifecycle.has(personRockId),
+  ).length;
+}
+
+function neverGivenPersonCount({
+  factRows,
+  personIdsWithLifecycle,
+  personRockIds,
+}: {
+  factRows: Array<{
+    personRockId: number | null;
+  }>;
+  personIdsWithLifecycle: Set<number>;
+  personRockIds: Set<number>;
+}) {
+  const personIdsWithGivingFacts = new Set(
+    factRows
+      .map((fact) => fact.personRockId)
+      .filter(
+        (personRockId): personRockId is number =>
+          typeof personRockId === "number",
+      ),
+  );
+
+  return Array.from(personRockIds).filter(
+    (personRockId) =>
+      !personIdsWithLifecycle.has(personRockId) &&
+      !personIdsWithGivingFacts.has(personRockId),
   ).length;
 }
 

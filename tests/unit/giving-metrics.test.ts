@@ -493,6 +493,7 @@ describe("giving metrics", () => {
       HEALTHY: 0,
       LAPSED: 0,
       NEW: 0,
+      NEVER_GIVEN: 0,
       REACTIVATED: 0,
     });
     expect(trend.totalHouseholdDonors).toBe(4);
@@ -547,7 +548,48 @@ describe("giving metrics", () => {
   it("loads dashboard lifecycle counts from distinct person snapshots", async () => {
     const client = {
       givingFact: {
-        findMany: vi.fn(async () => []),
+        findMany: vi.fn(async () => [
+          {
+            effectiveMonth: new Date("2026-03-01T00:00:00.000Z"),
+            occurredAt: new Date("2026-03-10T00:00:00.000Z"),
+            personRockId: 104,
+          },
+          {
+            effectiveMonth: new Date("2026-03-01T00:00:00.000Z"),
+            occurredAt: new Date("2026-03-12T00:00:00.000Z"),
+            personRockId: 107,
+          },
+          {
+            effectiveMonth: new Date("2025-01-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-01-10T00:00:00.000Z"),
+            personRockId: 110,
+          },
+          {
+            effectiveMonth: new Date("2025-02-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-02-10T00:00:00.000Z"),
+            personRockId: 110,
+          },
+          {
+            effectiveMonth: new Date("2025-03-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-03-10T00:00:00.000Z"),
+            personRockId: 110,
+          },
+          {
+            effectiveMonth: new Date("2025-01-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-01-10T00:00:00.000Z"),
+            personRockId: 111,
+          },
+          {
+            effectiveMonth: new Date("2025-02-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-02-10T00:00:00.000Z"),
+            personRockId: 111,
+          },
+          {
+            effectiveMonth: new Date("2025-03-01T00:00:00.000Z"),
+            occurredAt: new Date("2025-03-10T00:00:00.000Z"),
+            personRockId: 111,
+          },
+        ]),
       },
       givingLifecycleSnapshot: {
         findMany: vi.fn(async () => [
@@ -556,6 +598,20 @@ describe("giving metrics", () => {
           { lifecycle: "NEW", personRockId: 102 },
           { lifecycle: "DROPPED", personRockId: 103 },
           { lifecycle: "AT_RISK", personRockId: null },
+        ]),
+      },
+      rockPerson: {
+        findMany: vi.fn(async () => [
+          { connectionStatus: { value: "Growing" }, rockId: 101 },
+          { connectionStatus: { value: "Growing" }, rockId: 103 },
+          { connectionStatus: { value: "Growing" }, rockId: 105 },
+          { connectionStatus: { value: "Growing" }, rockId: 110 },
+          { connectionStatus: { value: "Visiting" }, rockId: 107 },
+          { connectionStatus: { value: "Joining" }, rockId: 108 },
+          { connectionStatus: { value: "Attending" }, rockId: 109 },
+          { connectionStatus: { value: "Community" }, rockId: 106 },
+          { connectionStatus: { value: "Community" }, rockId: 104 },
+          { connectionStatus: { value: "Community" }, rockId: 111 },
         ]),
       },
       platformFundSetting: {
@@ -580,13 +636,38 @@ describe("giving metrics", () => {
         resource: "PERSON",
       },
     });
+    expect(client.rockPerson.findMany).toHaveBeenCalledWith({
+      select: {
+        connectionStatus: {
+          select: {
+            value: true,
+          },
+        },
+        rockId: true,
+      },
+    });
     expect(trend.lifecycleCounts).toEqual({
       AT_RISK: 0,
       DROPPED: 1,
-      HEALTHY: 0,
-      LAPSED: 0,
+      HEALTHY: 2,
+      LAPSED: 2,
       NEW: 2,
+      NEVER_GIVEN: 4,
       REACTIVATED: 0,
     });
+    expect(trend.growingConnectionStatusLifecycle).toEqual({
+      lifecycleCounts: {
+        AT_RISK: 0,
+        DROPPED: 1,
+        HEALTHY: 0,
+        LAPSED: 1,
+        NEW: 1,
+        NEVER_GIVEN: 1,
+        REACTIVATED: 0,
+      },
+      statusLabel: "Growing",
+      totalPeople: 4,
+    });
+    expect(trend.neverGivenConnectionStatusCount).toBe(3);
   });
 });

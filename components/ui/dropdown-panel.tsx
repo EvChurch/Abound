@@ -3,17 +3,27 @@
 import Link from "next/link";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 
 type DropdownPanelProps = {
   align?: "left" | "right";
   panelClassName?: string;
   openOnHover?: boolean;
+  portal?: boolean;
+  side?: "bottom" | "left";
   navigateHref?: string;
   navigateLabel?: string;
   trigger: ReactNode;
   triggerClassName?: string;
   widthClassName?: string;
+  wrapperClassName?: string;
   children: ReactNode;
 };
 
@@ -24,15 +34,31 @@ export function DropdownPanel({
   navigateLabel,
   openOnHover = false,
   panelClassName,
+  portal = false,
+  side = "bottom",
   trigger,
   triggerClassName,
   widthClassName,
+  wrapperClassName,
 }: DropdownPanelProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hoverCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [open, setOpen] = useState(false);
+  const [portalStyle, setPortalStyle] = useState<CSSProperties | null>(null);
   const [prefersHoverNav, setPrefersHoverNav] = useState(
     Boolean(navigateHref && navigateLabel && openOnHover),
   );
+
+  useEffect(() => {
+    return () => {
+      if (hoverCloseTimeoutRef.current) {
+        clearTimeout(hoverCloseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -40,7 +66,12 @@ export function DropdownPanel({
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      if (
+        !rootRef.current?.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     };
@@ -59,6 +90,31 @@ export function DropdownPanel({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !portal) {
+      return;
+    }
+
+    const updatePortalStyle = () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+
+      if (!rect) {
+        return;
+      }
+
+      setPortalStyle(portalPanelStyle({ align, rect, side }));
+    };
+
+    updatePortalStyle();
+    window.addEventListener("resize", updatePortalStyle);
+    window.addEventListener("scroll", updatePortalStyle, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePortalStyle);
+      window.removeEventListener("scroll", updatePortalStyle, true);
+    };
+  }, [align, open, portal, side]);
 
   useEffect(() => {
     if (
@@ -91,24 +147,92 @@ export function DropdownPanel({
   const canNavigateWithPrimaryTrigger = Boolean(
     navigateHref && navigateLabel && prefersHoverNav,
   );
+  const openPanel = () => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current);
+      hoverCloseTimeoutRef.current = null;
+    }
 
-  return (
-    <div
-      className="relative"
+    setOpen(true);
+  };
+  const closePanel = () => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current);
+    }
+
+    hoverCloseTimeoutRef.current = setTimeout(
+      () => {
+        setOpen(false);
+      },
+      portal ? 90 : 0,
+    );
+  };
+  const panel = open ? (
+    <motion.div
+      animate={portal ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+      className={`${portal ? "fixed" : "absolute"} z-40 ${
+        portal ? "" : dropdownPanelPosition({ align, side })
+      } ${resolvedWidthClassName}`}
+      exit={portal ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: -4 }}
+      initial={portal ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: -6 }}
       onMouseEnter={() => {
         if (openOnHover) {
-          setOpen(true);
+          openPanel();
         }
       }}
       onMouseLeave={() => {
         if (openOnHover) {
-          setOpen(false);
+          closePanel();
+        }
+      }}
+      ref={panelRef}
+      style={portal ? (portalStyle ?? undefined) : undefined}
+      transition={{ duration: 0.16, ease: "easeOut" }}
+    >
+      <div className={resolvedPanelClassName}>{children}</div>
+    </motion.div>
+  ) : null;
+
+  return (
+    <div
+      className={wrapperClassName ?? "relative"}
+      onMouseEnter={() => {
+        if (openOnHover) {
+          openPanel();
+        }
+      }}
+      onMouseLeave={() => {
+        if (openOnHover) {
+          closePanel();
         }
       }}
       ref={rootRef}
     >
       {canNavigateWithPrimaryTrigger ? (
-        <Link className={resolvedTriggerClassName} href={navigateHref!}>
+        <Link
+          className={resolvedTriggerClassName}
+          href={navigateHref!}
+          onMouseEnter={() => {
+            if (openOnHover) {
+              openPanel();
+            }
+          }}
+          onMouseLeave={() => {
+            if (openOnHover) {
+              closePanel();
+            }
+          }}
+          onPointerEnter={() => {
+            if (openOnHover) {
+              openPanel();
+            }
+          }}
+          onPointerLeave={() => {
+            if (openOnHover) {
+              closePanel();
+            }
+          }}
+        >
           {trigger}
         </Link>
       ) : (
@@ -117,24 +241,74 @@ export function DropdownPanel({
           aria-haspopup="menu"
           className={resolvedTriggerClassName}
           onClick={() => setOpen((current) => !current)}
+          onMouseEnter={() => {
+            if (openOnHover) {
+              openPanel();
+            }
+          }}
+          onMouseLeave={() => {
+            if (openOnHover) {
+              closePanel();
+            }
+          }}
+          onPointerEnter={() => {
+            if (openOnHover) {
+              openPanel();
+            }
+          }}
+          onPointerLeave={() => {
+            if (openOnHover) {
+              closePanel();
+            }
+          }}
           type="button"
         >
           {trigger}
         </button>
       )}
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`absolute top-[calc(100%+8px)] z-40 ${align === "right" ? "right-0" : "left-0"} ${resolvedWidthClassName}`}
-            exit={{ opacity: 0, scale: 0.98, y: -4 }}
-            initial={{ opacity: 0, scale: 0.98, y: -6 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-          >
-            <div className={resolvedPanelClassName}>{children}</div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {portal && typeof document !== "undefined" ? (
+        createPortal(<AnimatePresence>{panel}</AnimatePresence>, document.body)
+      ) : (
+        <AnimatePresence>{panel}</AnimatePresence>
+      )}
     </div>
   );
+}
+
+function dropdownPanelPosition({
+  align,
+  side,
+}: {
+  align: NonNullable<DropdownPanelProps["align"]>;
+  side: NonNullable<DropdownPanelProps["side"]>;
+}) {
+  if (side === "left") {
+    return "right-[calc(100%+8px)] top-1/2 -translate-y-1/2";
+  }
+
+  return `top-[calc(100%+8px)] ${align === "right" ? "right-0" : "left-0"}`;
+}
+
+function portalPanelStyle({
+  align,
+  rect,
+  side,
+}: {
+  align: NonNullable<DropdownPanelProps["align"]>;
+  rect: DOMRect;
+  side: NonNullable<DropdownPanelProps["side"]>;
+}): CSSProperties {
+  if (side === "left") {
+    return {
+      left: rect.left - 8,
+      top: rect.top + rect.height / 2,
+      transform: "translate(-100%, -50%)",
+    };
+  }
+
+  return {
+    left: align === "right" ? rect.right : rect.left,
+    top: rect.bottom + 8,
+    transform: align === "right" ? "translateX(-100%)" : undefined,
+  };
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Link from "next/link";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,7 +64,21 @@ const mocks = vi.hoisted(() => ({
       HEALTHY: 42,
       LAPSED: 4,
       NEW: 2,
+      NEVER_GIVEN: 6,
       REACTIVATED: 3,
+    },
+    growingConnectionStatusLifecycle: {
+      lifecycleCounts: {
+        AT_RISK: 4,
+        DROPPED: 5,
+        HEALTHY: 25,
+        LAPSED: 3,
+        NEW: 1,
+        NEVER_GIVEN: 4,
+        REACTIVATED: 2,
+      },
+      statusLabel: "Growing",
+      totalPeople: 50,
     },
     movement: {
       campusSummaries: [
@@ -143,6 +157,7 @@ const mocks = vi.hoisted(() => ({
     }),
     sourceExplanation:
       "Each household is counted once per month, grouped by campus.",
+    neverGivenConnectionStatusCount: 4,
     totalHouseholdDonors: 88,
   } satisfies HouseholdDonorTrend,
   redirect: vi.fn(),
@@ -309,6 +324,10 @@ describe("HomePage", () => {
     expect(screen.queryByText("Household donor trend")).not.toBeInTheDocument();
     expect(screen.getByText("Household donors by campus")).toBeInTheDocument();
     expect(screen.getByText("Giving lifecycle")).toBeInTheDocument();
+    expect(screen.getAllByText("Total").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Growing").length).toBeGreaterThan(0);
+    expect(screen.getByText("67")).toBeInTheDocument();
+    expect(screen.getByText("50")).toBeInTheDocument();
     expect(screen.getByText("Giving per adult")).toBeInTheDocument();
     expect(
       screen
@@ -332,21 +351,17 @@ describe("HomePage", () => {
       screen.queryByText(/Counts people with current lifecycle badges/i),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Usually gave regularly, but has not given for 90-180 days.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Usually gave regularly, but has not given for 180-270 days.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("First recorded gift was within the last 90 days."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Gave again after at least 180 quiet days."),
-    ).toBeInTheDocument();
+      screen.queryByText("Has not given for over 270 days."),
+    ).not.toBeInTheDocument();
+    const lapsedPopoverTrigger = screen.getByRole("button", {
+      name: "About Lapsed",
+    });
+    fireEvent.click(lapsedPopoverTrigger);
+    await waitFor(() => {
+      expect(
+        screen.getByText("Has not given for over 270 days."),
+      ).toBeInTheDocument();
+    });
     expect(
       screen.queryByText(/Compares .+ with .+ and highlights/i),
     ).not.toBeInTheDocument();
@@ -359,46 +374,62 @@ describe("HomePage", () => {
       screen.queryByText("Reactivated households"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("New households")).not.toBeInTheDocument();
-    expect(screen.getByText("Healthy")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Has given within the last 90 days and has no warning signal.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("Healthy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Dropped").length).toBeGreaterThan(0);
     expect(screen.getAllByText("At-risk").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Reactivated").length).toBeGreaterThan(0);
     expect(
+      screen
+        .getAllByRole("link", { name: /^View .+ people$/ })
+        .map((link) => link.getAttribute("aria-label")),
+    ).toEqual([
+      "View never given people",
+      "View new people",
+      "View healthy people",
+      "View at-risk people",
+      "View dropped people",
+      "View lapsed people",
+      "View reactivated people",
+    ]);
+    expect(
       screen.getByRole("link", { name: "View healthy people" }),
     ).toHaveAttribute("href", "/people?lifecycle=HEALTHY");
     expect(
-      screen.getByRole("link", { name: "View healthy people" }).parentElement,
-    ).toHaveTextContent("42");
+      screen.getByRole("link", { name: "View healthy people" }),
+    ).toHaveTextContent(/Total\s*42\s*63%\s*Growing\s*25\s*50%/);
     expect(
       screen.getByRole("link", { name: "View dropped people" }),
     ).toHaveAttribute("href", "/people?lifecycle=DROPPED");
     expect(
-      screen.getByRole("link", { name: "View dropped people" }).parentElement,
-    ).toHaveTextContent("7");
+      screen.getByRole("link", { name: "View dropped people" }),
+    ).toHaveTextContent(/Total\s*7\s*10%\s*Growing\s*5\s*10%/);
     expect(
       screen.getByRole("link", { name: "View at-risk people" }),
     ).toHaveAttribute("href", "/people?lifecycle=AT_RISK");
     expect(
-      screen.getByRole("link", { name: "View at-risk people" }).parentElement,
-    ).toHaveTextContent("5");
+      screen.getByRole("link", { name: "View at-risk people" }),
+    ).toHaveTextContent(/Total\s*5\s*7%\s*Growing\s*4\s*8%/);
     expect(
       screen.getByRole("link", { name: "View reactivated people" }),
     ).toHaveAttribute("href", "/people?lifecycle=REACTIVATED");
     expect(
-      screen.getByRole("link", { name: "View reactivated people" })
-        .parentElement,
-    ).toHaveTextContent("3");
+      screen.getByRole("link", { name: "View reactivated people" }),
+    ).toHaveTextContent(/Total\s*3\s*4%\s*Growing\s*2\s*4%/);
     expect(
       screen.getByRole("link", { name: "View new people" }),
     ).toHaveAttribute("href", "/people?lifecycle=NEW");
     expect(
-      screen.getByRole("link", { name: "View new people" }).parentElement,
-    ).toHaveTextContent("2");
+      screen.getByRole("link", { name: "View new people" }),
+    ).toHaveTextContent(/Total\s*2\s*3%\s*Growing\s*1\s*2%/);
+    expect(
+      screen.getByRole("link", { name: "View never given people" }),
+    ).toHaveAttribute(
+      "href",
+      "/people?connectionStatus=Joining&connectionStatus=Attending&connectionStatus=Growing&lifecycle=NEVER_GIVEN",
+    );
+    expect(
+      screen.getByRole("link", { name: "View never given people" }),
+    ).toHaveTextContent(/Total\s*4\s*6%\s*Growing\s*4\s*8%/);
     expect(screen.queryByText("Retained")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Ng Household/i })).toBeNull();
     expect(
