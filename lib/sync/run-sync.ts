@@ -305,6 +305,7 @@ async function persistNormalizedSync(
       chunkSize,
       progress,
       async (tx, groupMember) => {
+        await deleteStaleRockGroupMemberIdentity(tx, groupMember);
         await tx.rockGroupMember.upsert({
           where: { rockId: groupMember.rockId },
           create: groupMember,
@@ -1558,6 +1559,25 @@ async function persistGivingFacts(
   }
 
   return data.givingFacts.length;
+}
+
+export async function deleteStaleRockGroupMemberIdentity(
+  tx: Pick<PrismaTransaction, "rockGroupMember">,
+  groupMember: Pick<
+    Prisma.RockGroupMemberCreateManyInput,
+    "groupRockId" | "groupRoleRockId" | "personRockId" | "rockId"
+  >,
+) {
+  await tx.rockGroupMember.deleteMany({
+    where: {
+      groupRockId: groupMember.groupRockId,
+      groupRoleRockId: groupMember.groupRoleRockId ?? null,
+      personRockId: groupMember.personRockId,
+      rockId: {
+        not: groupMember.rockId,
+      },
+    },
+  });
 }
 
 async function persistSyncIssues(
