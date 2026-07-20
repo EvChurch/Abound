@@ -27,6 +27,7 @@
     "sync:schedule": "tsx scripts/sync-schedule.ts",
     "sync:schedule-person": "tsx scripts/sync-schedule-person.ts",
     "sync:worker": "tsx scripts/sync-worker.ts",
+    "worker": "tsx scripts/worker.ts",
     "maildev": "maildev --web 1080 --smtp 1025",
     "communications:schedule": "tsx scripts/communication-automation-schedule.ts",
     "communications:worker": "tsx scripts/communication-automation-worker.ts",
