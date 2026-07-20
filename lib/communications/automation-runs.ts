@@ -252,24 +252,32 @@ export async function excludeAutomationRecipient(
     throw badInput("Accepted recipients cannot be excluded.");
   }
 
-  const updated = await client.communicationAutomationRecipient.update({
-    data: {
-      excludedAt: new Date(),
-      excludedByUserId: actor.id,
-      exclusionReason: normalizeOptionalText(input.reason),
-      status: "EXCLUDED",
-    },
-    where: { id: input.recipientId },
-  });
+  const wasExcluded = recipient.status === "EXCLUDED";
+  const wasReady = recipient.status === "READY";
 
-  await client.communicationAutomationRun.update({
-    data: {
-      excludedCount: { increment: recipient.status === "EXCLUDED" ? 0 : 1 },
-    },
-    where: { id: recipient.runId },
-  });
+  return client.$transaction(async (tx) => {
+    const updated = await tx.communicationAutomationRecipient.update({
+      data: {
+        excludedAt: new Date(),
+        excludedByUserId: actor.id,
+        exclusionReason: normalizeOptionalText(input.reason),
+        status: "EXCLUDED",
+      },
+      where: { id: input.recipientId },
+    });
 
-  return updated;
+    if (!wasExcluded || wasReady) {
+      await tx.communicationAutomationRun.update({
+        data: {
+          ...(wasReady ? { deliverableCount: { decrement: 1 } } : {}),
+          ...(!wasExcluded ? { excludedCount: { increment: 1 } } : {}),
+        },
+        where: { id: recipient.runId },
+      });
+    }
+
+    return updated;
+  });
 }
 
 export async function updateAutomationRecipientReviewDecision(

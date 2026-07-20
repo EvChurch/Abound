@@ -466,6 +466,16 @@ describe("communication automation scheduled runs", () => {
       ...data,
     }));
     const client = {
+      $transaction: vi.fn(async (callback) =>
+        callback({
+          communicationAutomationRecipient: {
+            update: updateRecipient,
+          },
+          communicationAutomationRun: {
+            update: vi.fn(async () => null),
+          },
+        }),
+      ),
       communicationAutomationRecipient: {
         findUnique: vi.fn(async () => ({
           id: "recipient_1",
@@ -477,10 +487,6 @@ describe("communication automation scheduled runs", () => {
           },
           status: "READY",
         })),
-        update: updateRecipient,
-      },
-      communicationAutomationRun: {
-        update: vi.fn(async () => null),
       },
     } as unknown as PrismaClient;
 
