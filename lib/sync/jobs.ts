@@ -17,6 +17,8 @@ import {
 } from "@/lib/sync/run-sync";
 
 import {
+  COMMUNICATION_AUTOMATION_EVALUATE_QUEUE,
+  COMMUNICATION_AUTOMATION_NOTICE_QUEUE,
   GIVING_DERIVED_REFRESH_QUEUE,
   ROCK_FULL_SYNC_QUEUE,
   ROCK_FULL_SYNC_SCHEDULE_KEY,
@@ -25,6 +27,8 @@ import {
 } from "@/lib/sync/job-constants";
 
 export {
+  COMMUNICATION_AUTOMATION_EVALUATE_QUEUE,
+  COMMUNICATION_AUTOMATION_NOTICE_QUEUE,
   GIVING_DERIVED_REFRESH_QUEUE,
   ROCK_FULL_SYNC_QUEUE,
   ROCK_FULL_SYNC_SCHEDULE_KEY,
@@ -99,6 +103,21 @@ export async function ensureSyncQueues(boss: PgBoss) {
     retentionSeconds: 60 * 60 * 24 * 14,
     deleteAfterSeconds: 60 * 60 * 24 * 7,
   });
+
+  for (const queue of [
+    COMMUNICATION_AUTOMATION_EVALUATE_QUEUE,
+    COMMUNICATION_AUTOMATION_NOTICE_QUEUE,
+  ]) {
+    await boss.createQueue(queue, {
+      policy: "singleton",
+      retryLimit: 3,
+      retryDelay: 60,
+      retryBackoff: true,
+      expireInSeconds: 60 * 60,
+      retentionSeconds: 60 * 60 * 24 * 14,
+      deleteAfterSeconds: 60 * 60 * 24 * 7,
+    });
+  }
 }
 
 export async function enqueueRockFullSync(

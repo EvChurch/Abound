@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LocalAppUser } from "@/lib/auth/types";
-import { listPeople } from "@/lib/list-views/people-list";
+import { listPeople, listPeopleByRockIds } from "@/lib/list-views/people-list";
 
 const adminUser: LocalAppUser = {
   active: true,
@@ -200,6 +200,66 @@ describe("people list view", () => {
         ],
       }),
     );
+  });
+
+  it("loads selected people ordered by first name", async () => {
+    const prisma = client({
+      rockPersonFindMany: vi.fn(async () => [
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: { value: "Member" },
+          deceased: false,
+          email: "amy@example.com",
+          emailActive: true,
+          firstName: "Amy",
+          lastName: "Aroha",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 202,
+        },
+        {
+          _count: { staffTasks: 0 },
+          connectionStatus: { value: "Member" },
+          deceased: false,
+          email: "jane@example.com",
+          emailActive: true,
+          firstName: "Jane",
+          lastName: "Joining",
+          lastSyncedAt: new Date("2026-04-20T00:00:00Z"),
+          nickName: null,
+          photoRockId: null,
+          primaryCampus: null,
+          primaryHousehold: null,
+          recordStatus: { value: "Active" },
+          rockId: 101,
+        },
+      ]),
+    });
+
+    const connection = await listPeopleByRockIds(
+      { rockIds: [101, 202] },
+      adminUser,
+      prisma,
+    );
+
+    expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [
+          { firstName: { nulls: "last", sort: "asc" } },
+          { lastName: { nulls: "last", sort: "asc" } },
+          { rockId: "asc" },
+        ],
+        where: { rockId: { in: [101, 202] } },
+      }),
+    );
+    expect(connection.edges.map((edge) => edge.node.displayName)).toEqual([
+      "Amy Aroha",
+      "Jane Joining",
+    ]);
   });
 
   it("allows filtering to children explicitly", async () => {

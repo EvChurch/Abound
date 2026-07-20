@@ -14,6 +14,7 @@ import { getSavedListView } from "@/lib/list-views/saved-views";
 
 const AUDIENCE_PAGE_SIZE = 100;
 const AUDIENCE_SCAN_LIMIT = 500;
+const AUDIENCE_RUN_LIMIT = 5000;
 const AUDIENCE_PREVIEW_LIMIT = 25;
 
 type CommunicationSegmentsClient = PrismaClient;
@@ -51,6 +52,29 @@ export async function resolveCommunicationAudience(
   actor: LocalAppUser,
   client: CommunicationSegmentsClient = prisma,
 ): Promise<ResolvedCommunicationAudience> {
+  return scanCommunicationAudience(input, actor, client, {
+    memberLimit: AUDIENCE_PREVIEW_LIMIT,
+    scanLimit: AUDIENCE_SCAN_LIMIT,
+  });
+}
+
+export async function resolveCommunicationAudienceMembers(
+  input: CommunicationAudienceInput,
+  actor: LocalAppUser,
+  client: CommunicationSegmentsClient = prisma,
+): Promise<ResolvedCommunicationAudience> {
+  return scanCommunicationAudience(input, actor, client, {
+    memberLimit: AUDIENCE_RUN_LIMIT,
+    scanLimit: AUDIENCE_RUN_LIMIT,
+  });
+}
+
+async function scanCommunicationAudience(
+  input: CommunicationAudienceInput,
+  actor: LocalAppUser,
+  client: CommunicationSegmentsClient,
+  limits: { memberLimit: number; scanLimit: number },
+): Promise<ResolvedCommunicationAudience> {
   const savedView = input.savedViewId
     ? await getSavedListView(input.savedViewId, actor, client)
     : null;
@@ -74,7 +98,7 @@ export async function resolveCommunicationAudience(
   let cursor: string | null = null;
   let hasNextPage = true;
 
-  while (hasNextPage && audienceSize < AUDIENCE_SCAN_LIMIT) {
+  while (hasNextPage && audienceSize < limits.scanLimit) {
     const listInput = {
       after: cursor,
       filterDefinition: savedView ? undefined : segmentDefinition,
@@ -88,7 +112,7 @@ export async function resolveCommunicationAudience(
       for (const edge of connection.edges) {
         audienceSize += 1;
 
-        if (preview.length < AUDIENCE_PREVIEW_LIMIT) {
+        if (preview.length < limits.memberLimit) {
           preview.push(personPreviewMember(edge.node));
         }
       }
@@ -103,7 +127,7 @@ export async function resolveCommunicationAudience(
     for (const edge of connection.edges) {
       audienceSize += 1;
 
-      if (preview.length < AUDIENCE_PREVIEW_LIMIT) {
+      if (preview.length < limits.memberLimit) {
         preview.push(householdPreviewMember(edge.node));
       }
     }

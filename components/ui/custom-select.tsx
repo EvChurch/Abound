@@ -198,10 +198,10 @@ export function CustomSelect({
                             aria-selected={active}
                             className={
                               active
-                                ? `flex w-full items-center justify-between rounded-[6px] bg-app-chip py-1.5 pr-2.5 text-left text-[12.5px] font-semibold text-app-foreground ${
+                                ? `flex w-full items-center justify-between rounded-[6px] bg-app-chip py-1.5 pr-2.5 text-left text-[12.5px] font-semibold text-app-foreground outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
                                     option.indent ? "pl-6" : "pl-2.5"
                                   }`
-                                : `flex w-full items-center justify-between rounded-[6px] py-1.5 pr-2.5 text-left text-[12.5px] text-app-muted transition hover:bg-app-soft hover:text-app-foreground ${
+                                : `flex w-full items-center justify-between rounded-[6px] py-1.5 pr-2.5 text-left text-[12.5px] text-app-muted outline-none transition hover:bg-app-soft hover:text-app-foreground focus-visible:bg-app-soft focus-visible:text-app-foreground focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
                                     option.indent ? "pl-6" : "pl-2.5"
                                   }`
                             }

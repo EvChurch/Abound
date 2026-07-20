@@ -18,9 +18,11 @@ import {
 import type { CampusFilterOption } from "@/lib/list-views/campus-options";
 import { InfiniteListTable } from "@/components/list-views/infinite-list-table";
 import { PeopleSortControl } from "@/components/list-views/people-sort-control";
+import { SegmentMenu } from "@/components/list-views/save-segment-dialog";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import type { HouseholdsConnection } from "@/lib/list-views/households-list";
 import type { PeopleConnection } from "@/lib/list-views/people-list";
+import type { SavedListViewRecord } from "@/lib/list-views/saved-views";
 import type { ConnectionStatusFilterOption } from "@/lib/list-views/connection-status-options";
 import type { FilterFieldDefinition } from "@/lib/list-views/filter-schema";
 import {
@@ -51,6 +53,7 @@ type ListViewShellProps =
       sort?: string | null;
       connectionStatusOptions: ConnectionStatusFilterOption[];
       recordStatusOptions: RecordStatusFilterOption[];
+      savedSegments?: SavedListViewRecord[];
       viewMode?: PeopleViewMode;
     }
   | {
@@ -74,13 +77,25 @@ export function ListViewShell(props: ListViewShellProps) {
     selectedColumns.join(",") !== defaultListColumns.join(",");
   const activeFilters = activeFilterChips({
     ageGroup,
+    appliedView: props.kind === "people" ? props.connection.appliedView : null,
     campusOptions: props.campusOptions,
     filters: props.filters,
     lifecycle: props.lifecycle,
     query: props.query,
   });
   const viewMode = props.kind === "people" ? (props.viewMode ?? "list") : null;
+  const savedSegments =
+    props.kind === "people" ? (props.savedSegments ?? []) : [];
   const sort = props.kind === "people" ? normalizePeopleSort(props.sort) : null;
+  const canSaveCurrentSegment =
+    props.kind === "people" &&
+    (hasUnsavedFilterChanges({
+      ageGroup,
+      filters: props.filters,
+      lifecycle: props.lifecycle,
+      query: props.query,
+    }) ||
+      Boolean(props.query?.trim()));
   const resetHref =
     props.kind === "people"
       ? viewMode === "giving"
@@ -265,66 +280,93 @@ export function ListViewShell(props: ListViewShellProps) {
                     </span>
                   </span>
                 </label>
+                <div className="hidden border-b border-app-border bg-app-background/60 px-3 py-3 peer-checked:block md:block">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
+                      Filters
+                    </span>
+                    {props.kind === "people" ? (
+                      <div className="flex items-center gap-1.5">
+                        {activeFilters.length > 0 ? (
+                          <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
+                            {activeFilters.length === 1
+                              ? "1 active"
+                              : `${activeFilters.length} active`}
+                          </span>
+                        ) : null}
+                        <SegmentMenu
+                          ageGroup={ageGroup}
+                          appliedView={props.connection.appliedView}
+                          canSaveCurrent={canSaveCurrentSegment}
+                          filters={props.filters}
+                          lifecycle={props.lifecycle}
+                          query={props.query}
+                          selectedColumns={selectedColumns}
+                          segments={savedSegments}
+                          sort={sort}
+                          triggerVariant="filterIcon"
+                        />
+                      </div>
+                    ) : activeFilters.length > 0 ? (
+                      <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
+                        {activeFilters.length === 1
+                          ? "1 active"
+                          : `${activeFilters.length} active`}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {activeFilters.length > 0 ? (
+                      activeFilters.map((filter) => (
+                        <span
+                          className="inline-flex min-h-8 max-w-full items-stretch overflow-hidden rounded-[6px] border border-app-border bg-app-surface text-[12px] font-medium leading-none text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)]"
+                          key={`${filter.label}:${filter.value}`}
+                        >
+                          <span className="inline-flex min-w-0 items-center gap-2 px-2.5 py-1.5">
+                            <span className="shrink-0 font-mono text-[10px] font-semibold uppercase text-app-muted">
+                              {filter.label}
+                            </span>
+                            <span className="truncate">{filter.value}</span>
+                          </span>
+                          <Link
+                            aria-label={`Clear ${filter.label} filter`}
+                            className="inline-flex w-7 shrink-0 items-center justify-center border-l border-app-border text-[13px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                            href={clearFilterHref({
+                              action,
+                              ageGroup,
+                              columns: selectedColumns,
+                              columnsChanged,
+                              filters: props.filters,
+                              lifecycle: props.lifecycle,
+                              query: props.query,
+                              savedViewId:
+                                props.kind === "people"
+                                  ? props.connection.appliedView.id
+                                  : null,
+                              sort,
+                              target: filter.param,
+                              viewMode,
+                            })}
+                          >
+                            x
+                          </Link>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="inline-flex min-h-8 items-center rounded-[6px] border border-dashed border-app-border bg-app-surface px-2.5 text-[12px] font-medium leading-none text-app-muted">
+                        Default view
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <form
                   action={action}
-                  className="hidden h-full flex-col peer-checked:flex md:flex"
+                  className="hidden min-h-0 flex-1 flex-col peer-checked:flex md:flex"
                 >
                   {viewMode === "giving" ? (
                     <input name="view" type="hidden" value="giving" />
                   ) : null}
-                  <div className="border-b border-app-border bg-app-background/60 px-3 py-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="font-mono text-[10px] font-semibold uppercase text-app-muted">
-                        Filters
-                      </span>
-                      {activeFilters.length > 0 ? (
-                        <span className="rounded-full bg-app-chip px-2 py-0.5 text-[11px] font-semibold text-app-muted">
-                          {activeFilters.length === 1
-                            ? "1 active"
-                            : `${activeFilters.length} active`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {activeFilters.length > 0 ? (
-                        activeFilters.map((filter) => (
-                          <span
-                            className="inline-flex min-h-8 max-w-full items-stretch overflow-hidden rounded-[6px] border border-app-border bg-app-surface text-[12px] font-medium leading-none text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)]"
-                            key={`${filter.label}:${filter.value}`}
-                          >
-                            <span className="inline-flex min-w-0 items-center gap-2 px-2.5 py-1.5">
-                              <span className="shrink-0 font-mono text-[10px] font-semibold uppercase text-app-muted">
-                                {filter.label}
-                              </span>
-                              <span className="truncate">{filter.value}</span>
-                            </span>
-                            <Link
-                              aria-label={`Clear ${filter.label} filter`}
-                              className="inline-flex w-7 shrink-0 items-center justify-center border-l border-app-border text-[13px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
-                              href={clearFilterHref({
-                                action,
-                                ageGroup,
-                                columns: selectedColumns,
-                                columnsChanged,
-                                filters: props.filters,
-                                lifecycle: props.lifecycle,
-                                query: props.query,
-                                sort,
-                                target: filter.param,
-                                viewMode,
-                              })}
-                            >
-                              x
-                            </Link>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="inline-flex min-h-8 items-center rounded-[6px] border border-dashed border-app-border bg-app-surface px-2.5 text-[12px] font-medium leading-none text-app-muted">
-                          Default view
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
                   <div className="shrink-0 border-b border-app-border bg-app-surface px-3 py-3">
                     <div className="grid gap-2">
@@ -350,18 +392,20 @@ export function ListViewShell(props: ListViewShellProps) {
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <FilterAccordion items={accordionItems} />
                   </div>
+                </form>
 
-                  {activeFilters.length > 0 || columnsChanged ? (
-                    <div className="shrink-0 border-t border-app-border bg-app-background/60 px-3 py-3">
+                {activeFilters.length > 0 || columnsChanged ? (
+                  <div className="hidden shrink-0 border-t border-app-border bg-app-background/60 px-3 py-3 peer-checked:grid peer-checked:gap-2 md:grid md:gap-2">
+                    {activeFilters.length > 0 || columnsChanged ? (
                       <Link
                         className="inline-flex min-h-9 w-full items-center justify-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-muted hover:border-app-accent hover:text-app-foreground"
                         href={resetHref}
                       >
                         Reset
                       </Link>
-                    </div>
-                  ) : null}
-                </form>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </aside>
 
@@ -470,35 +514,37 @@ function ListWorkspaceHeader({
           </p>
         ) : null}
       </div>
-      <form action={action} className="shrink-0">
-        <PreservedQueryInputs
-          ageGroup={ageGroup}
-          filters={filters}
-          lifecycle={lifecycle}
-          query={query}
-          sort={sort}
-        />
-        <div className="flex items-center gap-2">
-          {kind === "people" ? (
-            <>
-              <PeopleSortControl sort={sort ?? parsePeopleSortParam(null)} />
-              <PeopleViewModeControl
-                action="/people"
-                ageGroup={ageGroup}
-                filters={filters}
-                lifecycle={lifecycle}
-                query={query}
-                selectedColumns={selectedColumns}
-                sort={sort}
-                viewMode={viewMode ?? "list"}
-              />
-            </>
-          ) : null}
-          <ColumnsMenu>
-            <ColumnPanel selectedColumns={selectedColumns} />
-          </ColumnsMenu>
-        </div>
-      </form>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <form action={action}>
+          <PreservedQueryInputs
+            ageGroup={ageGroup}
+            filters={filters}
+            lifecycle={lifecycle}
+            query={query}
+            sort={sort}
+          />
+          <div className="flex items-center gap-2">
+            {kind === "people" ? (
+              <>
+                <PeopleSortControl sort={sort ?? parsePeopleSortParam(null)} />
+                <PeopleViewModeControl
+                  action="/people"
+                  ageGroup={ageGroup}
+                  filters={filters}
+                  lifecycle={lifecycle}
+                  query={query}
+                  selectedColumns={selectedColumns}
+                  sort={sort}
+                  viewMode={viewMode ?? "list"}
+                />
+              </>
+            ) : null}
+            <ColumnsMenu>
+              <ColumnPanel selectedColumns={selectedColumns} />
+            </ColumnsMenu>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -839,12 +885,14 @@ function PreservedQueryInputs({
   filters,
   lifecycle,
   query,
+  selectedColumns,
   sort,
 }: {
   ageGroup?: string | null;
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
   query?: string | null;
+  selectedColumns?: ListColumnKey[];
   sort?: PeopleSortParam | null;
 }) {
   const entries: Array<[string, string]> = [];
@@ -853,6 +901,7 @@ function PreservedQueryInputs({
 
   if (sortValue) entries.push(["sort", sortValue]);
   if (query) entries.push(["q", query]);
+  if (selectedColumns) entries.push(["columns", selectedColumns.join(",")]);
   for (const value of filterValues(lifecycle)) {
     entries.push(["lifecycle", value]);
   }
@@ -967,12 +1016,14 @@ function normalizeSelectedColumns(columns: ListColumnKey[]) {
 
 function activeFilterChips({
   ageGroup,
+  appliedView,
   campusOptions,
   filters,
   lifecycle,
   query,
 }: {
   ageGroup?: string | null;
+  appliedView?: { id: string | null; name: string } | null;
   campusOptions: CampusFilterOption[];
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
@@ -984,6 +1035,14 @@ function activeFilterChips({
     value: string;
   }> = [];
   const lifecycleValues = filterValues(lifecycle);
+
+  if (appliedView?.id) {
+    chips.push({
+      label: "Segment",
+      param: "savedViewId",
+      value: appliedView.name,
+    });
+  }
 
   if (query?.trim()) {
     chips.push({ label: "Search", param: "q", value: query.trim() });
@@ -1137,6 +1196,7 @@ type ListFilterParam =
   | "q"
   | "recordStatus"
   | "rockStatus"
+  | "savedViewId"
   | "taskPriority"
   | "taskStatus";
 
@@ -1148,6 +1208,7 @@ function clearFilterHref({
   filters,
   lifecycle,
   query,
+  savedViewId,
   sort,
   target,
   viewMode,
@@ -1159,6 +1220,7 @@ function clearFilterHref({
   filters?: ListViewShellFilters;
   lifecycle?: PageParamValue | null;
   query?: string | null;
+  savedViewId?: string | null;
   sort?: PeopleSortParam | null;
   target: ListFilterParam;
   viewMode?: PeopleViewMode | null;
@@ -1166,6 +1228,7 @@ function clearFilterHref({
   const params = new URLSearchParams();
 
   if (viewMode === "giving") params.set("view", "giving");
+  if (savedViewId) params.set("savedViewId", savedViewId);
   const sortValue = sort ? nonDefaultPeopleSortValue(sort) : null;
 
   if (sortValue) params.set("sort", sortValue);
@@ -1182,6 +1245,25 @@ function clearFilterHref({
   const queryString = params.toString();
 
   return queryString ? `${action}?${queryString}` : action;
+}
+
+function hasUnsavedFilterChanges({
+  ageGroup,
+  filters,
+  lifecycle,
+  query,
+}: {
+  ageGroup?: string | null;
+  filters?: ListViewShellFilters;
+  lifecycle?: PageParamValue | null;
+  query?: string | null;
+}) {
+  return (
+    Boolean(query?.trim()) ||
+    queryHasValue(lifecycle) ||
+    Boolean(ageGroup?.trim()) ||
+    Object.keys(listFilterQuery(filters)).length > 0
+  );
 }
 
 function peopleViewModeHref({

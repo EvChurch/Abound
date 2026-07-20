@@ -78,14 +78,13 @@ export async function AppTopNav({
             })}
             <DropdownPanel
               align="left"
-              navigateHref="/people"
-              navigateLabel="People"
               openOnHover
               panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              portal
               triggerClassName={
                 active === "people" || active === "households"
-                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
+                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
               }
               trigger={
                 <>
@@ -125,10 +124,11 @@ export async function AppTopNav({
               align="left"
               openOnHover
               panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              portal
               triggerClassName={
                 active === "tools" || active === "communications"
-                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                  ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
+                  : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
               }
               trigger={
                 <>
@@ -171,10 +171,11 @@ export async function AppTopNav({
                 align="left"
                 openOnHover
                 panelClassName="grid gap-1 rounded-[8px] border border-app-border bg-app-surface p-1 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+                portal
                 triggerClassName={
                   active === "settings"
-                    ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground"
-                    : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                    ? "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] bg-app-chip px-3 font-semibold text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
+                    : "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-3 font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
                 }
                 trigger={
                   <>
@@ -524,8 +525,8 @@ function MenuLink({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "inline-flex min-h-8 items-center rounded-[6px] bg-app-chip px-3 text-[12.5px] font-semibold text-app-foreground"
-          : "inline-flex min-h-8 items-center rounded-[6px] px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+          ? "inline-flex min-h-8 items-center rounded-[6px] bg-app-chip px-3 text-[12.5px] font-semibold text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
+          : "inline-flex min-h-8 items-center rounded-[6px] px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
       }
       href={href}
     >

@@ -4,6 +4,7 @@ import Image from "next/image";
 
 import type {
   HouseholdMembershipProfile,
+  ProfileCommunication,
   ProfileGivingSummary,
   ProfileHouseholdSummary,
   ProfilePersonSummary,
@@ -140,6 +141,19 @@ export function PersonProfile({
             personRockId={profile.rockId}
             rows={profile.pledgeEditor?.rows ?? null}
           />
+
+          {profile.communications ? (
+            <Section
+              aside={
+                <Badge tone="neutral">
+                  {profile.communications.length} received
+                </Badge>
+              }
+              title="Communications"
+            >
+              <CommunicationHistory communications={profile.communications} />
+            </Section>
+          ) : null}
         </div>
 
         <ProfileRail offset="belowStickySummary">
@@ -1216,6 +1230,67 @@ function TaskRow({
   );
 }
 
+function CommunicationHistory({
+  communications,
+}: {
+  communications: ProfileCommunication[];
+}) {
+  if (!communications.length) {
+    return (
+      <p className="text-[13px] text-app-faint">
+        No sent communications are linked to this person.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[6px] border border-app-border-faint">
+      <div className="hidden grid-cols-[minmax(220px,1fr)_minmax(160px,0.65fr)_minmax(120px,0.45fr)] gap-3 border-b border-app-border-faint bg-app-soft px-4 py-2 text-[11px] font-medium uppercase tracking-[0.2px] text-app-faint md:grid">
+        <div>Communication</div>
+        <div>Received</div>
+        <div className="text-right">Activity</div>
+      </div>
+      <div className="divide-y divide-app-border-faint">
+        {communications.map((communication) => (
+          <Link
+            className="grid gap-2 px-4 py-3 text-[13px] transition-colors hover:bg-app-soft md:grid-cols-[minmax(220px,1fr)_minmax(160px,0.65fr)_minmax(120px,0.45fr)] md:items-center"
+            href={`/communications/${communication.automationId}/runs/${communication.runId}`}
+            key={communication.id}
+          >
+            <div className="min-w-0">
+              <div className="truncate font-medium text-app-accent">
+                {communication.automationName}
+              </div>
+              {communication.subject ? (
+                <div className="mt-1 truncate text-[12.5px] text-app-faint">
+                  {communication.subject}
+                </div>
+              ) : null}
+            </div>
+            <div className="text-[12.5px] text-app-muted tabular-nums">
+              {formatDateTime(communication.receivedAt)}
+            </div>
+            <div className="flex items-center gap-2 text-[12.5px] text-app-muted md:justify-end">
+              <span className="inline-flex items-center gap-1.5">
+                <StatusDot
+                  tone={communication.status === "DELIVERED" ? "ok" : "warn"}
+                />
+                {communicationStatusLabel(communication.status)}
+              </span>
+              {communication.openCount > 0 ? (
+                <span className="text-app-faint">
+                  {communication.openCount}{" "}
+                  {communication.openCount === 1 ? "open" : "opens"}
+                </span>
+              ) : null}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function serializeNullableGivingSummary(
   summary: ProfileGivingSummary | null,
 ): SerializedGivingSummary | null {
@@ -1613,6 +1688,13 @@ function formatDate(value: Date) {
     dateStyle: "medium",
     timeZone: "UTC",
   }).format(value);
+}
+
+function communicationStatusLabel(status: ProfileCommunication["status"]) {
+  if (status === "DELIVERED") return "Delivered";
+  if (status === "ACCEPTED") return "Sent";
+
+  return formatEnum(status);
 }
 
 const PLEDGE_PERIODS = [

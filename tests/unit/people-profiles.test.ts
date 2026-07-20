@@ -107,6 +107,51 @@ function profileClient() {
     givingPledgeRecommendationDecision: {
       findMany: vi.fn(async () => []),
     },
+    communicationAutomationRecipient: {
+      findMany: vi.fn(async () => [
+        {
+          acceptedAt: new Date("2026-07-15T00:00:00.000Z"),
+          automation: {
+            id: "comm_older",
+            name: "Older communication",
+            templateFields: {
+              subject: "Older subject",
+            },
+          },
+          createdAt: new Date("2026-07-15T00:00:00.000Z"),
+          deliveredAt: null,
+          events: [],
+          id: "recipient_older",
+          run: {
+            id: "run_older",
+            scheduledSendAt: new Date("2026-07-15T00:00:00.000Z"),
+          },
+          status: "ACCEPTED",
+        },
+        {
+          acceptedAt: new Date("2026-07-14T22:00:00.000Z"),
+          automation: {
+            id: "comm_latest",
+            name: "Latest communication",
+            templateFields: {
+              subject: "Latest subject",
+            },
+          },
+          createdAt: new Date("2026-07-14T22:00:00.000Z"),
+          deliveredAt: new Date("2026-07-15T00:05:00.000Z"),
+          events: [
+            { eventType: "OPENED", id: "open_1" },
+            { eventType: "OPENED", id: "open_2" },
+          ],
+          id: "recipient_latest",
+          run: {
+            id: "run_latest",
+            scheduledSendAt: new Date("2026-07-14T22:00:00.000Z"),
+          },
+          status: "DELIVERED",
+        },
+      ]),
+    },
     platformFundSetting: {
       findMany: vi.fn(async () => [
         { accountRockId: 101, enabled: true },
@@ -251,8 +296,33 @@ describe("people profile service", () => {
     );
 
     expect(profile?.amountsHidden).toBe(true);
+    expect(profile?.communications).toMatchObject([
+      {
+        automationName: "Latest communication",
+        openCount: 2,
+        subject: "Latest subject",
+      },
+      {
+        automationName: "Older communication",
+        status: "ACCEPTED",
+      },
+    ]);
     expect(profile?.givingSummary).toBeNull();
     expect(profile?.pledgeEditor).toBeNull();
+  });
+
+  it("does not load communications for roles without communications access", async () => {
+    const client = profileClient();
+    const profile = await getRockPersonProfile(
+      { rockId: 910001 },
+      financeUser,
+      client,
+    );
+
+    expect(profile?.communications).toBeNull();
+    expect(
+      client.communicationAutomationRecipient.findMany,
+    ).not.toHaveBeenCalled();
   });
 
   it("falls back to household giving for adult people with no direct gifts", async () => {

@@ -115,7 +115,7 @@ describe("listJobsDashboardSummary", () => {
     );
 
     expect(summary.degraded).toBeNull();
-    expect(summary.queues).toHaveLength(3);
+    expect(summary.queues).toHaveLength(JOB_DASHBOARD_QUEUES.length);
     expect(summary.queues[0]).toMatchObject({
       activeCount: 1,
       hasSchedule: true,
@@ -154,7 +154,7 @@ describe("listJobsDashboardSummary", () => {
     );
 
     expect(summary.degraded?.reason).toBe("pg-boss unavailable");
-    expect(summary.queues).toHaveLength(3);
+    expect(summary.queues).toHaveLength(JOB_DASHBOARD_QUEUES.length);
     expect(summary.schedules).toEqual([]);
   });
 });

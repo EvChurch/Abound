@@ -17,7 +17,7 @@ type DropdownPanelProps = {
   panelClassName?: string;
   openOnHover?: boolean;
   portal?: boolean;
-  side?: "bottom" | "left";
+  side?: "bottom" | "left" | "right";
   navigateHref?: string;
   navigateLabel?: string;
   trigger: ReactNode;
@@ -139,7 +139,7 @@ export function DropdownPanel({
 
   const resolvedTriggerClassName =
     triggerClassName ??
-    "inline-flex min-h-10 items-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)] transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25";
+    "inline-flex min-h-10 items-center rounded-[6px] border border-app-border bg-app-background px-3 text-[13px] font-semibold text-app-foreground shadow-[0_1px_1px_rgba(20,18,14,0.03)] outline-none transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25";
   const resolvedPanelClassName =
     panelClassName ??
     "rounded-[8px] border border-app-border bg-app-surface p-4 shadow-[0_20px_40px_rgba(35,31,24,0.14)]";
@@ -189,7 +189,16 @@ export function DropdownPanel({
       style={portal ? (portalStyle ?? undefined) : undefined}
       transition={{ duration: 0.16, ease: "easeOut" }}
     >
-      <div className={resolvedPanelClassName}>{children}</div>
+      <div
+        className={resolvedPanelClassName}
+        onClickCapture={(event) => {
+          if ((event.target as Element).closest("a")) {
+            setOpen(false);
+          }
+        }}
+      >
+        {children}
+      </div>
     </motion.div>
   ) : null;
 
@@ -286,6 +295,10 @@ function dropdownPanelPosition({
     return "right-[calc(100%+8px)] top-1/2 -translate-y-1/2";
   }
 
+  if (side === "right") {
+    return "left-[calc(100%+8px)] top-1/2 -translate-y-1/2";
+  }
+
   return `top-[calc(100%+8px)] ${align === "right" ? "right-0" : "left-0"}`;
 }
 
@@ -300,14 +313,23 @@ function portalPanelStyle({
 }): CSSProperties {
   if (side === "left") {
     return {
-      left: rect.left - 8,
+      left: Math.max(12, rect.left - 8),
       top: rect.top + rect.height / 2,
       transform: "translate(-100%, -50%)",
     };
   }
 
+  if (side === "right") {
+    return {
+      left: rect.right + 8,
+      top: rect.top + rect.height / 2,
+      transform: "translateY(-50%)",
+    };
+  }
+
   return {
-    left: align === "right" ? rect.right : rect.left,
+    left:
+      align === "right" ? Math.max(12, rect.right) : Math.max(12, rect.left),
     top: rect.bottom + 8,
     transform: align === "right" ? "translateX(-100%)" : undefined,
   };

@@ -20,6 +20,7 @@ function personProfile(
   return {
     amountsHidden: false,
     connectionStatus: "Member",
+    communications: [],
     deceased: false,
     displayName: "Jane Donor",
     email: "jane@example.com",

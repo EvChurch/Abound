@@ -9,6 +9,7 @@ import { getPersonConnectionStatusFilterOptions } from "@/lib/list-views/connect
 import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
 import { listPeople } from "@/lib/list-views/people-list";
 import { getPersonRecordStatusFilterOptions } from "@/lib/list-views/record-status-options";
+import { listSavedListViews } from "@/lib/list-views/saved-views";
 import {
   buildPeopleFilter,
   parseColumns,
@@ -47,6 +48,7 @@ export default async function PeopleLookupPage({
     connectionStatusOptions,
     recordStatusOptions,
     connection,
+    savedSegments,
   ] = await Promise.all([
     getCampusFilterOptions(),
     getPersonConnectionStatusFilterOptions(),
@@ -61,6 +63,7 @@ export default async function PeopleLookupPage({
       },
       accessState.user,
     ),
+    listSavedListViews("PEOPLE", accessState.user),
   ]);
 
   return (
@@ -82,6 +85,7 @@ export default async function PeopleLookupPage({
       sort={params.sort}
       connectionStatusOptions={connectionStatusOptions}
       recordStatusOptions={recordStatusOptions}
+      savedSegments={savedSegments}
       viewMode={parsePeopleViewMode(params)}
     />
   );

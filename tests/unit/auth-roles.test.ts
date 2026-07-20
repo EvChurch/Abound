@@ -21,6 +21,9 @@ describe("role permissions", () => {
       "pledges:manage": true,
       "tasks:manage": true,
       "communications:manage": true,
+      "communications:automations:manage": true,
+      "communications:automations:review": true,
+      "communications:automations:send": true,
       "settings:manage": true,
     },
     FINANCE: {
@@ -30,6 +33,9 @@ describe("role permissions", () => {
       "pledges:manage": true,
       "tasks:manage": false,
       "communications:manage": false,
+      "communications:automations:manage": false,
+      "communications:automations:review": false,
+      "communications:automations:send": false,
       "settings:manage": false,
     },
     PASTORAL_CARE: {
@@ -39,6 +45,9 @@ describe("role permissions", () => {
       "pledges:manage": false,
       "tasks:manage": true,
       "communications:manage": true,
+      "communications:automations:manage": true,
+      "communications:automations:review": true,
+      "communications:automations:send": false,
       "settings:manage": false,
     },
   };
@@ -57,6 +66,9 @@ describe("role permissions", () => {
     expect(canSeeGivingAmounts("ADMIN")).toBe(true);
     expect(canSeeIndividualGivingAggregates("ADMIN")).toBe(true);
     expect(canManageCareWorkflows("ADMIN")).toBe(true);
+    expect(hasPermission("ADMIN", "communications:automations:send")).toBe(
+      true,
+    );
     expect(hasPermission("ADMIN", "settings:manage")).toBe(true);
   });
 
@@ -72,5 +84,8 @@ describe("role permissions", () => {
     expect(canSeeGivingAmounts("PASTORAL_CARE")).toBe(false);
     expect(canSeeIndividualGivingAggregates("PASTORAL_CARE")).toBe(false);
     expect(canManageCareWorkflows("PASTORAL_CARE")).toBe(true);
+    expect(
+      hasPermission("PASTORAL_CARE", "communications:automations:send"),
+    ).toBe(false);
   });
 });

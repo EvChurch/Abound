@@ -26,6 +26,18 @@ const pledgeRecommendationSnapshotsMigration = readFileSync(
   "prisma/migrations/20260425000100_add_pledge_recommendation_snapshots/migration.sql",
   "utf8",
 );
+const communicationAutomationsMigration = readFileSync(
+  "prisma/migrations/20260702000100_add_communication_automations/migration.sql",
+  "utf8",
+);
+const savedListViewArchiveMigration = readFileSync(
+  "prisma/migrations/20260714000100_add_saved_list_view_archive/migration.sql",
+  "utf8",
+);
+const newZealandTimezoneMigration = readFileSync(
+  "prisma/migrations/20260714000200_force_new_zealand_timezone/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -140,6 +152,24 @@ describe("synced data model migration", () => {
     );
   });
 
+  it("adds a soft archive marker for saved views", () => {
+    expect(savedListViewArchiveMigration).toContain(
+      'ALTER TABLE "SavedListView" ADD COLUMN "archivedAt" TIMESTAMP(3)',
+    );
+    expect(savedListViewArchiveMigration).toContain(
+      'CREATE INDEX "SavedListView_ownerUserId_resource_archivedAt_idx"',
+    );
+  });
+
+  it("forces communication schedules into New Zealand time", () => {
+    expect(newZealandTimezoneMigration).toContain(
+      `ALTER TABLE "CommunicationAutomation" ALTER COLUMN "scheduleTimezone" SET DEFAULT 'Pacific/Auckland'`,
+    );
+    expect(newZealandTimezoneMigration).toContain(
+      `UPDATE "CommunicationAutomation" SET "scheduleTimezone" = 'Pacific/Auckland'`,
+    );
+  });
+
   it("expands communication prep into an auditable audience workflow", () => {
     expect(communicationPrepMigration).toContain(
       'ADD COLUMN     "audienceResource" "SavedListViewResource"',
@@ -212,6 +242,62 @@ describe("synced data model migration", () => {
     );
     expect(pledgeRecommendationSnapshotsMigration).toContain(
       'FOREIGN KEY ("lastSyncRunId") REFERENCES "SyncRun"("id") ON DELETE CASCADE',
+    );
+  });
+
+  it("creates app-owned communication automation workflow tables", () => {
+    for (const table of [
+      "CommunicationAutomation",
+      "CommunicationAutomationReviewer",
+      "CommunicationAutomationRun",
+      "CommunicationAutomationRecipient",
+      "CommunicationAutomationRecipientEvent",
+      "CommunicationAutomationSuppression",
+    ]) {
+      expect(communicationAutomationsMigration).toContain(
+        `CREATE TABLE "${table}"`,
+      );
+    }
+
+    for (const enumName of [
+      "CommunicationAutomationRunStatus",
+      "CommunicationAutomationRecipientStatus",
+      "CommunicationAutomationSuppressionMode",
+    ]) {
+      expect(communicationAutomationsMigration).toContain(
+        `CREATE TYPE "${enumName}" AS ENUM`,
+      );
+    }
+
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE INDEX "CommunicationAutomation_archivedAt_nextNoticeAt_idx"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE INDEX "CommunicationAutomation_pausedAt_nextSendAt_idx"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE INDEX "CommunicationAutomationRun_automationId_status_scheduledSendAt_idx"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE UNIQUE INDEX "CommunicationAutomationRun_automationId_scheduledSendAt_key"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE UNIQUE INDEX "CommunicationAutomationRecipient_providerMessageId_key"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'CREATE UNIQUE INDEX "CommunicationAutomationSuppression_automationId_recipientKey_key"',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'FOREIGN KEY ("savedListViewId") REFERENCES "SavedListView"("id") ON DELETE RESTRICT',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'FOREIGN KEY ("reviewerUserId") REFERENCES "AppUser"("id") ON DELETE CASCADE',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'FOREIGN KEY ("personRockId") REFERENCES "RockPerson"("rockId") ON DELETE SET NULL',
+    );
+    expect(communicationAutomationsMigration).toContain(
+      'FOREIGN KEY ("householdRockId") REFERENCES "RockHousehold"("rockId") ON DELETE SET NULL',
     );
   });
 });
