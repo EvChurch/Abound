@@ -42,7 +42,10 @@ export default async function PeopleLookupPage({
   }
 
   const params = await searchParams;
-  const filterDefinition = buildPeopleFilter(params);
+  const hasExplicitFilters = hasExplicitPeopleFilters(params);
+  const filterDefinition = hasExplicitFilters
+    ? buildPeopleFilter(params)
+    : undefined;
   const [
     campusOptions,
     connectionStatusOptions,
@@ -88,6 +91,23 @@ export default async function PeopleLookupPage({
       savedSegments={savedSegments}
       viewMode={parsePeopleViewMode(params)}
     />
+  );
+}
+
+function hasExplicitPeopleFilters(params: PeopleListQueryParams) {
+  return Boolean(
+    params.q?.trim() ||
+    params.lifecycle ||
+    params.ageGroup?.trim() ||
+    params.campus?.trim() ||
+    params.connectionStatus ||
+    params.recordStatus ||
+    params.emailStatus?.trim() ||
+    params.connectGroup?.trim() ||
+    params.householdGivingState?.trim() ||
+    params.pledgeState ||
+    params.taskStatus?.trim() ||
+    params.taskPriority?.trim(),
   );
 }
 
