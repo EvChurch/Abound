@@ -53,6 +53,10 @@ export type ListViewInput = {
   sortDefinition?: unknown;
 };
 
+export type PeopleByRockIdsInput = {
+  rockIds: number[];
+};
+
 export type PageInfo = {
   endCursor: string | null;
   hasNextPage: boolean;
@@ -315,6 +319,76 @@ export async function listPeople(
   };
 }
 
+export async function listPeopleByRockIds(
+  input: PeopleByRockIdsInput,
+  actor: LocalAppUser,
+  client: PeopleListClient = prisma,
+): Promise<PeopleConnection> {
+  assertCanReadLists(actor);
+
+  const rockIds = [...new Set(input.rockIds)].filter((rockId) =>
+    Number.isInteger(rockId),
+  );
+
+  if (rockIds.length === 0) {
+    return emptyPeopleConnection();
+  }
+
+  const records = await client.rockPerson.findMany({
+    orderBy: [
+      { firstName: { nulls: "last", sort: "asc" } },
+      { lastName: { nulls: "last", sort: "asc" } },
+      { rockId: "asc" },
+    ],
+    select: personListSelect,
+    where: { rockId: { in: rockIds } },
+  });
+  const personRockIds = records.map((record) => record.rockId);
+  const givingSummaries = canSeeGivingAmounts(actor.role)
+    ? await givingSummariesByPerson(personRockIds, client)
+    : new Map<number, GivingSummary>();
+  const givingPresence = await givingPresenceByPerson(
+    personRockIds,
+    canSeeGivingAmounts(actor.role),
+    client,
+  );
+  const lifecycleLabels = await lifecycleLabelsByPerson(personRockIds, client);
+  const lastGiftMonths = await lastGiftMonthByPerson(personRockIds, client);
+  const pledgeSummaries = hasPermission(actor.role, "pledges:manage")
+    ? await pledgeSummariesByPerson(personRockIds, client)
+    : new Map<number, PledgeListSummary>();
+
+  return {
+    appliedView: {
+      id: null,
+      name: "Selected people",
+      pageSize: records.length,
+    },
+    edges: records.map((record) => ({
+      cursor: encodeRockIdCursor({ rockId: record.rockId }),
+      node: mapPersonRow(
+        record,
+        actor,
+        givingSummaries,
+        givingPresence,
+        pledgeSummaries,
+        lifecycleLabels,
+        lastGiftMonths,
+      ),
+    })),
+    pageInfo: {
+      endCursor: records.at(-1)
+        ? encodeRockIdCursor({ rockId: records.at(-1)!.rockId })
+        : null,
+      hasNextPage: false,
+    },
+    resultCount: {
+      filtered: records.length,
+      total: records.length,
+    },
+  };
+}
+
 function resolveFilterDefinition(
   input: ListViewInput,
   savedView: { filterDefinition: unknown } | null,
@@ -322,6 +396,25 @@ function resolveFilterDefinition(
   return (
     input.filterDefinition ?? savedView?.filterDefinition ?? createEmptyFilter()
   );
+}
+
+function emptyPeopleConnection(): PeopleConnection {
+  return {
+    appliedView: {
+      id: null,
+      name: "Selected people",
+      pageSize: 0,
+    },
+    edges: [],
+    pageInfo: {
+      endCursor: null,
+      hasNextPage: false,
+    },
+    resultCount: {
+      filtered: 0,
+      total: 0,
+    },
+  };
 }
 
 function filterToPersonWhere(

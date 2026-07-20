@@ -19,6 +19,12 @@ Locally owned records are limited to:
 - `GivingFact`
 - `StaffTask`
 - `CommunicationPrep`
+- `CommunicationAutomation`
+- `CommunicationAutomationReviewer`
+- `CommunicationAutomationRun`
+- `CommunicationAutomationRecipient`
+- `CommunicationAutomationRecipientEvent`
+- `CommunicationAutomationSuppression`
 - `PlatformFundSetting`
 - `DerivedCalculationRefresh`
 - app auth tables from the auth foundation
@@ -34,7 +40,15 @@ Every synced Rock table has:
 - `lastSyncedAt`
 - `lastSyncRunId`
 
-`rockId` is the primary key on each synced Rock mirror table so duplicate upstream IDs reconcile into one local row instead of creating ambiguous records. Locally owned tables such as `SyncRun`, `SyncIssue`, `GivingFact`, `StaffTask`, `CommunicationPrep`, `PlatformFundSetting`, `DerivedCalculationRefresh`, and app auth tables keep local generated IDs because they are not Rock source records.
+`rockId` is the primary key on each synced Rock mirror table so duplicate upstream IDs reconcile into one local row instead of creating ambiguous records. Locally owned tables such as `SyncRun`, `SyncIssue`, `GivingFact`, `StaffTask`, `CommunicationPrep`, communication automation workflow tables, `PlatformFundSetting`, `DerivedCalculationRefresh`, and app auth tables keep local generated IDs because they are not Rock source records.
+
+## Communication Automation Boundary
+
+Communication automation records are app-owned workflow state. They may reference Rock people, households, and saved list views, but they do not make Rock the owner of scheduling, review, template, sender, recipient, suppression, or provider-event state.
+
+Automation recipient and suppression rows preserve source traceability through Rock person or household IDs plus a local `recipientKey`. The `recipientKey` is the local uniqueness boundary for a person or household inside an automation, which avoids nullable composite uniqueness pitfalls while keeping Rock IDs available for staff audit and navigation.
+
+Automation tables must not store raw provider payloads, access tokens, API keys, full rendered email bodies, payment data, or finance-only giving explanations. They store enough metadata to audit who configured, reviewed, excluded, and sent communication runs while preserving the Rock read-only boundary.
 
 ## Platform Fund Boundary
 

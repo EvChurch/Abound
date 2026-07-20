@@ -27,6 +27,7 @@ export type SavedListViewRecord = {
   density: SavedListViewDensity;
   pageSize: number;
   isDefault: boolean;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -51,6 +52,7 @@ export async function listSavedListViews(
   return client.savedListView.findMany({
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { name: "asc" }],
     where: {
+      archivedAt: null,
       ownerUserId: actor.id,
       resource,
     },
@@ -173,6 +175,24 @@ export async function deleteSavedListView(
   });
 
   return true;
+}
+
+export async function archiveSavedListView(
+  id: string,
+  actor: LocalAppUser,
+  client: SavedViewClient = prisma,
+) {
+  await getSavedListView(id, actor, client);
+
+  return client.savedListView.update({
+    data: {
+      archivedAt: new Date(),
+      isDefault: false,
+    },
+    where: {
+      id,
+    },
+  });
 }
 
 export async function setDefaultSavedListView(

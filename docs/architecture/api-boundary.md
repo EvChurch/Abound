@@ -22,6 +22,7 @@ Core files:
 - `lib/graphql/schema.ts`: root query and mutation registration.
 - `lib/graphql/types/sync.ts`: staff-safe sync health and issue fields.
 - `lib/graphql/types/tasks.ts`: app-owned task query and mutation fields.
+- `lib/graphql/types/communications.ts`: communication prep and reviewed communication automation fields.
 - `lib/graphql/pothos-prisma-types.ts`: generated Pothos Prisma metadata.
 
 The route is configured for `/api/graphql`. GraphiQL is enabled outside production and disabled in production. Yoga error masking is enabled in production. Schema introspection is disabled in production by a validation plugin that rejects `__schema` and `__type` fields before execution.
@@ -52,15 +53,27 @@ Root query fields:
 - `staffTasks(limit, status)`: returns app-owned staff tasks for roles with `tasks:manage`.
 - `rockPerson(rockId)`: returns a role-aware synced Rock person profile.
 - `rockHousehold(rockId)`: returns a role-aware synced Rock household profile.
+- `communicationPreps(limit, status)`: returns local one-off communication prep records.
+- `communicationAutomations(limit)`: returns reviewed automation setup, readiness, reviewers, and recent run summaries.
+- `communicationAutomation(id)`: returns one automation detail record.
+- `communicationTemplatePreview(templateKey, fieldsJson)`: renders a structured React Email preview with approved sample tokens.
 
 Root mutation fields:
 
 - `createStaffTask`: creates a local `StaffTask`.
 - `updateStaffTask`: updates local task fields and status.
+- `createCommunicationPrep`: creates a local prep record for handoff workflow.
+- `updateCommunicationPrep`: updates prep status and review notes.
+- `createJoiningNeverGivenAutomation`: creates the initial `Joining - Never Given` automation.
+- `activateCommunicationAutomation`: activates a complete automation after readiness checks.
+- `updateCommunicationAutomationTemplate`: updates structured template fields.
+- `excludeCommunicationAutomationRecipient`: excludes a frozen run recipient during reviewer review.
 
 The sync API exposes operational metadata and issue summaries only. It does not expose raw donor payloads, payment details, access tokens, or unrestricted synced Rock records.
 
 Person and household profile fields are projected through `lib/people/profiles.ts` rather than exposing raw Prisma models. Admin and Finance can see derived giving summaries from `GivingFact`; Pastoral Care receives `amountsHidden: true` and `givingSummary: null`. Person `photoUrl` values point at the protected app-local Rock photo proxy, not directly at Rock.
+
+Communication automation fields expose setup, readiness, structured template field JSON, reviewer metadata, frozen recipient snapshots, and aggregate run counts. They do not expose raw Resend payloads, rendered email bodies stored in the database, giving amounts, payment data, or unrestricted Rock records.
 
 ## Staff API Usage
 
@@ -105,6 +118,8 @@ List fields must have a default and maximum limit. Current caps:
 
 - `syncStatus.openIssues(limit)`: max 50.
 - `staffTasks(limit)`: max 50.
+- `communicationPreps(limit)`: max 50.
+- `communicationAutomations(limit)`: max 50.
 
 Future list fields should follow the same pattern before they are exposed to the UI or external consumers.
 
@@ -140,6 +155,7 @@ Unexpected errors should not leak stack traces, database internals, Auth0 claims
 Coverage added for this boundary:
 
 - `tests/unit/graphql-auth.test.ts`: context resolution and permission errors.
+- `tests/unit/graphql-communication-automations.test.ts`: automation schema surface and local permission requirement.
 - `tests/unit/tasks-service.test.ts`: app-owned task service behavior and permission boundaries.
 - `tests/integration/graphql-api.test.ts`: schema-level staff queries, denied anonymous access, sync issue bounds, and task mutations.
 
@@ -148,6 +164,6 @@ Schema execution tests use the CommonJS GraphQL executor through `createRequire`
 ## Future Work
 
 - Unit 6 should add giving metrics in `lib/giving/metrics.ts` and expose them deliberately through GraphQL after role-aware amount visibility is tested.
-- Communication prep should get dedicated services before GraphQL mutations are added.
+- Add full execution tests for automation GraphQL mutations once the local test harness no longer crosses GraphQL CJS/ESM realms.
 - Donor-facing API fields should be separated or explicitly permission-scoped after payment/giving ownership is verified.
 - Before external clients rely on the API, add schema inventory, rate limiting, object-level authorization tests, and compatibility checks.

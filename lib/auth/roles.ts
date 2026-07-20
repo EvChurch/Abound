@@ -9,6 +9,9 @@ export type Permission =
   | "pledges:manage"
   | "tasks:manage"
   | "communications:manage"
+  | "communications:automations:manage"
+  | "communications:automations:review"
+  | "communications:automations:send"
   | "settings:manage";
 
 const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
@@ -19,6 +22,9 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "pledges:manage",
     "tasks:manage",
     "communications:manage",
+    "communications:automations:manage",
+    "communications:automations:review",
+    "communications:automations:send",
     "settings:manage",
   ],
   FINANCE: ["finance:read_amounts", "people:read_limited", "pledges:manage"],
@@ -26,6 +32,8 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "people:read_care_context",
     "tasks:manage",
     "communications:manage",
+    "communications:automations:manage",
+    "communications:automations:review",
   ],
 };
 

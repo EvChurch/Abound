@@ -40,6 +40,21 @@ function personProfile(
   return {
     amountsHidden: false,
     connectionStatus: "Member",
+    communications: [
+      {
+        acceptedAt: new Date("2026-07-14T22:00:00.000Z"),
+        automationId: "comm_1",
+        automationName: "Thanks for connecting",
+        deliveredAt: new Date("2026-07-14T22:05:00.000Z"),
+        id: "recipient_1",
+        openCount: 2,
+        receivedAt: new Date("2026-07-14T22:05:00.000Z"),
+        runId: "run_1",
+        scheduledSendAt: new Date("2026-07-14T22:00:00.000Z"),
+        status: "DELIVERED",
+        subject: "Thanks for connecting with us",
+      },
+    ],
     deceased: false,
     displayName: "Jane Donor",
     email: "jane@example.com",
@@ -251,6 +266,16 @@ describe("PersonProfile", () => {
     expect(screen.getByText("Create draft")).toBeInTheDocument();
     expect(screen.getByText("Reject")).toBeInTheDocument();
     expect(screen.getByText("Draft pledge")).toBeInTheDocument();
+    expect(screen.getByText("Communications")).toBeInTheDocument();
+    expect(screen.getByText("Thanks for connecting")).toBeInTheDocument();
+    expect(
+      screen.getByText("Thanks for connecting with us"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Delivered")).toBeInTheDocument();
+    expect(screen.getByText("2 opens")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Thanks for connecting/ }),
+    ).toHaveAttribute("href", "/communications/comm_1/runs/run_1");
     expect(
       screen.getByText(/\$3,000\.00 given in the last 12 months/),
     ).toBeInTheDocument();
@@ -297,6 +322,20 @@ describe("PersonProfile", () => {
     expect(
       screen.getByText("No gifts are linked to this person."),
     ).toBeInTheDocument();
+  });
+
+  it("renders a person-specific empty communications history", () => {
+    render(<PersonProfile profile={personProfile({ communications: [] })} />);
+
+    expect(
+      screen.getByText("No sent communications are linked to this person."),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the communications section when the profile cannot see it", () => {
+    render(<PersonProfile profile={personProfile({ communications: null })} />);
+
+    expect(screen.queryByText("Communications")).not.toBeInTheDocument();
   });
 
   it("indicates when the giving summary is household-sourced", () => {

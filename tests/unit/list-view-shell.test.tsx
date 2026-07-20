@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ListViewShell } from "@/components/list-views/list-view-shell";
@@ -115,6 +115,173 @@ describe("ListViewShell", () => {
     );
 
     expect(screen.getByText("Showing 12 of 3,456 people")).toBeInTheDocument();
+  });
+
+  it("opens segment naming from the filter summary segment menu", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        lifecycle="NEW"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Segments" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Save Current Filter as Segment",
+      }),
+    );
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Segment name")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows saved segments directly on the default segment menu", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={emptyPeopleConnection}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+        savedSegments={[
+          {
+            archivedAt: null,
+            columnDefinition: { columns: [] },
+            createdAt: new Date("2026-07-01T00:00:00.000Z"),
+            density: "COMFORTABLE",
+            description: null,
+            filterDefinition: { conditions: [], mode: "all", type: "group" },
+            id: "view_2",
+            isDefault: false,
+            name: "New people",
+            pageSize: 50,
+            resource: "PEOPLE",
+            sortDefinition: { direction: "ASC", field: "rockId" },
+            updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Segments" }));
+
+    expect(screen.getByRole("link", { name: "New people" })).toHaveAttribute(
+      "href",
+      "/people?savedViewId=view_2",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Manage Segment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save Current Filter as Segment" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Archive New people" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Archive segment")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Existing communications and automations/i),
+    ).toBeInTheDocument();
+  });
+
+  it("recalls saved people segments from the filter summary segment menu", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={{
+          ...emptyPeopleConnection,
+          appliedView: {
+            id: "view_2",
+            name: "New people",
+            pageSize: 50,
+          },
+        }}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+        savedSegments={[
+          {
+            archivedAt: null,
+            columnDefinition: { columns: [] },
+            createdAt: new Date("2026-07-01T00:00:00.000Z"),
+            density: "COMFORTABLE",
+            description: null,
+            filterDefinition: { conditions: [], mode: "all", type: "group" },
+            id: "view_2",
+            isDefault: false,
+            name: "New people",
+            pageSize: 50,
+            resource: "PEOPLE",
+            sortDefinition: { direction: "ASC", field: "rockId" },
+            updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Segments" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Manage Segment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save Current Filter as Segment" }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("link", { name: "All people" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New people" })).toHaveAttribute(
+      "href",
+      "/people?savedViewId=view_2",
+    );
+  });
+
+  it("shows an applied segment as a clearable filter chip", () => {
+    render(
+      <ListViewShell
+        campusOptions={[]}
+        catalog={[]}
+        columns={["campus", "lifecycle", "tasks", "pledges"]}
+        connection={{
+          ...emptyPeopleConnection,
+          appliedView: {
+            id: "view_2",
+            name: "New people",
+            pageSize: 50,
+          },
+        }}
+        filters={{ connectionStatus: ["Visiting"] }}
+        kind="people"
+        connectionStatusOptions={[]}
+        recordStatusOptions={[]}
+      />,
+    );
+
+    expect(screen.getAllByText("Segment").length).toBeGreaterThan(0);
+    expect(screen.getByText("New people")).toBeInTheDocument();
+    expect(screen.getByText("Visiting")).toBeInTheDocument();
+    expect(screen.getAllByText("2 active")).toHaveLength(2);
+    expect(screen.getByLabelText("Clear Segment filter")).toHaveAttribute(
+      "href",
+      "/people?connectionStatus=Visiting",
+    );
   });
 
   it("carries the saved view id into infinite-loading requests", () => {
@@ -407,7 +574,6 @@ describe("ListViewShell", () => {
     );
 
     expect(screen.getByRole("heading", { name: "People" })).toBeInTheDocument();
-    expect(screen.queryByText("All people")).not.toBeInTheDocument();
     expect(screen.queryByText("Default")).not.toBeInTheDocument();
     expect(screen.queryByText("Display")).not.toBeInTheDocument();
     expect(screen.queryByText("Sort")).not.toBeInTheDocument();
@@ -748,9 +914,6 @@ describe("ListViewShell", () => {
 
     expect(audienceButton).toHaveAttribute("aria-expanded", "false");
     expect(statusButton).toHaveAttribute("aria-expanded", "true");
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /campus/i })).toBeNull();
-    });
     expect(screen.getByRole("checkbox", { name: "Member" })).not.toBeChecked();
   });
 

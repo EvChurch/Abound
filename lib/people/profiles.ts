@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
 import type {
+  CommunicationAutomationRecipientStatus,
   GiftReliabilityKind,
   Prisma,
   PrismaClient,
@@ -26,6 +27,7 @@ import {
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 
 const PROFILE_TASK_LIMIT = 8;
+const PROFILE_COMMUNICATION_LIMIT = 12;
 
 export type ProfileCampus = {
   rockId: number;
@@ -79,6 +81,20 @@ export type ProfileTask = {
   createdAt: Date;
 };
 
+export type ProfileCommunication = {
+  acceptedAt: Date | null;
+  automationId: string;
+  automationName: string;
+  deliveredAt: Date | null;
+  id: string;
+  openCount: number;
+  receivedAt: Date;
+  runId: string;
+  scheduledSendAt: Date;
+  status: CommunicationAutomationRecipientStatus;
+  subject: string | null;
+};
+
 export type ProfileGivingSummary = GivingSummary & {
   reliabilityKinds: GiftReliabilityKind[];
   source: "HOUSEHOLD" | "PERSON";
@@ -98,6 +114,7 @@ export type RockPersonProfile = ProfilePersonSummary & {
   givingHousehold: ProfileHouseholdSummary | null;
   householdMemberships: HouseholdMembershipProfile[];
   staffTasks: ProfileTask[];
+  communications: ProfileCommunication[] | null;
   givingSummary: ProfileGivingSummary | null;
   pledgeEditor: PersonPledgeEditor | null;
   amountsHidden: boolean;
@@ -118,6 +135,7 @@ type ProfileClient = Pick<
   | "givingFact"
   | "givingPledge"
   | "givingPledgeRecommendationDecision"
+  | "communicationAutomationRecipient"
   | "platformFundSetting"
   | "rockFinancialAccount"
   | "rockHousehold"
@@ -262,11 +280,13 @@ export async function getRockPersonProfile(
     return null;
   }
 
-  const [staffTasks, givingSummary, pledgeEditor] = await Promise.all([
-    findProfileTasks({ personRockId: input.rockId }, client),
-    getVisiblePersonGivingSummary(person, actor, client),
-    getPersonPledgeEditor(input.rockId, actor, client as PrismaClient),
-  ]);
+  const [staffTasks, communications, givingSummary, pledgeEditor] =
+    await Promise.all([
+      findProfileTasks({ personRockId: input.rockId }, client),
+      findProfileCommunications(input.rockId, actor, client),
+      getVisiblePersonGivingSummary(person, actor, client),
+      getPersonPledgeEditor(input.rockId, actor, client as PrismaClient),
+    ]);
 
   return {
     ...mapPersonSummary(person),
@@ -286,11 +306,85 @@ export async function getRockPersonProfile(
       status: membershipStatusLabel(membership.groupMemberStatus),
     })),
     amountsHidden: !canSeeGivingAmounts(actor.role),
+    communications,
     lastSyncedAt: person.lastSyncedAt,
     primaryAliasRockId: person.primaryAliasRockId,
     recordStatus: person.recordStatus?.value ?? null,
     staffTasks,
   };
+}
+
+async function findProfileCommunications(
+  personRockId: number,
+  actor: LocalAppUser,
+  client: ProfileClient,
+): Promise<ProfileCommunication[] | null> {
+  if (!hasPermission(actor.role, "communications:manage")) {
+    return null;
+  }
+
+  const recipients = await client.communicationAutomationRecipient.findMany({
+    include: {
+      automation: {
+        select: {
+          id: true,
+          name: true,
+          templateFields: true,
+        },
+      },
+      events: {
+        select: {
+          eventType: true,
+          id: true,
+        },
+      },
+      run: {
+        select: {
+          id: true,
+          scheduledSendAt: true,
+        },
+      },
+    },
+    orderBy: [{ acceptedAt: "desc" }, { createdAt: "desc" }],
+    take: PROFILE_COMMUNICATION_LIMIT * 2,
+    where: {
+      OR: [{ acceptedAt: { not: null } }, { deliveredAt: { not: null } }],
+      personRockId,
+      status: { in: ["ACCEPTED", "DELIVERED"] },
+    },
+  });
+
+  return recipients
+    .map((recipient) => ({
+      acceptedAt: recipient.acceptedAt,
+      automationId: recipient.automation.id,
+      automationName: recipient.automation.name,
+      deliveredAt: recipient.deliveredAt,
+      id: recipient.id,
+      openCount: recipient.events.filter(
+        (event) => String(event.eventType) === "OPENED",
+      ).length,
+      receivedAt:
+        recipient.deliveredAt ?? recipient.acceptedAt ?? recipient.createdAt,
+      runId: recipient.run.id,
+      scheduledSendAt: recipient.run.scheduledSendAt,
+      status: recipient.status,
+      subject: subjectFromTemplateFields(recipient.automation.templateFields),
+    }))
+    .sort(
+      (left, right) => right.receivedAt.getTime() - left.receivedAt.getTime(),
+    )
+    .slice(0, PROFILE_COMMUNICATION_LIMIT);
+}
+
+function subjectFromTemplateFields(fields: Prisma.JsonValue) {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    return null;
+  }
+
+  const subject = fields.subject;
+
+  return typeof subject === "string" && subject.trim() ? subject.trim() : null;
 }
 
 async function getVisiblePersonGivingSummary(

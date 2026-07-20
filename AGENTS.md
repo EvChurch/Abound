@@ -71,6 +71,9 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Schedule recurring pg-boss full Rock sync: `pnpm sync:schedule "0 * * * *"`
 - Start the pg-boss sync worker: `pnpm sync:worker`
 - Process one queued sync job and exit: `pnpm sync:worker -- --once`
+- Schedule active communication automations: `pnpm communications:schedule`
+- Start the communication automation worker: `pnpm communications:worker`
+- Process one queued communication automation job and exit: `pnpm communications:worker -- --once`
 - Debug one stakeholder-approved person slice only: `pnpm rock:sync-person <rock-person-id>`
 
 ## Claude Compatibility
