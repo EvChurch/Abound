@@ -70,8 +70,8 @@ export function mailDevConfigFromEnv(): MailDevSenderConfig {
 
 function normalizeMailDevConfig(config: MailDevSenderConfig) {
   return {
-    fromEmail: config.fromEmail ?? "exec@ev.church",
-    fromName: config.fromName ?? "Exec Team",
+    fromEmail: config.fromEmail ?? "info@ev.church",
+    fromName: config.fromName ?? "Ev Church",
     host: config.host ?? "127.0.0.1",
     port: config.port ?? 1025,
   };

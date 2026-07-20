@@ -281,7 +281,7 @@ describe("communication automation jobs", () => {
     });
     expect(emailSender.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "Exec Team <exec@ev.church>",
+        from: "Ev Church <info@ev.church>",
         html: expect.stringContaining("Review Joining follow-up"),
         recipientEmail: "reviewer@example.com",
         subject: "Review communication: Joining follow-up",

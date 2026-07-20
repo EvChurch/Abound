@@ -11,14 +11,12 @@ related:
 
 ## Implemented Boundary
 
-Resend sending is isolated behind `lib/communications/resend-sender.ts`. The automation workflow calls an `EmailSender` abstraction so local and test environments can use `CaptureEmailSender` without contacting Resend.
+Resend sending is isolated behind `lib/communications/resend-sender.ts`. The automation workflow calls an `EmailSender` abstraction so local and test environments can use MailDev without contacting Resend.
 
-Live delivery fails closed unless all of the following are true:
+Live delivery requires:
 
 - `RESEND_API_KEY` is set.
-- `RESEND_FROM_EMAIL` is set to a verified sender address.
-- `RESEND_LIVE_SEND_ENABLED=true`.
-- `COMMUNICATION_PREFERENCES_VERIFIED=true`.
+- `info@ev.church` is a verified sender address in Resend.
 
 Optional sender settings:
 
@@ -54,14 +52,10 @@ Suppression is scoped to automation id plus recipient resource identity (`PERSON
 - Confirm the church's authoritative communication preference and unsubscribe workflow.
 - Verify the Resend sending domain and from address.
 - Set `RESEND_WEBHOOK_SECRET` and confirm webhook delivery in a non-production environment.
-- Run at least one automation in capture mode and review the frozen recipients.
+- Run at least one automation through MailDev and review the frozen recipients.
 - Send a test message through the same sender configuration.
-- Enable `COMMUNICATION_PREFERENCES_VERIFIED=true`.
-- Enable `RESEND_LIVE_SEND_ENABLED=true`.
 - Keep pg-boss automation workers monitored after enabling.
 
 ## Disable / Rollback
 
-Disable `RESEND_LIVE_SEND_ENABLED` first. This stops live Resend sends while preserving automation configuration and audit history.
-
-If broader rollback is needed, stop `pnpm communications:worker` and pause or archive active automations. Do not delete runs, recipients, suppressions, or provider events during incident review.
+Stop `pnpm communications:worker` and pause or archive active automations. Do not delete runs, recipients, suppressions, or provider events during incident review.

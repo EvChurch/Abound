@@ -982,7 +982,7 @@ describe("Communication workflow pages", () => {
       screen.getByRole("heading", { name: "Email preview" }),
     ).toBeInTheDocument();
     expect(screen.getByText("From")).toBeInTheDocument();
-    expect(screen.getByText("Exec Team <exec@ev.church>")).toBeInTheDocument();
+    expect(screen.getByText("Ev Church <info@ev.church>")).toBeInTheDocument();
     expect(
       screen.getByText("Jane Joining <jane@example.com>"),
     ).toBeInTheDocument();

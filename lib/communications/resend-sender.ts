@@ -12,10 +12,12 @@ export type ResendSenderConfig = {
   apiKey?: string;
   fromEmail?: string;
   fromName?: string;
-  liveEnabled?: boolean;
-  preferenceOwnerVerified?: boolean;
   replyToEmail?: string;
 };
+
+const DEFAULT_RESEND_FROM_EMAIL = "info@ev.church";
+const DEFAULT_RESEND_FROM_NAME = "Ev Church";
+const DEFAULT_RESEND_REPLY_TO_EMAIL = "info@ev.church";
 
 const EVENT_STATUS = {
   "email.bounced": "BOUNCED",
@@ -52,13 +54,6 @@ export class ResendEmailSender implements EmailSender {
   }
 
   async send(payload: EmailSenderPayload): Promise<EmailSenderResult> {
-    if (!this.config.liveEnabled || !this.config.preferenceOwnerVerified) {
-      return {
-        errorMessage: "Live Resend sending is disabled.",
-        status: "FAILED",
-      };
-    }
-
     const response = await this.resend.emails.send(
       {
         from: payload.from || formatSender(this.config),
@@ -91,11 +86,7 @@ export class ResendEmailSender implements EmailSender {
 export function resendConfigFromEnv(): ResendSenderConfig {
   return {
     apiKey: process.env.RESEND_API_KEY,
-    fromEmail: process.env.RESEND_FROM_EMAIL,
     fromName: process.env.RESEND_FROM_NAME,
-    liveEnabled: process.env.RESEND_LIVE_SEND_ENABLED === "true",
-    preferenceOwnerVerified:
-      process.env.COMMUNICATION_PREFERENCES_VERIFIED === "true",
     replyToEmail: process.env.RESEND_REPLY_TO_EMAIL,
   };
 }
@@ -190,17 +181,11 @@ function normalizeResendConfig(config: ResendSenderConfig) {
     throw new Error("RESEND_API_KEY is required for Resend sender setup.");
   }
 
-  if (!config.fromEmail) {
-    throw new Error("RESEND_FROM_EMAIL is required for Resend sender setup.");
-  }
-
   return {
     apiKey: config.apiKey,
-    fromEmail: config.fromEmail,
-    fromName: config.fromName || "Church Team",
-    liveEnabled: config.liveEnabled ?? false,
-    preferenceOwnerVerified: config.preferenceOwnerVerified ?? false,
-    replyToEmail: config.replyToEmail || config.fromEmail,
+    fromEmail: config.fromEmail || DEFAULT_RESEND_FROM_EMAIL,
+    fromName: config.fromName || DEFAULT_RESEND_FROM_NAME,
+    replyToEmail: config.replyToEmail || DEFAULT_RESEND_REPLY_TO_EMAIL,
   };
 }
 

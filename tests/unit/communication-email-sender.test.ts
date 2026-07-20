@@ -23,29 +23,39 @@ describe("communication email senders", () => {
     text: "Hello",
   };
 
-  it("fails closed when live Resend sending is not enabled", async () => {
+  it("uses the app sender defaults when Resend sends", async () => {
     const resend = {
       emails: {
-        send: vi.fn(),
+        send: vi.fn(async () => ({
+          data: { id: "email_123" },
+          error: null,
+          headers: null,
+        })),
       },
     };
     const sender = new ResendEmailSender(
       {
         apiKey: "resend_key",
-        fromEmail: "hello@example.org",
-        liveEnabled: false,
-        preferenceOwnerVerified: true,
       },
       resend as never,
     );
 
-    await expect(sender.send(payload)).resolves.toMatchObject({
-      status: "FAILED",
+    await expect(
+      sender.send({ ...payload, from: "", replyTo: "" }),
+    ).resolves.toEqual({
+      providerMessageId: "email_123",
+      status: "ACCEPTED",
     });
-    expect(resend.emails.send).not.toHaveBeenCalled();
+    expect(resend.emails.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "Ev Church <info@ev.church>",
+        replyTo: "info@ev.church",
+      }),
+      { idempotencyKey: "recipient_1" },
+    );
   });
 
-  it("sends through Resend when production gates are enabled", async () => {
+  it("sends through Resend", async () => {
     const resend = {
       emails: {
         send: vi.fn(async () => ({
@@ -59,8 +69,6 @@ describe("communication email senders", () => {
       {
         apiKey: "resend_key",
         fromEmail: "hello@example.org",
-        liveEnabled: true,
-        preferenceOwnerVerified: true,
         replyToEmail: "reply@example.org",
       },
       resend as never,
@@ -86,8 +94,8 @@ describe("communication email senders", () => {
     };
     const sender = new MailDevEmailSender(
       {
-        fromEmail: "exec@ev.church",
-        fromName: "Exec Team",
+        fromEmail: "info@ev.church",
+        fromName: "Ev Church",
       },
       transport as never,
     );
@@ -98,7 +106,7 @@ describe("communication email senders", () => {
     });
     expect(transport.sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "Exec Team <exec@ev.church>",
+        from: "Ev Church <info@ev.church>",
         html: "<p>Hello</p>",
         subject: "Hello",
         to: "jane@example.com",

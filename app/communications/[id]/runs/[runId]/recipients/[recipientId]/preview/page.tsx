@@ -160,10 +160,8 @@ function senderAddress(automation: {
   fromEmail: string | null;
   fromName: string | null;
 }) {
-  const email =
-    automation.fromEmail ?? process.env.RESEND_FROM_EMAIL ?? "exec@ev.church";
-  const name =
-    automation.fromName ?? process.env.RESEND_FROM_NAME ?? "Exec Team";
+  const email = automation.fromEmail ?? "info@ev.church";
+  const name = automation.fromName ?? "Ev Church";
 
   return name ? `${name} <${email}>` : email;
 }

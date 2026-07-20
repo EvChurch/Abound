@@ -80,13 +80,13 @@ Templates are developer-owned React Email components with app-editable fields. S
 Sending is isolated behind `lib/communications/email-sender.ts` and `lib/communications/resend-sender.ts`:
 
 - `CAPTURE` records acceptance without contacting Resend.
-- `RESEND` fails closed unless `RESEND_LIVE_SEND_ENABLED=true`, `COMMUNICATION_PREFERENCES_VERIFIED=true`, `RESEND_API_KEY`, and a from address are configured.
+- `RESEND` requires `RESEND_API_KEY`; the default sender is `Ev Church <info@ev.church>`.
 - Resend webhooks are verified before updating local status.
 - Provider metadata is limited to automation/run/recipient/template tags. Do not store raw provider payloads or rendered email bodies.
 
 Suppression is created after provider acceptance. In `NEVER_RESEND` mode, that recipient is suppressed from future runs of the same automation. In cooldown mode, the recipient becomes eligible again after the configured day count.
 
-Communication preference ownership is still an unresolved production dependency. Keep live sending disabled until unsubscribe/preference source-of-truth behavior is confirmed for the church's Rock and Resend setup.
+Communication preference ownership is still an unresolved production dependency. Keep production workflows limited to reviewed audiences until unsubscribe/preference source-of-truth behavior is confirmed for the church's Rock and Resend setup.
 
 ## UI
 
@@ -107,14 +107,11 @@ Local commands:
 Environment variables:
 
 - `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
 - `RESEND_FROM_NAME`
 - `RESEND_REPLY_TO_EMAIL`
 - `RESEND_WEBHOOK_SECRET`
-- `RESEND_LIVE_SEND_ENABLED`
-- `COMMUNICATION_PREFERENCES_VERIFIED`
 
-Rollback is non-destructive: disable `RESEND_LIVE_SEND_ENABLED`, pause/archive automations, or stop the automation worker. Existing runs, recipients, events, and suppressions remain available for audit.
+Rollback is non-destructive: pause/archive automations or stop the automation worker. Existing runs, recipients, events, and suppressions remain available for audit.
 
 ## Follow-Up Work
 

@@ -1,6 +1,0 @@
-{
-  "$schema": "https://railway.com/railway.schema.json",
-  "deploy": {
-    "preDeployCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"web\" ]; then pnpm prisma migrate deploy; else echo \"Skipping database migrations for $RAILWAY_SERVICE_NAME\"; fi"
-  }
-}

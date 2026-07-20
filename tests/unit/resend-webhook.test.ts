@@ -106,7 +106,7 @@ describe("Resend webhook event recording", () => {
           data: {
             created_at: "2026-07-07T09:03:00.000Z",
             email_id: "email_123",
-            from: "exec@ev.church",
+            from: "info@ev.church",
             subject: "Hello",
             to: ["jane@example.com"],
           },

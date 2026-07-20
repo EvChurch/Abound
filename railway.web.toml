@@ -1,0 +1,17 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm prisma:generate && pnpm build"
+watchPatterns = []
+
+[deploy]
+preDeployCommand = "pnpm prisma migrate deploy"
+startCommand = "pnpm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+runtime = "V2"
+sleepApplication = false
+ipv6EgressEnabled = false
+numReplicas = 1
+
+[deploy.multiRegionConfig.us-west2]
+numReplicas = 1

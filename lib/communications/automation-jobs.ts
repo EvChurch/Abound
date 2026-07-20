@@ -310,7 +310,7 @@ async function notifyCommunicationAutomationReviewers(
 
     const result = await emailSender.send({
       automationId: run.automationId,
-      from: "Exec Team <exec@ev.church>",
+      from: "Ev Church <info@ev.church>",
       html,
       recipientEmail: reviewer.reviewer.email,
       recipientId: reviewer.reviewer.id,
