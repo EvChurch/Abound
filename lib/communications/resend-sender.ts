@@ -1,5 +1,5 @@
 import { Resend, type WebhookEventPayload } from "resend";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 import type {
   EmailSender,
@@ -21,22 +21,28 @@ const DEFAULT_RESEND_REPLY_TO_EMAIL = "info@ev.church";
 
 const EVENT_STATUS = {
   "email.bounced": "BOUNCED",
+  "email.clicked": null,
   "email.complained": "COMPLAINED",
   "email.delivered": "DELIVERED",
   "email.delivery_delayed": "DELAYED",
   "email.failed": "FAILED",
   "email.opened": null,
+  "email.received": null,
+  "email.scheduled": null,
   "email.sent": "ACCEPTED",
   "email.suppressed": "SUPPRESSED",
 } as const;
 
 const EVENT_TYPE = {
   "email.bounced": "BOUNCED",
+  "email.clicked": "CLICKED",
   "email.complained": "COMPLAINED",
   "email.delivered": "DELIVERED",
   "email.delivery_delayed": "DELAYED",
   "email.failed": "FAILED",
   "email.opened": "OPENED",
+  "email.received": "RECEIVED",
+  "email.scheduled": "SCHEDULED",
   "email.sent": "PROVIDER_ACCEPTED",
   "email.suppressed": "SUPPRESSED",
 } as const;
@@ -157,6 +163,7 @@ export async function recordResendWebhookEvent(
       create: {
         automationId: recipient.automationId,
         eventType,
+        metadata: eventMetadata(event),
         providerEventId: providerEventId(event),
         providerMessageId: event.data.email_id,
         recipientId: recipient.id,
@@ -164,6 +171,7 @@ export async function recordResendWebhookEvent(
         summary: `Resend ${event.type} event.`,
       },
       update: {
+        metadata: eventMetadata(event),
         occurredAt,
         summary: `Resend ${event.type} event.`,
       },
@@ -211,4 +219,43 @@ function isAutomationEmailEvent(
 
 function providerEventId(event: WebhookEventPayload) {
   return `${event.type}:${event.created_at}:${"email_id" in event.data ? event.data.email_id : "unknown"}`;
+}
+
+function eventMetadata(event: WebhookEventPayload): Prisma.InputJsonObject {
+  const data = event.data as unknown as Record<string, unknown>;
+  const click = isRecord(data.click) ? data.click : null;
+
+  return {
+    broadcastId: stringOrNull(data.broadcast_id),
+    click: click
+      ? {
+          link: stringOrNull(click.link),
+          timestamp: stringOrNull(click.timestamp),
+        }
+      : null,
+    messageId: stringOrNull(data.message_id),
+    providerCreatedAt: stringOrNull(data.created_at),
+    tags: stringRecordOrNull(data.tags),
+    templateId: stringOrNull(data.template_id),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringOrNull(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function stringRecordOrNull(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
 }

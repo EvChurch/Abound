@@ -18,6 +18,12 @@ import {
   getCommunicationAutomation,
   getCommunicationAutomationRun,
 } from "@/lib/communications/automations";
+import {
+  DELIVERY_EVENT_LABELS,
+  DELIVERY_EVENT_TYPES,
+  communicationRecipientEvents,
+  communicationRunEventCounts,
+} from "@/lib/communications/event-summary";
 import { listPeopleByRockIds } from "@/lib/list-views/people-list";
 
 type CommunicationAutomationRunPageProps = {
@@ -75,6 +81,9 @@ export default async function CommunicationAutomationRunPage({
     selectedRun?.status === "NOTICE_SENT" ||
     selectedRun?.status === "READY_TO_SEND";
   const displayRun = selectedRun ?? null;
+  const deliveryEventCounts = displayRun
+    ? communicationRunEventCounts(displayRun.events)
+    : null;
   const recipientPeople = displayRun
     ? await listPeopleByRockIds(
         {
@@ -147,12 +156,13 @@ export default async function CommunicationAutomationRunPage({
         {displayRun && !isEditableRun ? (
           <Panel title="Delivery">
             <dl className="grid gap-2 text-[12px] sm:grid-cols-3">
-              <Metric label="Sent" value={String(displayRun.acceptedCount)} />
-              <Metric
-                label="Opened"
-                value={String(openedRecipientCount(displayRun))}
-              />
-              <Metric label="Failed" value={String(displayRun.failedCount)} />
+              {DELIVERY_EVENT_TYPES.map((eventType) => (
+                <Metric
+                  key={eventType}
+                  label={DELIVERY_EVENT_LABELS[eventType]}
+                  value={String(deliveryEventCounts?.[eventType] ?? 0)}
+                />
+              ))}
             </dl>
           </Panel>
         ) : null}
@@ -204,6 +214,56 @@ export default async function CommunicationAutomationRunPage({
             </div>
           </Panel>
         )}
+
+        {displayRun && !isEditableRun ? (
+          <Panel title="Recipient events">
+            <div className="grid divide-y divide-app-border text-[12px]">
+              {displayRun.recipients.map((recipient) => {
+                const events = communicationRecipientEvents(
+                  displayRun,
+                  recipient.id,
+                );
+
+                return (
+                  <div
+                    className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[220px_minmax(0,1fr)]"
+                    key={recipient.id}
+                  >
+                    <div className="grid gap-0.5">
+                      <span className="font-semibold text-app-foreground">
+                        {recipient.displayNameSnapshot}
+                      </span>
+                      <span className="font-mono text-[10px] uppercase text-app-muted">
+                        {recipient.status}
+                      </span>
+                    </div>
+                    {events.length > 0 ? (
+                      <ol className="flex list-none flex-wrap gap-2">
+                        {events.map((event) => (
+                          <li
+                            className="rounded-[6px] border border-app-border bg-app-background px-2.5 py-1"
+                            key={event.id}
+                          >
+                            <span className="font-semibold text-app-foreground">
+                              {eventLabel(event.eventType)}
+                            </span>
+                            <span className="ml-2 text-app-muted">
+                              {formatDateTime(event.occurredAt)}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <span className="text-app-muted">
+                        No provider events recorded.
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        ) : null}
       </main>
     </div>
   );
@@ -291,18 +351,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function openedRecipientCount(
-  run: NonNullable<
-    Awaited<ReturnType<typeof getCommunicationAutomation>>
-  >["runs"][number],
-) {
-  return new Set(
-    run.events
-      .filter((event) => event.eventType === "OPENED")
-      .map((event) => event.recipientId),
-  ).size;
-}
-
 function formatDateTime(value: Date) {
   return new Intl.DateTimeFormat("en-NZ", {
     dateStyle: "medium",
@@ -327,6 +375,13 @@ function formatStatus(status: string) {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function eventLabel(eventType: string) {
+  return (
+    DELIVERY_EVENT_LABELS[eventType as keyof typeof DELIVERY_EVENT_LABELS] ??
+    formatStatus(eventType)
+  );
 }
 
 function mobileRecipientSecondary(

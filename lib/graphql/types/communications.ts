@@ -1,4 +1,5 @@
 import type {
+  CommunicationAutomationRecipientEventType,
   CommunicationAutomationRecipientStatus,
   CommunicationAutomationRunStatus,
   CommunicationPrepStatus,
@@ -79,6 +80,29 @@ const communicationAutomationRecipientStatusEnum = builder.enumType(
       "BOUNCED",
       "COMPLAINED",
       "DELAYED",
+    ] as const,
+  },
+);
+
+const communicationAutomationRecipientEventTypeEnum = builder.enumType(
+  "CommunicationAutomationRecipientEventType",
+  {
+    values: [
+      "CREATED",
+      "SKIPPED",
+      "EXCLUDED",
+      "SEND_REQUESTED",
+      "PROVIDER_ACCEPTED",
+      "DELIVERED",
+      "FAILED",
+      "BOUNCED",
+      "COMPLAINED",
+      "DELAYED",
+      "CLICKED",
+      "OPENED",
+      "RECEIVED",
+      "SCHEDULED",
+      "SUPPRESSED",
     ] as const,
   },
 );
@@ -194,6 +218,35 @@ const communicationAutomationRecipientType = builder
     }),
   });
 
+const communicationAutomationRecipientEventType = builder
+  .objectRef<
+    CommunicationAutomationRecord["runs"][number]["events"][number]
+  >("CommunicationAutomationRecipientEvent")
+  .implement({
+    fields: (t) => ({
+      eventType: t.field({
+        type: communicationAutomationRecipientEventTypeEnum,
+        resolve: (event) =>
+          event.eventType as CommunicationAutomationRecipientEventType,
+      }),
+      id: t.exposeString("id"),
+      metadataJson: t.string({
+        nullable: true,
+        resolve: (event) =>
+          event.metadata ? JSON.stringify(event.metadata) : null,
+      }),
+      occurredAt: t.string({
+        resolve: (event) => event.occurredAt.toISOString(),
+      }),
+      providerEventId: t.exposeString("providerEventId", { nullable: true }),
+      providerMessageId: t.exposeString("providerMessageId", {
+        nullable: true,
+      }),
+      recipientId: t.exposeString("recipientId"),
+      summary: t.exposeString("summary"),
+    }),
+  });
+
 const communicationAutomationRunType = builder
   .objectRef<
     CommunicationAutomationRecord["runs"][number]
@@ -202,6 +255,10 @@ const communicationAutomationRunType = builder
     fields: (t) => ({
       deliverableCount: t.exposeInt("deliverableCount"),
       excludedCount: t.exposeInt("excludedCount"),
+      events: t.field({
+        type: [communicationAutomationRecipientEventType],
+        resolve: (run) => run.events,
+      }),
       failedCount: t.exposeInt("failedCount"),
       id: t.exposeString("id"),
       noticeDueAt: t.string({

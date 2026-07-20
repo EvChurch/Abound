@@ -421,6 +421,32 @@ describe("Communication workflow pages", () => {
           events: [
             {
               automationId: "automation_1",
+              createdAt: new Date("2026-07-11T21:10:00.000Z"),
+              eventType: "PROVIDER_ACCEPTED",
+              id: "event_sent_1",
+              metadata: null,
+              occurredAt: new Date("2026-07-11T21:10:00.000Z"),
+              providerEventId: "email.sent:email_1",
+              providerMessageId: "email_1",
+              recipientId: "recipient_1",
+              runId: "run_sent",
+              summary: "Resend email.sent event.",
+            },
+            {
+              automationId: "automation_1",
+              createdAt: new Date("2026-07-11T21:10:00.000Z"),
+              eventType: "PROVIDER_ACCEPTED",
+              id: "event_sent_2",
+              metadata: null,
+              occurredAt: new Date("2026-07-11T21:10:00.000Z"),
+              providerEventId: "email.sent:email_2",
+              providerMessageId: "email_2",
+              recipientId: "recipient_2",
+              runId: "run_sent",
+              summary: "Resend email.sent event.",
+            },
+            {
+              automationId: "automation_1",
               createdAt: new Date("2026-07-11T21:11:00.000Z"),
               eventType: "OPENED",
               id: "event_opened_1",
@@ -853,6 +879,19 @@ describe("Communication workflow pages", () => {
           events: [
             {
               automationId: "automation_1",
+              createdAt: new Date("2026-07-08T21:05:00.000Z"),
+              eventType: "PROVIDER_ACCEPTED",
+              id: "event_sent_1",
+              metadata: null,
+              occurredAt: new Date("2026-07-08T21:05:00.000Z"),
+              providerEventId: "email.sent:maildev_123",
+              providerMessageId: "maildev_123",
+              recipientId: "recipient_1",
+              runId: "run_sent",
+              summary: "Resend email.sent event.",
+            },
+            {
+              automationId: "automation_1",
               createdAt: new Date("2026-07-08T21:06:00.000Z"),
               eventType: "OPENED",
               id: "event_opened_1",
@@ -914,7 +953,7 @@ describe("Communication workflow pages", () => {
     expect(
       screen.getByRole("heading", { name: "Delivery" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Opened")).toBeInTheDocument();
+    expect(screen.getAllByText("Opened").length).toBeGreaterThan(0);
     expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: "Jane Joining" }),

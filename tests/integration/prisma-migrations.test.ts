@@ -38,6 +38,10 @@ const newZealandTimezoneMigration = readFileSync(
   "prisma/migrations/20260714000200_force_new_zealand_timezone/migration.sql",
   "utf8",
 );
+const resendEmailEventTypesMigration = readFileSync(
+  "prisma/migrations/20260720000100_add_resend_email_event_types/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -299,5 +303,13 @@ describe("synced data model migration", () => {
     expect(communicationAutomationsMigration).toContain(
       'FOREIGN KEY ("householdRockId") REFERENCES "RockHousehold"("rockId") ON DELETE SET NULL',
     );
+  });
+
+  it("adds Resend engagement event types idempotently", () => {
+    for (const eventType of ["OPENED", "CLICKED", "SCHEDULED", "RECEIVED"]) {
+      expect(resendEmailEventTypesMigration).toContain(
+        `ADD VALUE IF NOT EXISTS '${eventType}'`,
+      );
+    }
   });
 });

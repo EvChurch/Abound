@@ -122,7 +122,75 @@ describe("Resend webhook event recording", () => {
     expect(transaction).toHaveBeenCalledWith([
       expect.objectContaining({
         create: expect.objectContaining({
+          metadata: expect.objectContaining({
+            messageId: null,
+            tags: null,
+          }),
           eventType: "OPENED",
+          providerMessageId: "email_123",
+        }),
+      }),
+    ]);
+  });
+
+  it("records click events with safe click metadata", async () => {
+    const transaction = vi.fn(async () => undefined);
+    const client = {
+      $transaction: transaction,
+      communicationAutomationRecipient: {
+        findUnique: vi.fn(async () => ({
+          acceptedAt: new Date("2026-07-07T09:01:00.000Z"),
+          automationId: "automation_1",
+          deliveredAt: new Date("2026-07-07T09:02:00.000Z"),
+          failedAt: null,
+          id: "recipient_1",
+          runId: "run_1",
+        })),
+        update: vi.fn((args) => args),
+      },
+      communicationAutomationRecipientEvent: {
+        upsert: vi.fn((args) => args),
+      },
+    };
+
+    await expect(
+      recordResendWebhookEvent(
+        {
+          created_at: "2026-07-07T09:04:00.000Z",
+          data: {
+            click: {
+              ipAddress: "203.0.113.1",
+              link: "https://example.com/path",
+              timestamp: "2026-07-07T09:04:00.000Z",
+              userAgent: "Example",
+            },
+            created_at: "2026-07-07T09:04:00.000Z",
+            email_id: "email_123",
+            from: "info@ev.church",
+            subject: "Hello",
+            tags: { automationId: "automation_1", runId: "run_1" },
+            to: ["jane@example.com"],
+          },
+          type: "email.clicked",
+        },
+        client as never,
+      ),
+    ).resolves.toEqual({ status: "RECORDED" });
+
+    expect(
+      client.communicationAutomationRecipient.update,
+    ).not.toHaveBeenCalled();
+    expect(transaction).toHaveBeenCalledWith([
+      expect.objectContaining({
+        create: expect.objectContaining({
+          eventType: "CLICKED",
+          metadata: expect.objectContaining({
+            click: {
+              link: "https://example.com/path",
+              timestamp: "2026-07-07T09:04:00.000Z",
+            },
+            tags: { automationId: "automation_1", runId: "run_1" },
+          }),
           providerMessageId: "email_123",
         }),
       }),

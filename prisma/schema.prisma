@@ -144,7 +144,10 @@ enum CommunicationAutomationRecipientEventType {
   BOUNCED
   COMPLAINED
   DELAYED
+  CLICKED
   OPENED
+  RECEIVED
+  SCHEDULED
   SUPPRESSED
 }
 

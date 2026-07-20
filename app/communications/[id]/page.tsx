@@ -23,6 +23,10 @@ import {
   type CommunicationAutomationRecord,
 } from "@/lib/communications/automations";
 import { describeCommunicationCron } from "@/lib/communications/cron";
+import {
+  communicationRunEventSummary,
+  hasCommunicationRunEvents,
+} from "@/lib/communications/event-summary";
 
 type CommunicationAutomationDetailPageProps = {
   params: Promise<{
@@ -556,34 +560,13 @@ function StatusMarker({
 function formatRunStatus(run: CommunicationAutomationRecord["runs"][number]) {
   const status = formatStatus(run.status);
 
-  if (!hasDeliveryCounts(run)) {
+  if (!hasCommunicationRunEvents(run)) {
     return status;
   }
 
-  const failedText = run.failedCount > 0 ? `, ${run.failedCount} failed` : "";
-  const openedCount = openedRecipientCount(run);
-  const openedText = openedCount > 0 ? `, ${openedCount} opened` : "";
+  const eventSummary = communicationRunEventSummary(run);
 
-  return `${status}, ${run.acceptedCount} sent${failedText}${openedText}`;
-}
-
-function hasDeliveryCounts(run: CommunicationAutomationRecord["runs"][number]) {
-  return (
-    (run.status === "SENT" ||
-      run.status === "PARTIAL" ||
-      run.status === "FAILED") &&
-    run.acceptedCount + run.failedCount > 0
-  );
-}
-
-function openedRecipientCount(
-  run: CommunicationAutomationRecord["runs"][number],
-) {
-  return new Set(
-    run.events
-      .filter((event) => event.eventType === "OPENED")
-      .map((event) => event.recipientId),
-  ).size;
+  return eventSummary ? `${status}, ${eventSummary}` : status;
 }
 
 function getStatusTone(status: string) {
