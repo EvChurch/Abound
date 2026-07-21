@@ -54,6 +54,10 @@ const removeAppUserRolesMigration = readFileSync(
   "prisma/migrations/20260721000400_remove_app_user_roles/migration.sql",
   "utf8",
 );
+const mcpAuditEventsMigration = readFileSync(
+  "prisma/migrations/20260721000500_add_mcp_audit_events/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -196,6 +200,29 @@ describe("synced data model migration", () => {
       `ALTER TABLE "AppUser" DROP COLUMN "role"`,
     );
     expect(removeAppUserRolesMigration).toContain(`DROP TYPE "AppRole"`);
+  });
+
+  it("creates a minimal MCP tool audit trail without payload storage", () => {
+    expect(mcpAuditEventsMigration).toContain(
+      `CREATE TYPE "McpAuditEventStatus" AS ENUM ('SUCCEEDED', 'FAILED')`,
+    );
+    expect(mcpAuditEventsMigration).toContain(`CREATE TABLE "McpAuditEvent"`);
+    expect(mcpAuditEventsMigration).toContain(`"appUserId" TEXT NOT NULL`);
+    expect(mcpAuditEventsMigration).toContain(`"toolName" TEXT NOT NULL`);
+    expect(mcpAuditEventsMigration).toContain(`"targetRockId" INTEGER`);
+    expect(mcpAuditEventsMigration).toContain(`"resultCount" INTEGER`);
+    expect(mcpAuditEventsMigration).toContain(
+      `CREATE INDEX "McpAuditEvent_appUserId_createdAt_idx"`,
+    );
+    expect(mcpAuditEventsMigration).toContain(
+      `CREATE INDEX "McpAuditEvent_toolName_createdAt_idx"`,
+    );
+    expect(mcpAuditEventsMigration).toContain(
+      `FOREIGN KEY ("appUserId") REFERENCES "AppUser"("id") ON DELETE RESTRICT`,
+    );
+    expect(mcpAuditEventsMigration).not.toMatch(
+      /token|prompt|payload|resultJson|email|donor/i,
+    );
   });
 
   it("forces communication schedules into New Zealand time", () => {
