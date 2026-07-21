@@ -953,7 +953,13 @@ describe("Communication workflow pages", () => {
     expect(
       screen.getByRole("heading", { name: "Delivery" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Recipient events" }),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText("Opened").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delivered")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delayed")).not.toBeInTheDocument();
     expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: "Jane Joining" }),

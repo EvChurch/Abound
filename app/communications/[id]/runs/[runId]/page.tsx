@@ -84,6 +84,11 @@ export default async function CommunicationAutomationRunPage({
   const deliveryEventCounts = displayRun
     ? communicationRunEventCounts(displayRun.events)
     : null;
+  const visibleDeliveryEventTypes = DELIVERY_EVENT_TYPES.filter(
+    (eventType) => (deliveryEventCounts?.[eventType] ?? 0) > 0,
+  );
+  const showDeliveryMetrics =
+    displayRun && !isEditableRun && visibleDeliveryEventTypes.length > 0;
   const recipientPeople = displayRun
     ? await listPeopleByRockIds(
         {
@@ -153,10 +158,10 @@ export default async function CommunicationAutomationRunPage({
           </div>
         </section>
 
-        {displayRun && !isEditableRun ? (
+        {showDeliveryMetrics ? (
           <Panel title="Delivery">
             <dl className="grid gap-2 text-[12px] sm:grid-cols-3">
-              {DELIVERY_EVENT_TYPES.map((eventType) => (
+              {visibleDeliveryEventTypes.map((eventType) => (
                 <Metric
                   key={eventType}
                   label={DELIVERY_EVENT_LABELS[eventType]}
@@ -204,7 +209,11 @@ export default async function CommunicationAutomationRunPage({
             </Panel>
           ) : (
             <Panel flush title="Recipients">
-              <ListTable connection={recipientPeople} kind="people" />
+              <ReadOnlyRecipientRows
+                recipients={displayRun.recipients}
+                recipientPeople={recipientPeople}
+                run={displayRun}
+              />
             </Panel>
           )
         ) : (
@@ -214,57 +223,88 @@ export default async function CommunicationAutomationRunPage({
             </div>
           </Panel>
         )}
-
-        {displayRun && !isEditableRun ? (
-          <Panel title="Recipient events">
-            <div className="grid divide-y divide-app-border text-[12px]">
-              {displayRun.recipients.map((recipient) => {
-                const events = communicationRecipientEvents(
-                  displayRun,
-                  recipient.id,
-                );
-
-                return (
-                  <div
-                    className="grid gap-2 py-3 first:pt-0 last:pb-0 sm:grid-cols-[220px_minmax(0,1fr)]"
-                    key={recipient.id}
-                  >
-                    <div className="grid gap-0.5">
-                      <span className="font-semibold text-app-foreground">
-                        {recipient.displayNameSnapshot}
-                      </span>
-                      <span className="font-mono text-[10px] uppercase text-app-muted">
-                        {recipient.status}
-                      </span>
-                    </div>
-                    {events.length > 0 ? (
-                      <ol className="flex list-none flex-wrap gap-2">
-                        {events.map((event) => (
-                          <li
-                            className="rounded-[6px] border border-app-border bg-app-background px-2.5 py-1"
-                            key={event.id}
-                          >
-                            <span className="font-semibold text-app-foreground">
-                              {eventLabel(event.eventType)}
-                            </span>
-                            <span className="ml-2 text-app-muted">
-                              {formatDateTime(event.occurredAt)}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <span className="text-app-muted">
-                        No provider events recorded.
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </Panel>
-        ) : null}
       </main>
+    </div>
+  );
+}
+
+function ReadOnlyRecipientRows({
+  recipients,
+  recipientPeople,
+  run,
+}: {
+  recipients: NonNullable<
+    Awaited<ReturnType<typeof getCommunicationAutomation>>
+  >["runs"][number]["recipients"];
+  recipientPeople: NonNullable<Awaited<ReturnType<typeof listPeopleByRockIds>>>;
+  run: NonNullable<
+    Awaited<ReturnType<typeof getCommunicationAutomation>>
+  >["runs"][number];
+}) {
+  const peopleByRockId = new Map(
+    recipientPeople.edges.map((edge) => [edge.node.rockId, edge.node]),
+  );
+
+  return (
+    <div className="grid divide-y divide-app-border text-[12px]">
+      {recipients.map((recipient) => {
+        const person =
+          typeof recipient.personRockId === "number"
+            ? peopleByRockId.get(recipient.personRockId)
+            : null;
+        const events = communicationRecipientEvents(run, recipient.id);
+
+        return (
+          <div
+            className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(180px,1fr)_minmax(260px,2fr)] sm:items-start"
+            key={recipient.id}
+          >
+            <div className="grid gap-1">
+              {person ? (
+                <Link
+                  className="font-semibold text-app-foreground hover:text-app-accent focus:outline-none focus:ring-2 focus:ring-app-accent/30"
+                  href={`/people/${person.rockId}`}
+                >
+                  {person.displayName}
+                </Link>
+              ) : (
+                <span className="font-semibold text-app-foreground">
+                  {recipient.displayNameSnapshot}
+                </span>
+              )}
+              <span className="text-app-muted">
+                {[
+                  person?.primaryCampus?.name,
+                  person?.connectionStatus,
+                  recipient.emailSnapshot,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              <span className="font-mono text-[10px] uppercase text-app-muted">
+                {formatStatus(recipient.status)}
+              </span>
+            </div>
+            {events.length > 0 ? (
+              <ol className="flex list-none flex-wrap gap-2">
+                {events.map((event) => (
+                  <li
+                    className="rounded-[6px] border border-app-border bg-app-background px-2.5 py-1"
+                    key={event.id}
+                  >
+                    <span className="font-semibold text-app-foreground">
+                      {eventLabel(event.eventType)}
+                    </span>
+                    <span className="ml-2 text-app-muted">
+                      {formatDateTime(event.occurredAt)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
