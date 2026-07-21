@@ -4,8 +4,20 @@ import { redirect } from "next/navigation";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { CopyField } from "@/components/tools/copy-field";
 import { CopyPromptList } from "@/components/tools/copy-prompt-list";
+import {
+  McpTokenManager,
+  type McpTokenManagerToken,
+} from "@/components/tools/mcp-token-manager";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
+import {
+  listMcpAccessTokens,
+  type McpAccessTokenSummary,
+} from "@/lib/mcp/access-tokens";
+import {
+  createMcpTokenAction,
+  revokeMcpTokenAction,
+} from "@/app/tools/mcp/actions";
 
 export const metadata = {
   title: "MCP Setup",
@@ -24,6 +36,7 @@ export default async function McpSetupPage() {
   }
 
   const guide = buildMcpGuide(await currentRequestOrigin());
+  const tokens = await listMcpAccessTokens(accessState.user.id);
 
   return (
     <main className="min-h-screen bg-app-background">
@@ -58,10 +71,28 @@ export default async function McpSetupPage() {
             <CopyField label="Abound MCP address" value={guide.mcpUrl} />
           </section>
 
+          <McpTokenManager
+            createAction={createMcpTokenAction}
+            revokeAction={revokeMcpTokenAction}
+            tokens={tokens.map(serializeMcpToken)}
+          />
+
+          <section className="grid gap-4">
+            <Step
+              body="For Codex, use your personal token through an environment variable instead of Auth0 dynamic client registration."
+              number="2"
+              title="Configure token-based access"
+            />
+            <CopyField
+              label="Codex command"
+              value={`codex mcp add abound --url ${guide.mcpUrl} --bearer-token-env-var ABOUND_MCP_TOKEN`}
+            />
+          </section>
+
           <section className="grid gap-4">
             <Step
               body="Choose the app you use, then paste the address when it asks for an MCP server URL."
-              number="2"
+              number="3"
               title="Add it to your AI app"
             />
             <div className="grid gap-3 lg:grid-cols-3">
@@ -100,7 +131,7 @@ export default async function McpSetupPage() {
           <section className="grid gap-4">
             <Step
               body="Start broad, then use the names or segments your AI finds for follow-up questions."
-              number="3"
+              number="4"
               title="Ask a question"
             />
             <CopyPromptList
@@ -118,6 +149,18 @@ export default async function McpSetupPage() {
       </div>
     </main>
   );
+}
+
+function serializeMcpToken(token: McpAccessTokenSummary): McpTokenManagerToken {
+  return {
+    createdAt: token.createdAt.toISOString(),
+    expiresAt: token.expiresAt?.toISOString() ?? null,
+    id: token.id,
+    lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+    name: token.name,
+    revokedAt: token.revokedAt?.toISOString() ?? null,
+    tokenPrefix: token.tokenPrefix,
+  };
 }
 
 function Step({

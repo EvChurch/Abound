@@ -114,6 +114,74 @@ describe("MCP auth", () => {
     expect(verifyToken).toHaveBeenCalledWith("token_1", config);
   });
 
+  it("resolves valid personal MCP bearer tokens to their active local app user", async () => {
+    const accessTokens = {
+      findValidByToken: vi.fn(async (token: string) =>
+        token === "abound_mcp_validvalidvalidvalidvalidvalidvalidvalidvalid"
+          ? {
+              token: {
+                createdAt: new Date("2026-07-21T00:00:00Z"),
+                expiresAt: null,
+                id: "mcp_token_1",
+                lastUsedAt: null,
+                name: "Codex laptop",
+                revokedAt: null,
+                scopes: ["abound:staff:read"],
+                tokenPrefix: "abound_mcp_validvali",
+              },
+              user: staffUser,
+            }
+          : null,
+      ),
+    };
+    const verifyToken = vi.fn();
+
+    await expect(
+      authenticateMcpRequest(
+        requestWithToken(
+          "abound_mcp_validvalidvalidvalidvalidvalidvalidvalidvalid",
+        ),
+        {
+          accessTokens,
+          config,
+          users: usersReturning(null),
+          verifyToken,
+        },
+      ),
+    ).resolves.toMatchObject({
+      authInfo: {
+        clientId: "mcp-access-token:mcp_token_1",
+        scopes: ["abound:staff:read"],
+      },
+      user: staffUser,
+    });
+    expect(accessTokens.findValidByToken).toHaveBeenCalledWith(
+      "abound_mcp_validvalidvalidvalidvalidvalidvalidvalidvalid",
+    );
+    expect(verifyToken).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown personal MCP bearer tokens safely", async () => {
+    await expect(
+      authenticateMcpRequest(
+        requestWithToken("abound_mcp_unknownunknownunknownunknownunknown"),
+        {
+          accessTokens: {
+            async findValidByToken() {
+              return null;
+            },
+          },
+          config,
+          users: usersReturning(staffUser),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "UNAUTHENTICATED",
+      message: "Authentication is required.",
+      status: 401,
+    } satisfies Partial<McpAuthError>);
+  });
+
   it("rejects requests without bearer tokens safely", async () => {
     await expect(
       authenticateMcpRequest(requestWithToken(null), {

@@ -8,7 +8,16 @@ The MCP endpoint is an OAuth protected resource. Requests must include `Authoriz
 
 Token validation checks the configured Auth0 issuer and JWKS, and requires the access token audience to match the MCP resource. After token validation, Abound resolves the token subject against the local `AppUser` table. Only active local app users can access MCP tools. Auth0 login alone is not authorization.
 
+For AI clients where Auth0 OAuth is not a good fit, Abound also supports personal MCP bearer tokens. Personal tokens are created by an active staff user from the MCP tools page, are stored only as SHA-256 hashes, are scoped to `abound:staff:read`, and can be revoked by the same user. Personal token authentication still resolves to an active local `AppUser`; revoking or deactivating that user removes MCP access.
+
 Unauthorized callers receive `401` with a `WWW-Authenticate` challenge that points to `/.well-known/oauth-protected-resource`. Authenticated users without active local app access receive `403`.
+
+Codex can use the personal token path without dynamic client registration:
+
+```bash
+export ABOUND_MCP_TOKEN="abound_mcp_..."
+codex mcp add abound --url https://abound.ev.church/mcp --bearer-token-env-var ABOUND_MCP_TOKEN
+```
 
 ## Configuration
 

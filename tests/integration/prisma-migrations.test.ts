@@ -58,6 +58,10 @@ const mcpAuditEventsMigration = readFileSync(
   "prisma/migrations/20260721000500_add_mcp_audit_events/migration.sql",
   "utf8",
 );
+const mcpAccessTokensMigration = readFileSync(
+  "prisma/migrations/20260721000600_add_mcp_access_tokens/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -222,6 +226,25 @@ describe("synced data model migration", () => {
     );
     expect(mcpAuditEventsMigration).not.toMatch(
       /token|prompt|payload|resultJson|email|donor/i,
+    );
+  });
+
+  it("stores MCP bearer tokens as revocable hashes only", () => {
+    expect(mcpAccessTokensMigration).toContain(`CREATE TABLE "McpAccessToken"`);
+    expect(mcpAccessTokensMigration).toContain(`"appUserId" TEXT NOT NULL`);
+    expect(mcpAccessTokensMigration).toContain(`"tokenHash" TEXT NOT NULL`);
+    expect(mcpAccessTokensMigration).toContain(`"tokenPrefix" TEXT NOT NULL`);
+    expect(mcpAccessTokensMigration).toContain(`"scopes" TEXT[] NOT NULL`);
+    expect(mcpAccessTokensMigration).toContain(`"expiresAt" TIMESTAMP(3)`);
+    expect(mcpAccessTokensMigration).toContain(`"revokedAt" TIMESTAMP(3)`);
+    expect(mcpAccessTokensMigration).toContain(
+      `CREATE UNIQUE INDEX "McpAccessToken_tokenHash_key"`,
+    );
+    expect(mcpAccessTokensMigration).toContain(
+      `FOREIGN KEY ("appUserId") REFERENCES "AppUser"("id") ON DELETE CASCADE`,
+    );
+    expect(mcpAccessTokensMigration).not.toMatch(
+      /tokenValue|plainText|secret/i,
     );
   });
 

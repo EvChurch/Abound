@@ -6,6 +6,7 @@ import type { AccessState } from "@/lib/auth/types";
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
   headers: vi.fn(),
+  listMcpAccessTokens: vi.fn(),
   redirect: vi.fn(),
 }));
 
@@ -25,6 +26,15 @@ vi.mock("@/lib/auth/auth0", () => ({
 
 vi.mock("@/lib/auth/access-control", () => ({
   getCurrentAccessState: vi.fn(async () => mocks.accessState),
+}));
+
+vi.mock("@/lib/mcp/access-tokens", () => ({
+  listMcpAccessTokens: mocks.listMcpAccessTokens,
+}));
+
+vi.mock("@/app/tools/mcp/actions", () => ({
+  createMcpTokenAction: vi.fn(),
+  revokeMcpTokenAction: vi.fn(),
 }));
 
 vi.mock("@/components/navigation/app-top-nav", () => ({
@@ -54,6 +64,7 @@ describe("McpSetupPage", () => {
       }),
     );
     mocks.accessState = { status: "anonymous" };
+    mocks.listMcpAccessTokens.mockResolvedValue([]);
     mocks.redirect.mockImplementation((path: string) => {
       throw new Error(`NEXT_REDIRECT:${path}`);
     });
@@ -85,6 +96,10 @@ describe("McpSetupPage", () => {
     expect(container).toHaveTextContent("https://abound.example.test/mcp");
     expect(
       screen.getByText("Copy the Abound connection address"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Personal MCP tokens")).toBeInTheDocument();
+    expect(
+      screen.getByText("No active personal MCP tokens."),
     ).toBeInTheDocument();
     expect(screen.getByText("Add it to your AI app")).toBeInTheDocument();
     expect(screen.getByText("Ask a question")).toBeInTheDocument();

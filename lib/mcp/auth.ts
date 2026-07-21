@@ -4,6 +4,11 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prismaAppUsers } from "@/lib/auth/prisma-users";
 import type { AppUserRepository } from "@/lib/auth/users";
+import {
+  isMcpAccessToken,
+  prismaMcpAccessTokens,
+  type McpAccessTokenRepository,
+} from "@/lib/mcp/access-tokens";
 import { McpAuthError, McpConfigurationError } from "@/lib/mcp/errors";
 
 export type McpAuthConfig = {
@@ -80,6 +85,7 @@ export function mcpAuthenticateHeader(config: McpAuthConfig) {
 export async function authenticateMcpRequest(
   request: Request,
   options: {
+    accessTokens?: McpAccessTokenRepository;
     config?: McpAuthConfig;
     users?: AppUserRepository;
     verifyToken?: TokenVerifier;
@@ -87,6 +93,15 @@ export async function authenticateMcpRequest(
 ): Promise<McpPrincipal> {
   const config = options.config ?? getMcpAuthConfig();
   const token = bearerTokenFromRequest(request);
+
+  if (isMcpAccessToken(token)) {
+    return authenticateMcpAccessToken(
+      token,
+      options.accessTokens ?? prismaMcpAccessTokens,
+      config,
+    );
+  }
+
   const payload = await (options.verifyToken ?? verifyAuth0AccessToken)(
     token,
     config,
@@ -123,6 +138,34 @@ export async function authenticateMcpRequest(
       },
     },
     user,
+  };
+}
+
+async function authenticateMcpAccessToken(
+  token: string,
+  accessTokens: McpAccessTokenRepository,
+  config: McpAuthConfig,
+): Promise<McpPrincipal> {
+  const principal = await accessTokens.findValidByToken(token);
+
+  if (!principal) {
+    throw new McpAuthError("Authentication is required.", {
+      code: "UNAUTHENTICATED",
+      status: 401,
+    });
+  }
+
+  return {
+    authInfo: {
+      clientId: `mcp-access-token:${principal.token.id}`,
+      resource: new URL(config.resource),
+      scopes: principal.token.scopes,
+      token,
+      extra: {
+        sub: principal.user.auth0Subject,
+      },
+    },
+    user: principal.user,
   };
 }
 

@@ -217,9 +217,29 @@ model AppUser {
   communicationAutomationReviewers  CommunicationAutomationReviewer[]
   excludedCommunicationRecipients   CommunicationAutomationRecipient[]   @relation("CommunicationRecipientExcludedBy")
   mcpAuditEvents                    McpAuditEvent[]
+  mcpAccessTokens                   McpAccessToken[]
 
   @@index([email])
   @@index([rockPersonId])
+}
+
+model McpAccessToken {
+  id          String    @id @default(cuid())
+  appUserId   String
+  name        String
+  tokenHash   String    @unique
+  tokenPrefix String
+  scopes      String[]  @default([])
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  appUser AppUser @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+
+  @@index([appUserId, revokedAt])
+  @@index([expiresAt])
 }
 
 model McpAuditEvent {
