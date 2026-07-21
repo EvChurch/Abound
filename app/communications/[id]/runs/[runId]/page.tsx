@@ -250,17 +250,14 @@ function RecipientEventChips({
   if (events.length === 0) {
     return null;
   }
+
   const latestEvent = events[0];
-  const priorEvents = events.slice(1);
-  const displayPriorEvents =
-    priorEvents.length > 0
-      ? priorEvents.map((event) => ({
-          eventType: event.eventType,
-          id: event.id,
-          label: eventLabel(event.eventType),
-          time: formatEventTime(event.occurredAt),
-        }))
-      : demoPriorEventsFor(latestEvent);
+  const priorEvents = events.slice(1).map((event) => ({
+    eventType: event.eventType,
+    id: event.id,
+    label: eventLabel(event.eventType),
+    time: formatEventTime(event.occurredAt),
+  }));
 
   return (
     <RecipientEventDropdown
@@ -270,32 +267,9 @@ function RecipientEventChips({
         label: eventLabel(latestEvent.eventType),
         time: formatEventTime(latestEvent.occurredAt),
       }}
-      priorEvents={displayPriorEvents}
+      priorEvents={priorEvents}
     />
   );
-}
-
-function demoPriorEventsFor(
-  latestEvent: NonNullable<
-    Awaited<ReturnType<typeof getCommunicationAutomation>>
-  >["runs"][number]["events"][number],
-) {
-  const latestTime = formatEventTime(latestEvent.occurredAt);
-
-  return [
-    {
-      eventType: "CLICKED",
-      id: `${latestEvent.id}-demo-clicked`,
-      label: "Clicked",
-      time: latestTime,
-    },
-    {
-      eventType: "DELIVERED",
-      id: `${latestEvent.id}-demo-delivered`,
-      label: "Delivered",
-      time: latestTime,
-    },
-  ];
 }
 
 function RunNotificationBanner({ reviewNotice }: { reviewNotice?: string }) {
