@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 
 import { DropdownPanel } from "@/components/ui/dropdown-panel";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
@@ -13,6 +14,7 @@ type AppTopNavProps = {
     | "dashboard"
     | "households"
     | "people"
+    | "roadmap"
     | "settings"
     | "tools";
   canManageSettings?: boolean;
@@ -223,55 +225,93 @@ export async function AppTopNav({
               </DropdownPanel>
             ) : null}
           </nav>
-          <DropdownPanel
-            align="right"
-            panelClassName="grid gap-2 rounded-[8px] border border-app-border bg-app-surface p-2 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
-            triggerClassName="inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12.5px] font-semibold text-app-foreground transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25"
-            trigger={
-              <>
-                <ProfileAvatar
+          <div className="flex shrink-0 items-center gap-1.5">
+            <DropdownPanel
+              align="right"
+              panelClassName="grid gap-3 rounded-[8px] border border-app-border bg-app-surface p-2 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              triggerClassName="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] border border-app-border bg-app-background text-app-muted transition hover:border-app-accent hover:text-app-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25"
+              trigger={
+                <>
+                  <span className="sr-only">Open notifications</span>
+                  <Bell className="h-4 w-4" aria-hidden />
+                </>
+              }
+              widthClassName="w-[280px]"
+            >
+              <div className="grid min-h-28 place-items-center rounded-[6px] border border-app-border-faint bg-app-background px-4 py-6 text-center">
+                <div className="grid gap-1">
+                  <p className="text-[12.5px] font-semibold text-app-foreground">
+                    No notifications
+                  </p>
+                  <p className="text-[12px] leading-5 text-app-muted">
+                    Updates will appear here when there is something to review.
+                  </p>
+                </div>
+              </div>
+              <Link
+                className={
+                  active === "roadmap"
+                    ? "inline-flex min-h-8 items-center justify-between rounded-[6px] bg-app-chip px-3 text-[12.5px] font-semibold text-app-foreground"
+                    : "inline-flex min-h-8 items-center justify-between rounded-[6px] px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                }
+                href="/roadmap"
+              >
+                <span>Roadmap</span>
+                <span className="font-mono text-[10px] uppercase text-app-faint">
+                  View
+                </span>
+              </Link>
+            </DropdownPanel>
+            <DropdownPanel
+              align="right"
+              panelClassName="grid gap-2 rounded-[8px] border border-app-border bg-app-surface p-2 shadow-[0_12px_32px_rgba(35,32,28,0.14)]"
+              triggerClassName="inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-2.5 text-[12.5px] font-semibold text-app-foreground transition hover:border-app-accent focus-visible:ring-2 focus-visible:ring-app-accent/25"
+              trigger={
+                <>
+                  <ProfileAvatar
+                    name={profile.name}
+                    photoUrl={profile.photoUrl}
+                    roundedClassName="rounded-full"
+                    size={20}
+                    textClassName="text-[10px]"
+                  />
+                  <span className="hidden max-w-32 truncate sm:inline">
+                    {profile.name}
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-app-muted"
+                    fill="none"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      d="m5 7.5 5 5 5-5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.6"
+                    />
+                  </svg>
+                </>
+              }
+              widthClassName="min-w-52"
+            >
+              <div className="grid gap-2">
+                <ProfileSummaryCard
+                  email={profile.email}
+                  href={profile.profileHref}
                   name={profile.name}
                   photoUrl={profile.photoUrl}
-                  roundedClassName="rounded-full"
-                  size={20}
-                  textClassName="text-[10px]"
                 />
-                <span className="hidden max-w-32 truncate sm:inline">
-                  {profile.name}
-                </span>
-                <svg
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 text-app-muted"
-                  fill="none"
-                  viewBox="0 0 20 20"
+                <Link
+                  className="inline-flex min-h-8 items-center rounded-[6px] px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
+                  href="/auth/logout"
                 >
-                  <path
-                    d="m5 7.5 5 5 5-5"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.6"
-                  />
-                </svg>
-              </>
-            }
-            widthClassName="min-w-52"
-          >
-            <div className="grid gap-2">
-              <ProfileSummaryCard
-                email={profile.email}
-                href={profile.profileHref}
-                name={profile.name}
-                photoUrl={profile.photoUrl}
-              />
-              <Link
-                className="inline-flex min-h-8 items-center rounded-[6px] px-3 text-[12.5px] font-semibold text-app-muted hover:bg-app-chip hover:text-app-foreground focus:outline-none focus:ring-2 focus:ring-app-accent/25"
-                href="/auth/logout"
-              >
-                Log out
-              </Link>
-            </div>
-          </DropdownPanel>
+                  Log out
+                </Link>
+              </div>
+            </DropdownPanel>
+          </div>
         </div>
       </div>
       <div aria-hidden="true" className="h-12" />
