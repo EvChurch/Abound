@@ -191,6 +191,11 @@ enum JobWorkerEventLevel {
   ERROR
 }
 
+enum McpAuditEventStatus {
+  SUCCEEDED
+  FAILED
+}
+
 model AppUser {
   id                                String                               @id @default(cuid())
   auth0Subject                      String                               @unique
@@ -211,9 +216,29 @@ model AppUser {
   activatedCommunicationAutomations CommunicationAutomation[]            @relation("CommunicationAutomationActivatedBy")
   communicationAutomationReviewers  CommunicationAutomationReviewer[]
   excludedCommunicationRecipients   CommunicationAutomationRecipient[]   @relation("CommunicationRecipientExcludedBy")
+  mcpAuditEvents                    McpAuditEvent[]
 
   @@index([email])
   @@index([rockPersonId])
+}
+
+model McpAuditEvent {
+  id           String              @id @default(cuid())
+  appUserId    String
+  toolName     String
+  status       McpAuditEventStatus
+  errorCode    String?
+  targetType   String?
+  targetRockId Int?
+  resultCount  Int?
+  requestId    String?
+  createdAt    DateTime            @default(now())
+
+  appUser AppUser @relation(fields: [appUserId], references: [id], onDelete: Restrict)
+
+  @@index([appUserId, createdAt])
+  @@index([toolName, createdAt])
+  @@index([createdAt])
 }
 
 model AccessRequest {

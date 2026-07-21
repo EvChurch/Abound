@@ -18,7 +18,7 @@ type AppTopNavProps = {
   canManageSettings?: boolean;
   canManageTools?: boolean;
   settingsActiveItem?: "funds" | "jobs" | "sync-status" | "users";
-  toolsActiveItem?: "pledge-recommendations";
+  toolsActiveItem?: "mcp" | "pledge-recommendations";
 };
 
 const links: Array<{
@@ -156,6 +156,11 @@ export async function AppTopNav({
                   active={active === "communications"}
                   href="/communications"
                   label="Communications"
+                />
+                <MenuLink
+                  active={toolsActiveItem === "mcp"}
+                  href="/tools/mcp"
+                  label="MCP"
                 />
                 {canManageTools ? (
                   <MenuLink
