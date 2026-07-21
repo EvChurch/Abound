@@ -1,7 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { canSeeGivingAmounts, hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { summarizeGivingFacts, type GivingSummary } from "@/lib/giving/metrics";
@@ -150,7 +149,7 @@ export async function listHouseholds(
     createEmptyFilter();
   const validation = validateFilterDefinition(
     filterDefinition,
-    getListViewFilterCatalog("HOUSEHOLDS", actor.role),
+    getListViewFilterCatalog("HOUSEHOLDS"),
   );
 
   if (!validation.ok) {
@@ -182,12 +181,10 @@ export async function listHouseholds(
     ),
   });
   const pageRecords = records.slice(0, limit);
-  const givingSummaries = canSeeGivingAmounts(actor.role)
-    ? await givingSummariesByHousehold(
-        pageRecords.map((record) => record.rockId),
-        client,
-      )
-    : new Map<number, GivingSummary>();
+  const givingSummaries = await givingSummariesByHousehold(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
   const lifecycleLabels = await lifecycleLabelsByHousehold(
     pageRecords.map((record) => record.rockId),
     client,
@@ -216,7 +213,9 @@ function filterToHouseholdWhere(
   filter: FilterDefinition,
   actor: LocalAppUser,
 ): Prisma.RockHouseholdWhereInput {
-  const where = nodeToHouseholdWhere(filter, actor) ?? {};
+  void actor;
+
+  const where = nodeToHouseholdWhere(filter) ?? {};
 
   return filterIncludesRockStatus(filter)
     ? where
@@ -236,21 +235,19 @@ function withRockIdFilter(
 
 function nodeToHouseholdWhere(
   node: FilterNode,
-  actor: LocalAppUser,
 ): Prisma.RockHouseholdWhereInput | null {
   if (node.type === "group") {
-    return groupToHouseholdWhere(node, actor);
+    return groupToHouseholdWhere(node);
   }
 
-  return conditionToHouseholdWhere(node, actor);
+  return conditionToHouseholdWhere(node);
 }
 
 function groupToHouseholdWhere(
   group: FilterGroup,
-  actor: LocalAppUser,
 ): Prisma.RockHouseholdWhereInput | null {
   const conditions = group.conditions
-    .map((condition) => nodeToHouseholdWhere(condition, actor))
+    .map((condition) => nodeToHouseholdWhere(condition))
     .filter((condition): condition is Prisma.RockHouseholdWhereInput =>
       Boolean(condition),
     );
@@ -272,7 +269,6 @@ function filterIncludesRockStatus(node: FilterNode): boolean {
 
 function conditionToHouseholdWhere(
   condition: FilterCondition,
-  actor: LocalAppUser,
 ): Prisma.RockHouseholdWhereInput | null {
   switch (condition.field) {
     case "search":
@@ -375,11 +371,6 @@ function conditionToHouseholdWhere(
     case "lastGiftAmount":
     case "trailingPeriodTotal":
     case "amountChange":
-      if (!canSeeGivingAmounts(actor.role)) {
-        throw new GraphQLError("Amount filters require finance permission.", {
-          extensions: { code: "FORBIDDEN" },
-        });
-      }
       return { givingFacts: { some: { amount: moneyWhere(condition) } } };
     default:
       return null;
@@ -477,12 +468,10 @@ function mapHouseholdRow(
 ): HouseholdListRow {
   return {
     active: record.active,
-    amountsHidden: !canSeeGivingAmounts(actor.role),
+    amountsHidden: false,
     archived: record.archived,
     campus: record.campus,
-    givingSummary: canSeeGivingAmounts(actor.role)
-      ? (givingSummaries.get(record.rockId) ?? null)
-      : null,
+    givingSummary: givingSummaries.get(record.rockId) ?? null,
     lastSyncedAt: record.lastSyncedAt,
     lifecycle: lifecycleLabels.get(record.rockId) ?? [],
     memberCount: record._count.members,
@@ -499,17 +488,7 @@ function mapHouseholdRow(
 }
 
 function assertCanReadLists(actor: LocalAppUser) {
-  if (
-    !hasPermission(actor.role, "people:read_limited") &&
-    !hasPermission(actor.role, "people:read_care_context")
-  ) {
-    throw new GraphQLError(
-      "You do not have permission to view household lists.",
-      {
-        extensions: { code: "FORBIDDEN" },
-      },
-    );
-  }
+  void actor;
 }
 
 function displayName(person: {

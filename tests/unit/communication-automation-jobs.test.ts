@@ -95,7 +95,6 @@ describe("communication automation jobs", () => {
             id: "user_1",
             name: "Admin",
             rockPersonId: null,
-            role: "ADMIN",
           },
           id: "automation_1",
           nextSendAt: new Date("2026-07-07T09:00:00.000Z"),
@@ -124,7 +123,7 @@ describe("communication automation jobs", () => {
         automationId: "automation_1",
         scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
       }),
-      expect.objectContaining({ id: "user_1", role: "ADMIN" }),
+      expect.objectContaining({ id: "user_1" }),
       client,
     );
     expect(boss.send).toHaveBeenCalledWith(
@@ -168,7 +167,6 @@ describe("communication automation jobs", () => {
             id: "user_1",
             name: "Admin",
             rockPersonId: null,
-            role: "ADMIN",
           },
           id: "automation_1",
           nextSendAt: new Date("2026-07-07T09:00:00.000Z"),

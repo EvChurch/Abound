@@ -4,7 +4,6 @@ import { SyncStatus } from "@/components/sync/sync-status";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { auth0 } from "@/lib/auth/auth0";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
-import { hasPermission } from "@/lib/auth/roles";
 import { getSyncStatusSummary } from "@/lib/sync/status";
 
 export const metadata = {
@@ -29,11 +28,8 @@ export default async function SyncPage() {
     <main className="min-h-screen bg-app-background">
       <AppTopNav
         active="settings"
-        canManageSettings={hasPermission(
-          accessState.user.role,
-          "settings:manage",
-        )}
-        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
+        canManageSettings
+        canManageTools
         settingsActiveItem="sync-status"
       />
       <SyncStatus summary={summary} />

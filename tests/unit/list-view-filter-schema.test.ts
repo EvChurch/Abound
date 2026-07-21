@@ -7,7 +7,7 @@ import {
 } from "@/lib/list-views/filter-schema";
 
 describe("list view filter schema", () => {
-  it("validates nested people filters against the role-aware catalog", () => {
+  it("validates nested people filters against the shared catalog", () => {
     const filter: FilterDefinition = {
       conditions: [
         {
@@ -41,7 +41,7 @@ describe("list view filter schema", () => {
 
     const result = validateFilterDefinition(
       filter,
-      getListViewFilterCatalog("PEOPLE", "PASTORAL_CARE"),
+      getListViewFilterCatalog("PEOPLE"),
     );
 
     expect(result).toEqual({
@@ -50,36 +50,28 @@ describe("list view filter schema", () => {
     });
   });
 
-  it("omits finance-only amount fields from pastoral care catalogs", () => {
-    const pastoralCatalog = getListViewFilterCatalog(
-      "HOUSEHOLDS",
-      "PASTORAL_CARE",
-    );
-    const financeCatalog = getListViewFilterCatalog("HOUSEHOLDS", "FINANCE");
+  it("includes amount fields in shared catalogs", () => {
+    const catalog = getListViewFilterCatalog("HOUSEHOLDS");
 
-    expect(pastoralCatalog.map((field) => field.id)).not.toContain(
-      "totalGiven",
-    );
-    expect(financeCatalog).toEqual(
+    expect(catalog).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           fieldType: "MONEY",
           id: "totalGiven",
-          permission: "finance:read_amounts",
         }),
       ]),
     );
   });
 
   it("exposes an adults-or-children filter without exposing direct record ID filters", () => {
-    const catalog = getListViewFilterCatalog("PEOPLE", "ADMIN");
+    const catalog = getListViewFilterCatalog("PEOPLE");
     const fields = catalog.map((field) => field.id);
 
     expect(fields).toContain("ageGroup");
     expect(fields).not.toContain("rockPersonId");
   });
 
-  it("rejects manually submitted amount filters for pastoral care", () => {
+  it("accepts manually submitted amount filters", () => {
     const result = validateFilterDefinition(
       {
         conditions: [
@@ -93,17 +85,18 @@ describe("list view filter schema", () => {
         mode: "all",
         type: "group",
       },
-      getListViewFilterCatalog("PEOPLE", "PASTORAL_CARE"),
+      getListViewFilterCatalog("PEOPLE"),
     );
 
     expect(result).toMatchObject({
-      errors: [
-        expect.objectContaining({
-          code: "FORBIDDEN_FIELD",
-          path: "$.conditions[0].field",
-        }),
-      ],
-      ok: false,
+      definition: expect.objectContaining({
+        conditions: [
+          expect.objectContaining({
+            field: "totalGiven",
+          }),
+        ],
+      }),
+      ok: true,
     });
   });
 
@@ -127,7 +120,7 @@ describe("list view filter schema", () => {
         mode: "all",
         type: "group",
       },
-      getListViewFilterCatalog("PEOPLE", "ADMIN"),
+      getListViewFilterCatalog("PEOPLE"),
     );
 
     expect(result).toMatchObject({
@@ -162,7 +155,7 @@ describe("list view filter schema", () => {
         mode: "all",
         type: "group",
       },
-      getListViewFilterCatalog("HOUSEHOLDS", "FINANCE"),
+      getListViewFilterCatalog("HOUSEHOLDS"),
     );
 
     expect(result.ok).toBe(true);

@@ -65,23 +65,11 @@ Reference notes:
 
 ## Users and Data Visibility
 
-### Admin
+### Staff Access
 
-Admin users have full staff visibility across finance, people, donations, tasks, communications, settings, and administration.
+Active local app users have full staff visibility across giving, people, households, tasks, communications, settings, and administration.
 
-Design implication: Admins see all controls, configuration affordances, access requests, sync health, issue resolution, role management entry points, and full donor/giving detail.
-
-### Finance
-
-Finance users can see giving amounts and limited person or household details needed to identify donors, reconcile records, and understand giving context.
-
-Design implication: Finance pages should prioritize reconciliation, giving trends, gift details, recurring giving health, source metadata, and exceptions.
-
-### Pastoral Care
-
-Pastoral Care users can see donor and household care context, communications, tasks, reports, and follow-up cues, but actual giving amounts and individual-level giving aggregates must be hidden.
-
-Design implication: Amount fields should be replaced with non-numeric lifecycle and care signals such as "Giving pattern changed", "Follow-up suggested", "Recurring gift appears interrupted", or "Stewardship check-in due." Never show masked values like "$••••" if the hidden amount itself is the point; use a role-aware explanation instead.
+Design implication: Staff see all controls, configuration affordances, access requests, sync health, issue resolution, shared segments, workflow editing, and donor/giving detail. The UI should not branch by Finance, Pastoral Care, Admin, or any other local role.
 
 ## Information Architecture
 
@@ -371,14 +359,14 @@ Layout:
 
 - App shell with header, left nav, and page workspace.
 - Page header: "Home" with subtitle "Giving operations overview".
-- Top status band with Rock sync freshness, current reporting period, and role-specific data visibility note.
-- KPI row: total giving trend, recurring giving health, donor lifecycle movement, open exceptions. For Pastoral Care, replace amount KPIs with non-numeric care and lifecycle signals.
+- Top status band with Rock sync freshness and current reporting period.
+- KPI row: total giving trend, recurring giving health, donor lifecycle movement, open exceptions.
 - Main grid: giving trend chart, recurring health distribution, donor lifecycle movement, operational exceptions table.
 - Right column: assigned tasks, AI assist panel for reviewable insights, recent sync runs.
 
 Primary interactions:
 
-- Filter by date range, campus, fund/account, household segment, and role-visible view.
+- Filter by date range, campus, fund/account, and household segment.
 - Click any metric to open an explanation drawer.
 - Click an exception row to open the right inspector.
 - Create task from exception.
@@ -389,7 +377,7 @@ States:
 - Stale sync warning.
 - Partial sync warning with issue count.
 - Empty state before first sync.
-- Permission-masked Pastoral Care state.
+- Unauthorized or inactive local access state.
 
 ### 2. Household Profile
 
@@ -402,7 +390,7 @@ Layout:
 - Title: household name.
 - Compact fields: campus, primary adults, lifecycle status, recurring health, last Rock sync, open tasks.
 - Right actions: Add task, Prepare communication, View in Rock, More.
-- Alert strip when data is stale, giving details are hidden by role, or reconciliation issues exist.
+- Alert strip when data is stale or reconciliation issues exist.
 - Tabs: Overview, Giving, Tasks, Communications, Relationships, Source, Audit.
 
 Overview tab:
@@ -412,8 +400,7 @@ Overview tab:
 
 Giving tab:
 
-- Finance/Admin: trend chart, gift table, recurring giving status, funds/accounts breakdown, explainability notes.
-- Pastoral Care: lifecycle signals, non-numeric pattern changes, care prompts, task history, no amounts or individual-level aggregates.
+- Trend chart, gift table, recurring giving status, funds/accounts breakdown, explainability notes.
 
 Source tab:
 
@@ -434,7 +421,7 @@ Goal: Give staff a person-centered CRM view while preserving household and Rock 
 Layout:
 
 - Record header with person name, household, campus, email status, local app user link if present, last synced.
-- Role-aware key fields.
+- Staff-visible key fields.
 - Tabs: Overview, Giving, Tasks, Communications, Groups, Household, Source, Audit.
 
 Overview:
@@ -448,8 +435,7 @@ Overview:
 
 Giving:
 
-- Finance/Admin: person-linked gift facts where appropriate, household rollup with source explanation, recurring giving status.
-- Pastoral Care: no numeric amounts; show care-safe pattern and lifecycle signals.
+- Person-linked gift facts where appropriate, household rollup with source explanation, recurring giving status.
 
 ### 4. People and Households Lists
 
@@ -472,16 +458,16 @@ Table columns:
 - Last synced.
 - Source status.
 
-Finance/Admin optional columns:
+Optional giving columns:
 
 - Giving total for selected period.
 - Last gift date.
 - Fund/account summary.
 
-Pastoral Care:
+Shared workflow columns:
 
-- Hide amount columns entirely.
-- Use "Care signal" and "Follow-up reason" columns.
+- Care signal.
+- Follow-up reason.
 
 ### 5. Giving Operations
 
@@ -721,7 +707,7 @@ Use a polished light palette with cool gray surfaces, white panels, blue-teal pr
 
 Include a persistent top app header with the product wordmark, global search, Rock sync freshness, user role badge, and user menu. Include a left navigation rail with Home, People, Households, Giving, Segments, Tasks, Communications, Sync, and Settings.
 
-Respect role-aware data visibility: Admin and Finance may see giving amounts where appropriate; Pastoral Care must not see actual giving amounts or individual-level giving aggregates. When hidden, replace values with clear permission-safe explanations rather than fake masked numbers.
+Respect shared staff data visibility: Active local staff users may see giving amounts where appropriate. When hidden, replace values with clear permission-safe explanations rather than fake masked numbers.
 
 Use realistic enterprise data labels and states, but no real donor PII. Show Rock source traceability, sync freshness, explanation drawers, task creation, communication prep review, and AI summaries as staff-reviewed drafts only. Do not include payment mutation or autonomous send actions.
 ```

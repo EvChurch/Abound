@@ -42,6 +42,18 @@ const resendEmailEventTypesMigration = readFileSync(
   "prisma/migrations/20260720000100_add_resend_email_event_types/migration.sql",
   "utf8",
 );
+const sharedSavedListViewsMigration = readFileSync(
+  "prisma/migrations/20260721000100_share_saved_list_views/migration.sql",
+  "utf8",
+);
+const adminUsersMigration = readFileSync(
+  "prisma/migrations/20260721000200_make_app_users_admin/migration.sql",
+  "utf8",
+);
+const removeAppUserRolesMigration = readFileSync(
+  "prisma/migrations/20260721000400_remove_app_user_roles/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -163,6 +175,27 @@ describe("synced data model migration", () => {
     expect(savedListViewArchiveMigration).toContain(
       'CREATE INDEX "SavedListView_ownerUserId_resource_archivedAt_idx"',
     );
+  });
+
+  it("makes saved list views shared by default", () => {
+    expect(sharedSavedListViewsMigration).toContain(
+      `ALTER COLUMN "visibility" SET DEFAULT 'GLOBAL'`,
+    );
+    expect(sharedSavedListViewsMigration).toContain(
+      `SET "visibility" = 'GLOBAL'`,
+    );
+  });
+
+  it("normalizes existing local user role values before removing roles", () => {
+    expect(adminUsersMigration).toContain(`UPDATE "AppUser"`);
+    expect(adminUsersMigration).toContain(`SET "role" = 'ADMIN'`);
+  });
+
+  it("removes app user roles", () => {
+    expect(removeAppUserRolesMigration).toContain(
+      `ALTER TABLE "AppUser" DROP COLUMN "role"`,
+    );
+    expect(removeAppUserRolesMigration).toContain(`DROP TYPE "AppRole"`);
   });
 
   it("forces communication schedules into New Zealand time", () => {

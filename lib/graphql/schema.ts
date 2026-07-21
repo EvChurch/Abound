@@ -11,14 +11,12 @@ const viewerType = builder
     id: string;
     email: string | null;
     name: string | null;
-    role: string;
   }>("Viewer")
   .implement({
     fields: (t) => ({
       id: t.exposeString("id"),
       email: t.exposeString("email", { nullable: true }),
       name: t.exposeString("name", { nullable: true }),
-      role: t.exposeString("role"),
     }),
   });
 
@@ -34,7 +32,6 @@ builder.queryType({
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
         };
       },
     }),

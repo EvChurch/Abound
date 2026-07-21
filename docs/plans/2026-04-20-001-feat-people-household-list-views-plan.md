@@ -15,7 +15,7 @@ origin:
 
 Build staff-facing People and Households list views with advanced filtering, lifecycle segments, configurable columns, saved views, cursor pagination, and an optional infinite-scroll presentation. This is the directory/search counterpart to the existing person and household profile slice.
 
-The feature should feel like a high-end CRM list-view workspace: fast scanning, saved operational views, role-aware data visibility, and clear links into record profiles. Rock remains the source of truth for people, households, campuses, groups, gifts, and Rock-owned giving fields. This app owns only derived lifecycle metrics, saved view preferences, workflow/task data, and the staff list-view experience.
+The feature should feel like a high-end CRM list-view workspace: fast scanning, saved operational views, shared staff data visibility, and clear links into record profiles. Rock remains the source of truth for people, households, campuses, groups, gifts, and Rock-owned giving fields. This app owns only derived lifecycle metrics, saved view preferences, workflow/task data, and the staff list-view experience.
 
 ## Problem Frame
 
@@ -275,7 +275,7 @@ People and Households should use the same page shell:
 - Filter button opening an advanced filter builder.
 - Active filter chips with quick remove.
 - Saved view menu: save current view, save as new view, rename, reset, set default, delete.
-- Column picker with role-aware field availability.
+- Column picker with shared field availability.
 - Density toggle.
 - Sort menu and direct sortable table headers.
 - Table with sticky header and stable column widths.
@@ -322,7 +322,7 @@ Test scenarios:
 Progress note 2026-04-20:
 
 - Added `lib/list-views/filter-schema.ts` with grouped condition validation, typed operators, field-type value checks, relative date values, and safe forbidden-field errors for amount-like fields.
-- Added `lib/list-views/filter-catalog.ts` with role-aware People and Households filter catalogs that omit finance-only amount fields for Pastoral Care.
+- Added `lib/list-views/filter-catalog.ts` with shared People and Households filter catalogs.
 - Added `lib/giving/lifecycle.ts` with default lifecycle window semantics and role-safe explanations for `NEW`, `REACTIVATED`, `AT_RISK`, and `DROPPED`.
 - Added `tests/unit/list-view-filter-schema.test.ts` and `tests/unit/giving-lifecycle.test.ts`.
 
@@ -375,11 +375,11 @@ Files:
 Approach:
 
 - Require active local staff actor.
-- Apply role-aware filter catalog before query construction.
+- Apply shared filter catalog before query construction.
 - Use Prisma structured query APIs and controlled aggregate queries; do not build SQL from user strings.
 - Use stable cursor ordering with deterministic tie-breakers such as `rockId`.
 - Return deliberate DTOs instead of raw Prisma rows.
-- Include role-aware row projection for amount-bearing fields.
+- Include staff-visible row projection for amount-bearing fields.
 
 Test scenarios:
 

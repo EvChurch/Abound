@@ -267,7 +267,6 @@ describe("HomePage", () => {
         auth0Subject: "auth0|admin",
         email: "admin@example.com",
         name: "Admin",
-        role: "ADMIN",
         active: true,
         rockPersonId: null,
       },
@@ -444,7 +443,7 @@ describe("HomePage", () => {
     expect(screen.queryByText("Active months")).not.toBeInTheDocument();
     expect(screen.getByText("At-risk households")).toBeInTheDocument();
     expect(screen.getAllByText("At risk").length).toBeGreaterThan(0);
-    expect(screen.getByText("Role: ADMIN")).toBeInTheDocument();
+    expect(screen.queryByText(/Role:/)).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Sign in" }),
@@ -454,7 +453,7 @@ describe("HomePage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides average giving amounts from pastoral care users", async () => {
+  it("shows average giving amounts for admin users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -462,7 +461,6 @@ describe("HomePage", () => {
         auth0Subject: "auth0|pastoral",
         email: "care@example.com",
         name: "Care",
-        role: "PASTORAL_CARE",
         active: true,
         rockPersonId: null,
       },
@@ -471,13 +469,8 @@ describe("HomePage", () => {
     render(await HomePage());
 
     expect(screen.getByText("Giving per adult")).toBeInTheDocument();
-    expect(screen.getByText("Giving amounts hidden")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /only Admin and Finance roles can view giving per adult/i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("$118")).not.toBeInTheDocument();
-    expect(screen.queryByText("$140")).not.toBeInTheDocument();
+    expect(screen.queryByText("Giving amounts hidden")).not.toBeInTheDocument();
+    expect(screen.getByText("$118")).toBeInTheDocument();
+    expect(screen.getByText("$140")).toBeInTheDocument();
   });
 });

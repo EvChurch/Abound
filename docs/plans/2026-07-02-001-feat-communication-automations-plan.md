@@ -517,7 +517,7 @@ flowchart TB
 | Sensitive donor data in logs or provider metadata               | Medium     | High   | Store minimal snapshots, safe provider tags, aggregate logs, and no raw rendered bodies/provider payloads.                     |
 | Communication preferences or unsubscribes are not authoritative | Medium     | High   | Keep live sending disabled until ownership is documented and enforced.                                                         |
 | Template customization breaks email clients                     | Medium     | Medium | Structured React Email fields only; no arbitrary HTML/CSS/layout editing; test sends before activation.                        |
-| Pastoral Care sees amount-bearing context                       | Low        | High   | Reuse role-aware segment explanations and add tests for preview/notice/template output.                                        |
+| Pastoral Care sees amount-bearing context                       | Low        | High   | Reuse shared segment explanations and add tests for preview/notice/template output.                                            |
 | Schedule timezone surprises                                     | Medium     | Medium | Store timezone explicitly, show next send/notice times in UI, and test schedule calculations.                                  |
 | Resend API or webhook schema changes                            | Low        | Medium | Depend on SDK types, map only required fields, and isolate provider logic in `resend-sender` and webhook modules.              |
 

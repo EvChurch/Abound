@@ -30,19 +30,16 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
 };
 
 const pastoralReviewer: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "PASTORAL_CARE",
 };
 
-const financeUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_3",
-  role: "FINANCE",
 };
 
 describe("communication automation scheduled runs", () => {
@@ -805,7 +802,38 @@ describe("communication automation scheduled runs", () => {
     });
   });
 
-  it("blocks Finance users from freezing runs", async () => {
+  it("allows another admin user to freeze runs", async () => {
+    mocks.resolveCommunicationAudienceMembers.mockResolvedValueOnce({
+      audienceSize: 0,
+      audienceTruncated: false,
+      preview: [],
+      resource: "PEOPLE",
+      savedViewId: "view_1",
+      segmentDefinition: {},
+      segmentSummary: "Saved view: Empty",
+    });
+    const client = {
+      communicationAutomation: {
+        findUnique: vi.fn(async () => ({
+          audienceResource: "PEOPLE",
+          archivedAt: null,
+          cooldownDays: null,
+          id: "automation_1",
+          pausedAt: null,
+          savedListViewId: "view_1",
+          suppressionMode: "NEVER_RESEND",
+        })),
+      },
+      communicationAutomationRun: {
+        create: vi.fn(async ({ data }) => ({
+          ...data,
+          id: "run_1",
+          recipients: [],
+        })),
+        findFirst: vi.fn(async () => null),
+      },
+    } as unknown as PrismaClient;
+
     await expect(
       freezeCommunicationAutomationRun(
         {
@@ -813,11 +841,9 @@ describe("communication automation scheduled runs", () => {
           noticeDueAt: new Date("2026-07-06T09:00:00.000Z"),
           scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
         },
-        financeUser,
-        {} as PrismaClient,
+        otherAdminUser,
+        client,
       ),
-    ).rejects.toMatchObject({
-      extensions: { code: "FORBIDDEN" },
-    });
+    ).resolves.toBeNull();
   });
 });

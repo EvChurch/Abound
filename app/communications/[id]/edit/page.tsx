@@ -8,7 +8,6 @@ import { TemplateFields } from "@/components/communications/template-editor";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import {
   getCommunicationAutomation,
   listCommunicationAutomationReviewerOptions,
@@ -74,14 +73,7 @@ export default async function EditCommunicationAutomationPage({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav
-        active="communications"
-        canManageSettings={hasPermission(
-          accessState.user.role,
-          "settings:manage",
-        )}
-        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
-      />
+      <AppTopNav active="communications" canManageSettings canManageTools />
       <main className="grid h-[calc(100vh-56px)] grid-rows-[auto_minmax(0,1fr)] bg-app-background">
         <header className="flex min-h-16 items-center justify-between border-b border-app-border bg-white px-4 sm:px-6">
           <Link

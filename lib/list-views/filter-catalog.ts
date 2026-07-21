@@ -1,4 +1,3 @@
-import { hasPermission, type AppRole, type Permission } from "@/lib/auth/roles";
 import {
   operatorsForFieldType,
   type FilterFieldDefinition,
@@ -10,7 +9,6 @@ type CatalogFieldInput = {
   fieldType: FilterFieldType;
   id: string;
   label: string;
-  permission?: Permission;
   resource: ListViewResource;
 };
 
@@ -35,7 +33,7 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("PEOPLE", "givingRecency", "Giving recency", "DATE"),
   field("PEOPLE", "reliabilityKind", "Giving reliability", "ENUM"),
   field("PEOPLE", "accountRockId", "Fund/account", "ID"),
-  field("PEOPLE", "pledgeState", "Pledge", "ENUM", "pledges:manage"),
+  field("PEOPLE", "pledgeState", "Pledge", "ENUM"),
   field("HOUSEHOLDS", "search", "Household name", "STRING"),
   field("HOUSEHOLDS", "active", "Active", "BOOLEAN"),
   field("HOUSEHOLDS", "archived", "Archived", "BOOLEAN"),
@@ -61,79 +59,35 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("HOUSEHOLDS", "givingRecency", "Giving recency", "DATE"),
   field("HOUSEHOLDS", "reliabilityKind", "Giving reliability", "ENUM"),
   field("HOUSEHOLDS", "accountRockId", "Fund/account", "ID"),
-  field("PEOPLE", "totalGiven", "Total given", "MONEY", "finance:read_amounts"),
-  field(
-    "PEOPLE",
-    "lastGiftAmount",
-    "Last gift amount",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "PEOPLE",
-    "trailingPeriodTotal",
-    "Trailing-period total",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "PEOPLE",
-    "amountChange",
-    "Amount change",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "HOUSEHOLDS",
-    "totalGiven",
-    "Household total given",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "HOUSEHOLDS",
-    "lastGiftAmount",
-    "Last gift amount",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "HOUSEHOLDS",
-    "trailingPeriodTotal",
-    "Trailing-period total",
-    "MONEY",
-    "finance:read_amounts",
-  ),
-  field(
-    "HOUSEHOLDS",
-    "amountChange",
-    "Amount change",
-    "MONEY",
-    "finance:read_amounts",
-  ),
+  field("PEOPLE", "totalGiven", "Total given", "MONEY"),
+  field("PEOPLE", "lastGiftAmount", "Last gift amount", "MONEY"),
+  field("PEOPLE", "trailingPeriodTotal", "Trailing-period total", "MONEY"),
+  field("PEOPLE", "amountChange", "Amount change", "MONEY"),
+  field("HOUSEHOLDS", "totalGiven", "Household total given", "MONEY"),
+  field("HOUSEHOLDS", "lastGiftAmount", "Last gift amount", "MONEY"),
+  field("HOUSEHOLDS", "trailingPeriodTotal", "Trailing-period total", "MONEY"),
+  field("HOUSEHOLDS", "amountChange", "Amount change", "MONEY"),
 ];
 
 export function getListViewFilterCatalog(
   resource: ListViewResource,
-  role: AppRole,
 ): FilterFieldDefinition[] {
-  return BASE_FIELDS.filter((candidate) => {
-    return (
-      candidate.resource === resource &&
-      (!candidate.permission || hasPermission(role, candidate.permission))
-    );
-  }).map((candidate) => ({
-    ...candidate,
-    operators: operatorsForFieldType(candidate.fieldType),
-  }));
+  return BASE_FIELDS.filter((candidate) => candidate.resource === resource).map(
+    (candidate) => ({
+      ...candidate,
+      operators: operatorsForFieldType(candidate.fieldType),
+    }),
+  );
 }
 
 export function getListViewField(
   resource: ListViewResource,
-  role: AppRole,
-  fieldId: string,
+  fieldIdOrUnused: string,
+  maybeFieldId?: string,
 ) {
-  return getListViewFilterCatalog(resource, role).find(
+  const fieldId = maybeFieldId ?? fieldIdOrUnused;
+
+  return getListViewFilterCatalog(resource).find(
     (field) => field.id === fieldId,
   );
 }
@@ -143,13 +97,11 @@ function field(
   id: string,
   label: string,
   fieldType: FilterFieldType,
-  permission?: Permission,
 ): CatalogFieldInput {
   return {
     fieldType,
     id,
     label,
-    permission,
     resource,
   };
 }

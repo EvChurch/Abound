@@ -6,7 +6,6 @@ import type {
 } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 
@@ -58,8 +57,6 @@ export async function listStaffTasks(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<StaffTaskRecord[]> {
-  requireAppPermission(actor, "tasks:manage");
-
   return client.staffTask.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: clampLimit(input.limit),
@@ -72,8 +69,6 @@ export async function createStaffTask(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<StaffTaskRecord> {
-  requireAppPermission(actor, "tasks:manage");
-
   const title = normalizeRequiredTitle(input.title);
   const assignedToUserId = normalizeOptionalId(
     input.assignedToUserId,
@@ -99,8 +94,6 @@ export async function updateStaffTask(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<StaffTaskRecord> {
-  requireAppPermission(actor, "tasks:manage");
-
   const existing = await client.staffTask.findUnique({
     where: {
       id: input.id,

@@ -12,12 +12,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum AppRole {
-  ADMIN
-  FINANCE
-  PASTORAL_CARE
-}
-
 enum AccessRequestStatus {
   PENDING
   APPROVED
@@ -202,7 +196,6 @@ model AppUser {
   auth0Subject                      String                               @unique
   email                             String?
   name                              String?
-  role                              AppRole
   active                            Boolean                              @default(true)
   rockPersonId                      String?
   createdAt                         DateTime                             @default(now())
@@ -1133,7 +1126,7 @@ model SavedListView {
   resource         SavedListViewResource
   name             String
   description      String?
-  visibility       SavedListViewVisibility @default(PRIVATE)
+  visibility       SavedListViewVisibility @default(GLOBAL)
   filterDefinition Json
   sortDefinition   Json
   columnDefinition Json

@@ -14,25 +14,22 @@ const adminUser: LocalAppUser = {
   auth0Subject: "auth0|admin",
   email: "admin@example.com",
   name: "Admin",
-  role: "ADMIN",
   active: true,
   rockPersonId: null,
 };
 
-const pastoralCareUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "PASTORAL_CARE",
 };
 
-const financeUser: LocalAppUser = {
+const thirdAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_3",
-  role: "FINANCE",
 };
 
 describe("staff task service", () => {
-  it("allows pastoral care users to create app-owned follow-up tasks", async () => {
+  it("allows admins to create app-owned follow-up tasks", async () => {
     const create = vi.fn(async ({ data }) => ({
       id: "task_1",
       status: "OPEN",
@@ -63,7 +60,7 @@ describe("staff task service", () => {
           householdRockId: 920001,
           priority: "HIGH",
         },
-        pastoralCareUser,
+        otherAdminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -109,7 +106,7 @@ describe("staff task service", () => {
         {
           title: "Review sync issue queue",
         },
-        pastoralCareUser,
+        otherAdminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -119,8 +116,29 @@ describe("staff task service", () => {
     });
   });
 
-  it("blocks finance users from mutating care workflow tasks", async () => {
-    const client = {} as PrismaClient;
+  it("allows another admin user to mutate care workflow tasks", async () => {
+    const create = vi.fn(async ({ data }) => ({
+      id: "task_2",
+      status: "OPEN",
+      createdAt: new Date("2026-04-18T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-18T10:00:00.000Z"),
+      completedAt: null,
+      ...data,
+    }));
+    const client = {
+      appUser: {
+        findUnique: vi.fn(async () => null),
+      },
+      rockHousehold: {
+        findUnique: vi.fn(async () => null),
+      },
+      rockPerson: {
+        findUnique: vi.fn(async () => ({ rockId: 910001 })),
+      },
+      staffTask: {
+        create,
+      },
+    } as unknown as PrismaClient;
 
     await expect(
       createStaffTask(
@@ -128,13 +146,12 @@ describe("staff task service", () => {
           title: "Call donor",
           personRockId: 910001,
         },
-        financeUser,
+        thirdAdminUser,
         client,
       ),
-    ).rejects.toMatchObject({
-      extensions: {
-        code: "FORBIDDEN",
-      },
+    ).resolves.toMatchObject({
+      personRockId: 910001,
+      title: "Call donor",
     });
   });
 

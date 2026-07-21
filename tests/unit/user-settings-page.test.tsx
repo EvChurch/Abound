@@ -31,7 +31,6 @@ const mocks = vi.hoisted(() => ({
         linkedPerson: null,
         name: "Admin User",
         rockPersonId: "8597",
-        role: "ADMIN",
         updatedAt: new Date("2026-04-22T00:00:00.000Z"),
       },
     ],
@@ -93,27 +92,22 @@ describe("UserSettingsPage", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
-  it("blocks non-Admin users", async () => {
+  it("renders user settings for admin users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
         active: true,
-        auth0Subject: "auth0|finance",
-        email: "finance@example.com",
+        auth0Subject: "auth0|admin",
+        email: "admin@example.com",
         id: "user_2",
-        name: "Finance",
+        name: "Admin",
         rockPersonId: null,
-        role: "FINANCE",
       },
     };
 
     render(await UserSettingsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(
-      screen.getByRole("heading", {
-        name: "Settings require administrator access.",
-      }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
   });
 
   it("renders local users and access requests for Admin users", async () => {
@@ -126,7 +120,6 @@ describe("UserSettingsPage", () => {
         id: "user_1",
         name: "Admin",
         rockPersonId: null,
-        role: "ADMIN",
       },
     };
 

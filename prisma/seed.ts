@@ -29,15 +29,14 @@ async function main() {
       data: {
         auth0Subject,
         email: email ?? null,
-        role: "ADMIN",
       },
     });
     return;
   }
 
-  if (!existingUser.active || existingUser.role !== "ADMIN") {
+  if (!existingUser.active) {
     throw new Error(
-      "Refusing to re-enable or promote an existing seed admin user. Update the user explicitly in Postgres.",
+      "Refusing to re-enable an existing seed admin user. Update the user explicitly in Postgres.",
     );
   }
 

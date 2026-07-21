@@ -3,8 +3,6 @@ import Link from "next/link";
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
 import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { DropdownPanel } from "@/components/ui/dropdown-panel";
-import { canSeeGivingAmounts, hasPermission } from "@/lib/auth/roles";
-import type { LocalAppUser } from "@/lib/auth/types";
 import type {
   ConnectionStatusLifecycleSummary,
   DashboardLifecycleKind,
@@ -17,13 +15,11 @@ import { CircleHelp } from "lucide-react";
 type StaffDashboardProps = {
   givingPerAdult: GivingPerAdult;
   householdDonorTrend: HouseholdDonorTrend;
-  user: LocalAppUser;
 };
 
 export function StaffDashboard({
   givingPerAdult,
   householdDonorTrend,
-  user,
 }: StaffDashboardProps) {
   const months = householdDonorTrend.months;
   const latestCompletedMonth = months.at(-1);
@@ -41,11 +37,7 @@ export function StaffDashboard({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav
-        active="dashboard"
-        canManageSettings={hasPermission(user.role, "settings:manage")}
-        canManageTools={hasPermission(user.role, "pledges:manage")}
-      />
+      <AppTopNav active="dashboard" canManageSettings canManageTools />
       <main className="mx-auto grid w-full max-w-[1280px] gap-6 px-4 py-5 sm:px-7 sm:py-7">
         <section className="grid gap-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -110,9 +102,6 @@ export function StaffDashboard({
 
           <div className="grid gap-2 border-t border-app-border-faint pt-4 text-[12px] leading-5 text-app-muted sm:grid-cols-[1fr_auto] sm:items-center">
             <p>{householdDonorTrend.sourceExplanation}</p>
-            <p className="font-mono uppercase text-app-faint">
-              Role: {formatRole(user.role)}
-            </p>
           </div>
         </section>
 
@@ -126,10 +115,7 @@ export function StaffDashboard({
           }
         />
 
-        <GivingPerAdultPanel
-          canSeeAmounts={canSeeGivingAmounts(user.role)}
-          givingPerAdult={givingPerAdult}
-        />
+        <GivingPerAdultPanel canSeeAmounts givingPerAdult={givingPerAdult} />
       </main>
     </div>
   );
@@ -179,8 +165,8 @@ function GivingPerAdultPanel({
             Giving amounts hidden
           </p>
           <p className="mt-2 max-w-3xl text-[13px] leading-6 text-app-muted">
-            This metric includes giving totals, so only Admin and Finance roles
-            can view giving per adult and pledge values.
+            This metric includes giving totals and requires active local app
+            access.
           </p>
         </div>
       )}
@@ -582,8 +568,4 @@ function formatCurrency(value: string) {
     maximumFractionDigits: 0,
     style: "currency",
   }).format(Number(value));
-}
-
-function formatRole(role: LocalAppUser["role"]) {
-  return role.replace("_", " ");
 }

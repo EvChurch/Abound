@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { ListViewShell } from "@/components/list-views/list-view-shell";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { getCampusFilterOptions } from "@/lib/list-views/campus-options";
 import { getPersonConnectionStatusFilterOptions } from "@/lib/list-views/connection-status-options";
 import { getListViewFilterCatalog } from "@/lib/list-views/filter-catalog";
@@ -72,14 +71,11 @@ export default async function PeopleLookupPage({
   return (
     <ListViewShell
       campusOptions={campusOptions}
-      catalog={getListViewFilterCatalog("PEOPLE", accessState.user.role)}
+      catalog={getListViewFilterCatalog("PEOPLE")}
       columns={parseColumns(params)}
       connection={connection}
-      canManageSettings={hasPermission(
-        accessState.user.role,
-        "settings:manage",
-      )}
-      canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
+      canManageSettings
+      canManageTools
       ageGroup={params.ageGroup}
       filters={peopleFiltersFromParams(params)}
       kind="people"

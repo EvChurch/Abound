@@ -78,30 +78,25 @@ describe("JobsSettingsPage", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
-  it("blocks non-Admin users", async () => {
+  it("renders settings for admin users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
         active: true,
-        auth0Subject: "auth0|finance",
-        email: "finance@example.com",
+        auth0Subject: "auth0|admin",
+        email: "admin@example.com",
         id: "user_2",
-        name: "Finance",
+        name: "Admin",
         rockPersonId: null,
-        role: "FINANCE",
       },
     };
 
     render(await JobsSettingsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(
-      screen.getByRole("heading", {
-        name: "Settings require administrator access.",
-      }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Jobs" })).toBeInTheDocument();
   });
 
-  it("renders jobs settings surface for admins", async () => {
+  it("renders jobs settings surface for staff users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -111,7 +106,6 @@ describe("JobsSettingsPage", () => {
         id: "user_1",
         name: "Admin",
         rockPersonId: null,
-        role: "ADMIN",
       },
     };
 

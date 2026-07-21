@@ -10,7 +10,6 @@ import { UserManagementSettings } from "@/components/settings/user-management-se
 import { QueryResultToast } from "@/components/ui/query-result-toast";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { listUserManagementSummary } from "@/lib/settings/users";
 
 type UserSettingsPageProps = {
@@ -35,21 +34,6 @@ export default async function UserSettingsPage({
 
   if (accessState.status === "needs_access") {
     redirect("/access-request");
-  }
-
-  if (!hasPermission(accessState.user.role, "settings:manage")) {
-    return (
-      <main className="min-h-screen bg-app-background">
-        <div className="mx-auto grid max-w-3xl gap-4 px-4 py-10 sm:px-7 sm:py-12">
-          <h1 className="text-3xl font-semibold tracking-normal">
-            Settings require administrator access.
-          </h1>
-          <p className="text-sm leading-6 text-app-muted">
-            Your local app role does not include user management.
-          </p>
-        </div>
-      </main>
-    );
   }
 
   const [summary, params] = await Promise.all([

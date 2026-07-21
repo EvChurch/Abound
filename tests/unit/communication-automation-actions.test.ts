@@ -83,7 +83,6 @@ const adminUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN" as const,
 };
 
 describe("communication automation actions", () => {

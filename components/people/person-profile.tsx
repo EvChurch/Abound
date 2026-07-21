@@ -763,7 +763,7 @@ function PledgeEditorSection({
     >
       {hidden ? (
         <EmptyState>
-          Giving amounts and pledge recommendations are hidden for this role.
+          Giving amounts and pledge recommendations are unavailable.
         </EmptyState>
       ) : !rows ? (
         <EmptyState>
@@ -1368,9 +1368,7 @@ function PermissionsPanel({
         <strong className="font-medium text-app-foreground">{role}</strong>.
       </p>
       <p className="mt-1.5 text-[12px] leading-[1.55] text-app-faint">
-        {role === "Pastoral Care"
-          ? "Can see identity, household, and care tasks. Giving amounts intentionally hidden."
-          : "Can see identity, household, tasks, and giving aggregates."}
+        Can see identity, household, tasks, and giving aggregates.
       </p>
       {lastSyncedAt ? (
         <div className="mt-4 border-t border-app-border pt-3">
@@ -1548,7 +1546,7 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 function roleName(amountsHidden: boolean) {
-  return amountsHidden ? "Pastoral Care" : "Admin";
+  return amountsHidden ? "Limited access" : "Admin";
 }
 
 function householdHrefForPerson(householdRockId: number, personRockId: number) {

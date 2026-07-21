@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { PersonProfile } from "@/components/people/person-profile";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { getRockPersonProfile } from "@/lib/people/profiles";
 import {
   createDraftPersonPledgeAction,
@@ -52,11 +51,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
   return (
     <PersonProfile
-      canManageSettings={hasPermission(
-        accessState.user.role,
-        "settings:manage",
-      )}
-      canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
+      canManageSettings
+      canManageTools
       pledgeActions={{
         createDraft: createDraftPersonPledgeAction,
         quickCreate: quickCreatePersonPledgeAction,

@@ -15,7 +15,6 @@ import { ActionTooltip } from "@/components/ui/action-tooltip";
 import { PageMessage } from "@/components/ui/page-message";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { APP_TIMEZONE } from "@/lib/app-timezone";
 import {
   getCommunicationAutomation,
@@ -80,14 +79,7 @@ export default async function CommunicationAutomationDetailPage({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav
-        active="communications"
-        canManageSettings={hasPermission(
-          accessState.user.role,
-          "settings:manage",
-        )}
-        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
-      />
+      <AppTopNav active="communications" canManageSettings canManageTools />
       <CommunicationNotificationBanner
         automation={automation}
         reviewNotice={query.review}

@@ -54,7 +54,7 @@ describe("PledgeRecommendationsPage", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/auth/login");
   });
 
-  it("renders unauthorized messaging when user lacks pledge permissions", async () => {
+  it("renders the tools queue page for admin users", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -64,7 +64,6 @@ describe("PledgeRecommendationsPage", () => {
         id: "user_3",
         name: "Care",
         rockPersonId: null,
-        role: "PASTORAL_CARE",
       },
     };
 
@@ -74,7 +73,7 @@ describe("PledgeRecommendationsPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Pledge recommendations require finance or administrator access.",
+        name: "No outstanding pledge recommendations.",
       }),
     ).toBeInTheDocument();
   });
@@ -84,12 +83,11 @@ describe("PledgeRecommendationsPage", () => {
       status: "authorized",
       user: {
         active: true,
-        auth0Subject: "auth0|finance",
+        auth0Subject: "auth0|admin",
         email: "finance@example.com",
         id: "user_2",
-        name: "Finance",
+        name: "Admin",
         rockPersonId: null,
-        role: "FINANCE",
       },
     };
     mocks.candidates = [

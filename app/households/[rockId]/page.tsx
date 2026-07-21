@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { HouseholdProfile } from "@/components/people/household-profile";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { getRockHouseholdProfile } from "@/lib/people/profiles";
 
 type HouseholdPageProps = {
@@ -54,11 +53,8 @@ export default async function HouseholdPage({
 
   return (
     <HouseholdProfile
-      canManageSettings={hasPermission(
-        accessState.user.role,
-        "settings:manage",
-      )}
-      canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
+      canManageSettings
+      canManageTools
       currentPersonRockId={
         Number.isInteger(personRockId) && personRockId > 0
           ? personRockId

@@ -2,8 +2,6 @@ import { GraphQLError } from "graphql";
 
 import { resolveAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { requireAppPermission } from "@/lib/auth/permissions";
-import { type Permission } from "@/lib/auth/roles";
 import type { AccessState, LocalAppUser } from "@/lib/auth/types";
 import { prismaAppUsers } from "@/lib/auth/prisma-users";
 import type { AppUserRepository } from "@/lib/auth/users";
@@ -45,13 +43,4 @@ export function requireStaffUser(context: GraphQLContext): LocalAppUser {
   }
 
   return context.accessState.user;
-}
-
-export function requirePermission(
-  context: GraphQLContext,
-  permission: Permission,
-) {
-  const user = requireStaffUser(context);
-  requireAppPermission(user, permission);
-  return user;
 }

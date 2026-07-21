@@ -29,18 +29,15 @@ The route is configured for `/api/graphql`. GraphiQL is enabled outside producti
 
 ## Auth Model
 
-Auth0 proves identity only. Staff API access requires an active local `AppUser` with a local role.
+Auth0 proves identity only. Staff API access requires an active local `AppUser`.
 
 The GraphQL context resolves one of three states:
 
 - `anonymous`: no Auth0 session.
 - `needs_access`: Auth0 session exists, but no active local app user exists.
-- `authorized`: active local app user exists and carries a local role.
+- `authorized`: active local app user exists.
 
-Resolvers must call one of:
-
-- `requireStaffUser(context)` for staff-only reads that any active staff role may access.
-- `requirePermission(context, permission)` for fields or mutations that need a specific permission.
+Resolvers must call `requireStaffUser(context)` for staff-only reads and mutations.
 
 Do not treat Rock people, Auth0 users, Auth0 roles, or Rock users as app authorization records.
 
@@ -48,11 +45,11 @@ Do not treat Rock people, Auth0 users, Auth0 roles, or Rock users as app authori
 
 Root query fields:
 
-- `viewer`: returns the active local app user's id, email, name, and role.
+- `viewer`: returns the active local app user's id, email, and name.
 - `syncStatus`: returns safe operational sync metadata from `lib/sync/status.ts`.
-- `staffTasks(limit, status)`: returns app-owned staff tasks for roles with `tasks:manage`.
-- `rockPerson(rockId)`: returns a role-aware synced Rock person profile.
-- `rockHousehold(rockId)`: returns a role-aware synced Rock household profile.
+- `staffTasks(limit, status)`: returns app-owned staff tasks.
+- `rockPerson(rockId)`: returns a synced Rock person profile.
+- `rockHousehold(rockId)`: returns a synced Rock household profile.
 - `communicationPreps(limit, status)`: returns local one-off communication prep records.
 - `communicationAutomations(limit)`: returns reviewed automation setup, readiness, reviewers, and recent run summaries.
 - `communicationAutomation(id)`: returns one automation detail record.
@@ -71,7 +68,7 @@ Root mutation fields:
 
 The sync API exposes operational metadata and issue summaries only. It does not expose raw donor payloads, payment details, access tokens, or unrestricted synced Rock records.
 
-Person and household profile fields are projected through `lib/people/profiles.ts` rather than exposing raw Prisma models. Admin and Finance can see derived giving summaries from `GivingFact`; Pastoral Care receives `amountsHidden: true` and `givingSummary: null`. Person `photoUrl` values point at the protected app-local Rock photo proxy, not directly at Rock.
+Person and household profile fields are projected through `lib/people/profiles.ts` rather than exposing raw Prisma models. Active local app users are admin-equivalent and can see derived giving summaries from `GivingFact`. Person `photoUrl` values point at the protected app-local Rock photo proxy, not directly at Rock.
 
 Communication automation fields expose setup, readiness, structured template field JSON, reviewer metadata, frozen recipient snapshots, and aggregate run counts. They do not expose raw Resend payloads, rendered email bodies stored in the database, giving amounts, payment data, or unrestricted Rock records.
 
@@ -86,7 +83,6 @@ query StaffOverview {
   viewer {
     id
     email
-    role
   }
   syncStatus {
     openIssueCount
@@ -163,7 +159,7 @@ Schema execution tests use the CommonJS GraphQL executor through `createRequire`
 
 ## Future Work
 
-- Unit 6 should add giving metrics in `lib/giving/metrics.ts` and expose them deliberately through GraphQL after role-aware amount visibility is tested.
+- Unit 6 should add giving metrics in `lib/giving/metrics.ts` and expose them deliberately through GraphQL after shared amount visibility is tested.
 - Add full execution tests for automation GraphQL mutations once the local test harness no longer crosses GraphQL CJS/ESM realms.
 - Donor-facing API fields should be separated or explicitly permission-scoped after payment/giving ownership is verified.
 - Before external clients rely on the API, add schema inventory, rate limiting, object-level authorization tests, and compatibility checks.

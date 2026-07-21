@@ -133,7 +133,7 @@ Approach:
 - Resolve `auth0.getSession()` inside the request path.
 - Use `resolveAccessState` with `prismaAppUsers`.
 - Represent context as a discriminated union: anonymous, needs access, or authorized staff user.
-- Add small assertion helpers such as `requireStaffUser(context)` and `requirePermission(context, permission)`.
+- Add a small assertion helper such as `requireStaffUser(context)`.
 - Return safe GraphQL errors for unauthenticated or unauthorized requests.
 
 Test scenarios:
@@ -141,7 +141,7 @@ Test scenarios:
 - Anonymous context denies staff queries.
 - Auth0-authenticated users without active local app users are denied staff queries.
 - Inactive or missing local users cannot access staff fields.
-- Authorized local users include role and permission information in context.
+- Authorized local users include local staff user information in context.
 - Safe errors do not expose Auth0 claims, session internals, stack traces, or database details.
 
 Progress note 2026-04-18:

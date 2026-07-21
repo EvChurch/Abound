@@ -8,7 +8,6 @@ import { AppTopNav } from "@/components/navigation/app-top-nav";
 import { PledgeRecommendationsQueue } from "@/components/settings/pledge-recommendations-queue";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import {
   listPledgeCandidates,
   type PledgeCandidate,
@@ -38,22 +37,6 @@ export default async function PledgeRecommendationsPage({
     redirect("/access-request");
   }
 
-  if (!hasPermission(accessState.user.role, "pledges:manage")) {
-    return (
-      <main className="min-h-screen bg-app-background">
-        <div className="mx-auto grid max-w-3xl gap-4 px-4 py-10 sm:px-7 sm:py-12">
-          <h1 className="text-3xl font-semibold tracking-normal">
-            Pledge recommendations require finance or administrator access.
-          </h1>
-          <p className="text-sm leading-6 text-app-muted">
-            Your local app role does not include pledge recommendation
-            management.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
   const [candidates, params] = await Promise.all([
     listPledgeCandidates({ limit: 200 }, accessState.user),
     searchParams,
@@ -63,10 +46,7 @@ export default async function PledgeRecommendationsPage({
     <main className="min-h-screen bg-app-background">
       <AppTopNav
         active="tools"
-        canManageSettings={hasPermission(
-          accessState.user.role,
-          "settings:manage",
-        )}
+        canManageSettings
         canManageTools
         toolsActiveItem="pledge-recommendations"
       />

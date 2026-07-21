@@ -48,13 +48,6 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
-};
-
-const financeUser: LocalAppUser = {
-  ...adminUser,
-  id: "user_2",
-  role: "FINANCE",
 };
 
 describe("user management settings", () => {
@@ -90,7 +83,6 @@ describe("user management settings", () => {
         id: "user_1",
         name: "Admin",
         rockPersonId: null,
-        role: "ADMIN",
         updatedAt: new Date("2026-04-22T00:00:00.000Z"),
       },
     ]);
@@ -135,7 +127,6 @@ describe("user management settings", () => {
     await approveAccessRequest(
       {
         requestId: "request_1",
-        role: "FINANCE",
       },
       adminUser,
     );
@@ -145,7 +136,6 @@ describe("user management settings", () => {
         create: expect.objectContaining({
           active: true,
           auth0Subject: "auth0|pending",
-          role: "FINANCE",
           rockPersonId: null,
         }),
       }),
@@ -178,7 +168,6 @@ describe("user management settings", () => {
     await approveAccessRequest(
       {
         requestId: "request_1",
-        role: "FINANCE",
       },
       adminUser,
     );
@@ -195,17 +184,30 @@ describe("user management settings", () => {
     );
   });
 
-  it("rejects non-Admin updates", async () => {
+  it("allows admin users to manage users", async () => {
+    mocks.appUserFindUnique.mockResolvedValue({
+      auth0Subject: "auth0|target",
+      rockPersonId: null,
+    });
+    mocks.appUserUpdate.mockResolvedValue({});
+
     await expect(
       updateAppUser(
         {
           active: true,
-          role: "ADMIN",
           userId: "user_1",
         },
-        financeUser,
+        adminUser,
       ),
-    ).rejects.toThrow("permission");
+    ).resolves.toBeUndefined();
+
+    expect(mocks.appUserUpdate).toHaveBeenCalledWith({
+      where: { id: "user_1" },
+      data: {
+        active: true,
+        rockPersonId: null,
+      },
+    });
   });
 
   it("prevents an Admin from removing their own administrator access", async () => {
@@ -213,7 +215,6 @@ describe("user management settings", () => {
       updateAppUser(
         {
           active: false,
-          role: "ADMIN",
           userId: "user_1",
         },
         adminUser,

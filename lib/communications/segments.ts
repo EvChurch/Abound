@@ -206,7 +206,7 @@ function explainPersonInclusion(
   }
 
   if (person.amountsHidden) {
-    return "Matches this audience's care-context criteria; giving amounts are hidden for this role.";
+    return "Matches this audience's criteria; giving amounts are unavailable.";
   }
 
   if (person.givingSummary?.lastGiftAt) {
@@ -230,7 +230,7 @@ function explainHouseholdInclusion(
   }
 
   if (household.amountsHidden) {
-    return "Matches this audience's care-context criteria; giving amounts are hidden for this role.";
+    return "Matches this audience's criteria; giving amounts are unavailable.";
   }
 
   if (household.givingSummary?.lastGiftAt) {

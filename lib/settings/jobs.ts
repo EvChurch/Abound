@@ -6,7 +6,6 @@ import type {
 } from "@prisma/client";
 import type { QueueResult, Schedule } from "pg-boss";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import { createSyncBoss, ensureSyncQueues } from "@/lib/sync/jobs";
@@ -101,8 +100,6 @@ export async function listJobsDashboardSummary(
   client: JobsClient = prisma,
   loadQueueTelemetry: QueueTelemetryLoader = loadQueueTelemetryFromPgBoss,
 ): Promise<JobsDashboardSummary> {
-  requireAppPermission(actor, "settings:manage");
-
   const [syncRuns, derivedRefreshes, recentEvents] = await Promise.all([
     client.syncRun.findMany({
       orderBy: [{ startedAt: "desc" }],

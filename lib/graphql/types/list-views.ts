@@ -303,9 +303,9 @@ export function registerListViewTypes() {
       },
       type: [filterFieldDefinitionType],
       resolve: (_root, args, context) => {
-        const user = requireStaffUser(context);
+        requireStaffUser(context);
 
-        return getListViewFilterCatalog(args.resource, user.role);
+        return getListViewFilterCatalog(args.resource);
       },
     }),
   );

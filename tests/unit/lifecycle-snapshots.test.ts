@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
 
 describe("lifecycle snapshots", () => {
-  it("creates person and household lifecycle snapshots with safe summaries", async () => {
+  it("creates person and household lifecycle snapshots with admin summaries", async () => {
     const createMany = vi.fn(async ({ data }) => ({ count: data.length }));
     const deleteMany = vi.fn(async () => ({ count: 0 }));
     const client = {
@@ -64,7 +64,7 @@ describe("lifecycle snapshots", () => {
           lifecycle: "NEW",
           personRockId: 10,
           resource: "PERSON",
-          summary: "First giving activity appears in the current window.",
+          summary: expect.stringContaining("Current window total: 100.00"),
         }),
         expect.objectContaining({
           householdRockId: 20,

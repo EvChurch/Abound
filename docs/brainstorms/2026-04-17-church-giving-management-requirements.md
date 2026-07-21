@@ -72,11 +72,8 @@ The desired product is a giving management platform that syncs from Rock, suppor
 - Use Auth0 for authentication: The app should integrate with Auth0 directly and maintain its own local app user/role records instead of syncing Rock users.
 - Require local authorization after Auth0 login: A user who can authenticate through Auth0 is not automatically allowed into staff workflows. They need an active local app profile and role.
 - Provide an access request path: Auth0-authenticated users without local access should be able to request an invite/access, creating a persisted database record only. No admin notification UI or outbound notification is required for the first pass.
-- Use local roles first: Initial roles should be app-local. The first role set is Admin, Finance, and Pastoral Care.
-- Admin role: Admin users have full access across finance, people, donations, tasks, communications, settings, and administration.
-- Finance role: Finance users can see giving amounts and the limited person/household details needed to identify donors, reconcile records, and understand giving context.
-- Pastoral Care role: Pastoral Care users can see donor and household context needed for care and follow-up, communications, tasks, and reports, but actual giving amounts and individual-level giving aggregates must be hidden from this role.
-- Defer user-management UI: First implementation may manage users and roles through Postgres or seed/admin tooling instead of a dedicated UI.
+- Use active local app access only. Active app users should not be split into Finance, Pastoral Care, Admin, or any other local role; shared segments, communication workflows, settings, giving context, and workflow edits are available to every active local user.
+- Defer user-management UI: First implementation may manage users through Postgres or seed/admin tooling instead of a dedicated UI.
 - Link local users to Rock people opportunistically: The app may attempt an email-based Rock person link for profile/avatar context, but this link is optional and must not be required for authorization.
 - Treat Yoga, Pothos, Prisma, and Next.js as the preferred starting stack: This matches the user's prior successful experience while keeping the final plan responsible for validating current library fit.
 - AI should be staff-assistive first: The most valuable initial AI work is likely donor/giving summarization, anomaly explanation, segment rationale, task suggestions, and draft communication assistance with human approval.

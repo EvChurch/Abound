@@ -5,7 +5,6 @@ import type {
 } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { APP_TIMEZONE } from "@/lib/app-timezone";
 import { ensureJoiningNeverGivenSavedView } from "@/lib/communications/automation-seeds";
@@ -41,7 +40,6 @@ export type CommunicationAutomationRecord =
               email: true;
               id: true;
               name: true;
-              role: true;
             };
           };
         };
@@ -136,8 +134,6 @@ export async function listCommunicationAutomations(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationAutomationRecord[]> {
-  requireAppPermission(actor, "communications:automations:manage");
-
   return client.communicationAutomation.findMany({
     include: automationRecordInclude,
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
@@ -150,8 +146,6 @@ export async function getCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationAutomationRecord> {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const automation = await client.communicationAutomation.findUnique({
     include: automationRecordInclude,
     where: { id },
@@ -173,8 +167,6 @@ export async function getCommunicationAutomationRun(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationAutomationRunRecord | null> {
-  requireAppPermission(actor, "communications:automations:manage");
-
   return client.communicationAutomationRun.findFirst({
     include: {
       events: true,
@@ -192,8 +184,6 @@ export async function getCommunicationAutomationLifecycleAction(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationAutomationLifecycleAction> {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const automation = await client.communicationAutomation.findUnique({
     select: {
       archivedAt: true,
@@ -230,8 +220,6 @@ export async function listCommunicationAutomationReviewerOptions(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationAutomationReviewerOption[]> {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const users = await client.appUser.findMany({
     orderBy: [{ name: "asc" }, { email: "asc" }, { id: "asc" }],
     select: {
@@ -254,8 +242,6 @@ export async function createJoiningNeverGivenAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const savedView = await ensureJoiningNeverGivenSavedView(actor, client);
 
   const automation = await createCommunicationAutomation(
@@ -284,8 +270,6 @@ export async function createCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const savedView = await getSavedListView(
     input.savedListViewId,
     actor,
@@ -352,8 +336,6 @@ export async function updateCommunicationAutomationTemplate(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const automation = await client.communicationAutomation.findUnique({
     where: { id: input.id },
   });
@@ -379,8 +361,6 @@ export async function updateCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const automation = await client.communicationAutomation.findUnique({
     where: { id: input.id },
   });
@@ -468,8 +448,6 @@ export async function deleteCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   const lifecycleAction = await getCommunicationAutomationLifecycleAction(
     id,
     actor,
@@ -494,8 +472,6 @@ export async function archiveCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   await assertCommunicationAutomationExists(id, client);
 
   return client.communicationAutomation.update({
@@ -514,8 +490,6 @@ export async function unarchiveCommunicationAutomation(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ) {
-  requireAppPermission(actor, "communications:automations:manage");
-
   await assertCommunicationAutomationExists(id, client);
 
   return client.communicationAutomation.update({
@@ -582,7 +556,6 @@ const automationRecordInclude = {
           email: true,
           id: true,
           name: true,
-          role: true,
         },
       },
     },
