@@ -6,7 +6,6 @@ import type {
 } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -70,8 +69,6 @@ export async function listCommunicationPreps(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationPrepRecord[]> {
-  requireAppPermission(actor, "communications:manage");
-
   return client.communicationPrep.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: clampPrepLimit(input.limit),
@@ -84,8 +81,6 @@ export async function getCommunicationPrep(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationPrepRecord> {
-  requireAppPermission(actor, "communications:manage");
-
   const prep = await client.communicationPrep.findUnique({
     where: { id },
   });
@@ -106,8 +101,6 @@ export async function createCommunicationPrep(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationPrepRecord> {
-  requireAppPermission(actor, "communications:manage");
-
   const title = normalizeRequiredText(input.title, "Communication prep title");
   const [person, household, audience] = await Promise.all([
     validatePersonLink(input.personRockId, client),
@@ -147,8 +140,6 @@ export async function updateCommunicationPrep(
   actor: LocalAppUser,
   client: PrismaClient = prisma,
 ): Promise<CommunicationPrepRecord> {
-  requireAppPermission(actor, "communications:manage");
-
   const existing = await client.communicationPrep.findUnique({
     where: { id: input.id },
   });

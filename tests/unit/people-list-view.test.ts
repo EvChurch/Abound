@@ -11,7 +11,6 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
 };
 
 function client({

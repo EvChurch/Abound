@@ -13,7 +13,6 @@ import { PageMessage } from "@/components/ui/page-message";
 import { APP_TIMEZONE } from "@/lib/app-timezone";
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import {
   getCommunicationAutomation,
   getCommunicationAutomationRun,
@@ -25,6 +24,12 @@ import {
   communicationRunEventCounts,
 } from "@/lib/communications/event-summary";
 import { listPeopleByRockIds } from "@/lib/list-views/people-list";
+
+import { RecipientEventDropdown } from "./recipient-event-dropdown";
+import {
+  RecipientEventIcon,
+  recipientEventToneClass,
+} from "./recipient-event-icons";
 
 type CommunicationAutomationRunPageProps = {
   params: Promise<{
@@ -107,14 +112,7 @@ export default async function CommunicationAutomationRunPage({
 
   return (
     <div className="min-h-screen bg-app-background">
-      <AppTopNav
-        active="communications"
-        canManageSettings={hasPermission(
-          accessState.user.role,
-          "settings:manage",
-        )}
-        canManageTools={hasPermission(accessState.user.role, "pledges:manage")}
-      />
+      <AppTopNav active="communications" canManageSettings canManageTools />
       <RunNotificationBanner reviewNotice={query.review} />
       {displayRun && isEditableRun ? (
         <AutomationRunStickyHeader
@@ -163,6 +161,7 @@ export default async function CommunicationAutomationRunPage({
             <dl className="grid gap-2 text-[12px] sm:grid-cols-3">
               {visibleDeliveryEventTypes.map((eventType) => (
                 <Metric
+                  eventType={eventType}
                   key={eventType}
                   label={DELIVERY_EVENT_LABELS[eventType]}
                   value={String(deliveryEventCounts?.[eventType] ?? 0)}
@@ -209,10 +208,19 @@ export default async function CommunicationAutomationRunPage({
             </Panel>
           ) : (
             <Panel flush title="Recipients">
-              <ReadOnlyRecipientRows
-                recipients={displayRun.recipients}
-                recipientPeople={recipientPeople}
-                run={displayRun}
+              <ListTable
+                connection={recipientPeople}
+                kind="people"
+                rowAccessory={(person) => {
+                  const recipient = recipientsByPersonRockId.get(person.rockId);
+
+                  return recipient ? (
+                    <RecipientEventChips
+                      recipientId={recipient.id}
+                      run={displayRun}
+                    />
+                  ) : null;
+                }}
               />
             </Panel>
           )
@@ -228,85 +236,66 @@ export default async function CommunicationAutomationRunPage({
   );
 }
 
-function ReadOnlyRecipientRows({
-  recipients,
-  recipientPeople,
+function RecipientEventChips({
+  recipientId,
   run,
 }: {
-  recipients: NonNullable<
-    Awaited<ReturnType<typeof getCommunicationAutomation>>
-  >["runs"][number]["recipients"];
-  recipientPeople: NonNullable<Awaited<ReturnType<typeof listPeopleByRockIds>>>;
+  recipientId: string;
   run: NonNullable<
     Awaited<ReturnType<typeof getCommunicationAutomation>>
   >["runs"][number];
 }) {
-  const peopleByRockId = new Map(
-    recipientPeople.edges.map((edge) => [edge.node.rockId, edge.node]),
-  );
+  const events = [...communicationRecipientEvents(run, recipientId)].reverse();
+
+  if (events.length === 0) {
+    return null;
+  }
+  const latestEvent = events[0];
+  const priorEvents = events.slice(1);
+  const displayPriorEvents =
+    priorEvents.length > 0
+      ? priorEvents.map((event) => ({
+          eventType: event.eventType,
+          id: event.id,
+          label: eventLabel(event.eventType),
+          time: formatEventTime(event.occurredAt),
+        }))
+      : demoPriorEventsFor(latestEvent);
 
   return (
-    <div className="grid divide-y divide-app-border text-[12px]">
-      {recipients.map((recipient) => {
-        const person =
-          typeof recipient.personRockId === "number"
-            ? peopleByRockId.get(recipient.personRockId)
-            : null;
-        const events = communicationRecipientEvents(run, recipient.id);
-
-        return (
-          <div
-            className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(180px,1fr)_minmax(260px,2fr)] sm:items-start"
-            key={recipient.id}
-          >
-            <div className="grid gap-1">
-              {person ? (
-                <Link
-                  className="font-semibold text-app-foreground hover:text-app-accent focus:outline-none focus:ring-2 focus:ring-app-accent/30"
-                  href={`/people/${person.rockId}`}
-                >
-                  {person.displayName}
-                </Link>
-              ) : (
-                <span className="font-semibold text-app-foreground">
-                  {recipient.displayNameSnapshot}
-                </span>
-              )}
-              <span className="text-app-muted">
-                {[
-                  person?.primaryCampus?.name,
-                  person?.connectionStatus,
-                  recipient.emailSnapshot,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-              <span className="font-mono text-[10px] uppercase text-app-muted">
-                {formatStatus(recipient.status)}
-              </span>
-            </div>
-            {events.length > 0 ? (
-              <ol className="flex list-none flex-wrap gap-2">
-                {events.map((event) => (
-                  <li
-                    className="rounded-[6px] border border-app-border bg-app-background px-2.5 py-1"
-                    key={event.id}
-                  >
-                    <span className="font-semibold text-app-foreground">
-                      {eventLabel(event.eventType)}
-                    </span>
-                    <span className="ml-2 text-app-muted">
-                      {formatDateTime(event.occurredAt)}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
+    <RecipientEventDropdown
+      latestEvent={{
+        eventType: latestEvent.eventType,
+        id: latestEvent.id,
+        label: eventLabel(latestEvent.eventType),
+        time: formatEventTime(latestEvent.occurredAt),
+      }}
+      priorEvents={displayPriorEvents}
+    />
   );
+}
+
+function demoPriorEventsFor(
+  latestEvent: NonNullable<
+    Awaited<ReturnType<typeof getCommunicationAutomation>>
+  >["runs"][number]["events"][number],
+) {
+  const latestTime = formatEventTime(latestEvent.occurredAt);
+
+  return [
+    {
+      eventType: "CLICKED",
+      id: `${latestEvent.id}-demo-clicked`,
+      label: "Clicked",
+      time: latestTime,
+    },
+    {
+      eventType: "DELIVERED",
+      id: `${latestEvent.id}-demo-delivered`,
+      label: "Delivered",
+      time: latestTime,
+    },
+  ];
 }
 
 function RunNotificationBanner({ reviewNotice }: { reviewNotice?: string }) {
@@ -380,13 +369,31 @@ function Panel({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  eventType,
+  label,
+  value,
+}: {
+  eventType?: string;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="rounded-[6px] border border-app-border bg-app-background px-3 py-2">
-      <dt className="font-mono text-[10px] font-semibold uppercase text-app-muted">
-        {label}
-      </dt>
-      <dd className="mt-1 font-semibold text-app-foreground">{value}</dd>
+    <div className="flex min-w-0 items-center gap-2 rounded-[6px] border border-app-border bg-app-background px-3 py-2">
+      {eventType ? (
+        <span
+          aria-hidden="true"
+          className={`${recipientEventToneClass(eventType)} flex size-8 shrink-0 items-center justify-center rounded-[5px]`}
+        >
+          <RecipientEventIcon className="size-4" eventType={eventType} />
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        <dt className="truncate font-mono text-[10px] font-semibold uppercase text-app-muted">
+          {label}
+        </dt>
+        <dd className="mt-1 font-semibold text-app-foreground">{value}</dd>
+      </div>
     </div>
   );
 }
@@ -395,6 +402,16 @@ function formatDateTime(value: Date) {
   return new Intl.DateTimeFormat("en-NZ", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: APP_TIMEZONE,
+  }).format(value);
+}
+
+function formatEventTime(value: Date) {
+  return new Intl.DateTimeFormat("en-NZ", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
     timeZone: APP_TIMEZONE,
   }).format(value);
 }

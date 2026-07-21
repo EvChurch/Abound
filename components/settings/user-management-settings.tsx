@@ -1,10 +1,8 @@
-import { APP_ROLES, type AppRole } from "@/lib/auth/roles";
 import type {
   ManagedAccessRequest,
   ManagedAppUser,
   UserManagementSummary,
 } from "@/lib/settings/users";
-import { CustomSelect } from "@/components/ui/custom-select";
 import { DropdownPanel } from "@/components/ui/dropdown-panel";
 
 type UserManagementSettingsProps = {
@@ -36,7 +34,7 @@ export function UserManagementSettings({
               Users
             </h1>
             <p className="max-w-3xl text-[13px] leading-6 text-app-muted">
-              Manage staff access, roles, and active status.
+              Manage staff access and active status.
             </p>
           </div>
         </div>
@@ -109,7 +107,6 @@ function AccessRequestCard({
             className="grid gap-2 sm:flex sm:flex-wrap"
           >
             <input name="requestId" type="hidden" value={request.id} />
-            <RoleSelect defaultValue="FINANCE" />
             <button className="inline-flex min-h-10 items-center justify-center rounded-[6px] border border-app-accent bg-app-accent px-3 text-[12.5px] font-semibold text-white sm:min-h-9">
               Approve
             </button>
@@ -189,7 +186,6 @@ function UserActionsMenu({
       >
         <form action={updateUserAction} className="grid gap-3">
           <input name="userId" type="hidden" value={user.id} />
-          <RoleSelect defaultValue={user.role} />
           <label className="inline-flex min-h-9 items-center gap-2 rounded-[6px] border border-app-border bg-app-surface px-3 text-[12.5px] font-semibold text-app-muted">
             <input
               className="h-4 w-4 accent-app-accent"
@@ -254,25 +250,6 @@ function RecordIdentity({
   );
 }
 
-function RoleSelect({ defaultValue }: { defaultValue: AppRole }) {
-  return (
-    <label className="grid gap-1">
-      <span className="sr-only">Role</span>
-      <CustomSelect
-        ariaLabel="Role"
-        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-[5px] border border-app-border bg-app-surface px-3 text-[13px] text-app-foreground outline-none transition hover:border-app-border-strong focus-visible:ring-2 focus-visible:ring-app-accent/25"
-        defaultValue={defaultValue}
-        name="role"
-        rootClassName="relative w-full"
-        options={APP_ROLES.map((role) => ({
-          label: formatRole(role),
-          value: role,
-        }))}
-      />
-    </label>
-  );
-}
-
 function EmptyPanel({ message }: { message: string }) {
   return (
     <div className="rounded-[8px] border border-dashed border-app-border bg-app-background p-4 text-[13px] font-semibold text-app-muted">
@@ -296,13 +273,6 @@ function StatusBadge({ status }: { status: string }) {
       {status.toLowerCase().replace(/_/g, " ")}
     </span>
   );
-}
-
-function formatRole(role: AppRole) {
-  return role
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function formatDateTime(value: Date) {

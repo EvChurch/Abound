@@ -8,8 +8,6 @@ import type {
   PrismaClient,
 } from "@prisma/client";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
-import { hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -190,9 +188,7 @@ export async function getPersonPledgeEditor(
   actor: LocalAppUser,
   client: PledgeClient = prisma,
 ): Promise<PersonPledgeEditor | null> {
-  if (!hasPermission(actor.role, "pledges:manage")) {
-    return null;
-  }
+  void actor;
 
   assertPositiveRockId(personRockId, "Pledge personRockId");
 
@@ -348,8 +344,6 @@ export async function updateGivingPledge(
   actor: LocalAppUser,
   client: PledgeClient = prisma,
 ) {
-  requireAppPermission(actor, "pledges:manage");
-
   const existing = await client.givingPledge.findUnique({
     include: {
       account: {
@@ -416,8 +410,6 @@ export async function listPledgeCandidates(
   actor: LocalAppUser,
   client: PledgeClient = prisma,
 ): Promise<PledgeCandidate[]> {
-  requireAppPermission(actor, "pledges:manage");
-
   const facts = await findRecentGivingFactsForCandidates(new Date(), client);
   const personIds = Array.from(
     new Set(
@@ -699,7 +691,6 @@ async function recommendationForMutation(
   actor: LocalAppUser,
   client: PledgeClient,
 ) {
-  requireAppPermission(actor, "pledges:manage");
   await validatePersonAndFund(input, client);
 
   const editor = await getPersonPledgeEditor(input.personRockId, actor, client);

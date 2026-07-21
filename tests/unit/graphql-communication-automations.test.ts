@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { requirePermission, type GraphQLContext } from "@/lib/graphql/context";
+import { requireStaffUser, type GraphQLContext } from "@/lib/graphql/context";
 import { schema } from "@/lib/graphql/schema";
 
 describe("GraphQL communication automation schema", () => {
@@ -34,25 +34,26 @@ describe("GraphQL communication automation schema", () => {
     );
   });
 
-  it("uses local role permissions for automation access", () => {
+  it("allows admin users to manage automation access", () => {
     const financeContext: GraphQLContext = {
       accessState: {
         status: "authorized",
         user: {
           active: true,
-          auth0Subject: "auth0|finance",
+          auth0Subject: "auth0|admin",
           email: "finance@example.com",
           id: "user_2",
-          name: "Finance",
+          name: "Admin",
           rockPersonId: null,
-          role: "FINANCE",
         },
       },
     };
 
-    expect(() =>
-      requirePermission(financeContext, "communications:automations:manage"),
-    ).toThrow("You do not have permission to perform this action.");
+    expect(requireStaffUser(financeContext)).toEqual(
+      financeContext.accessState.status === "authorized"
+        ? financeContext.accessState.user
+        : null,
+    );
   });
 });
 

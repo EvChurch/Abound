@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import type { AppUserRepository } from "@/lib/auth/users";
 import {
-  requirePermission,
   requireStaffUser,
   resolveGraphQLContext,
   type GraphQLContext,
@@ -20,7 +19,6 @@ const adminUser = {
   auth0Subject: "auth0|admin",
   email: "admin@example.com",
   name: "Admin",
-  role: "ADMIN" as const,
   active: true,
   rockPersonId: null,
 };
@@ -115,23 +113,24 @@ describe("GraphQL auth context", () => {
     }
   });
 
-  it("enforces role permissions after local app access is resolved", () => {
-    const financeContext: GraphQLContext = {
+  it("allows authorized local users through the staff gate", () => {
+    const staffContext: GraphQLContext = {
       accessState: {
         status: "authorized",
         user: {
           ...adminUser,
-          role: "FINANCE",
         },
       },
     };
 
-    expect(() => requirePermission(financeContext, "tasks:manage")).toThrow(
-      "You do not have permission to perform this action.",
+    expect(requireStaffUser(staffContext)).toEqual(
+      staffContext.accessState.status === "authorized"
+        ? staffContext.accessState.user
+        : null,
     );
-    expect(requirePermission(financeContext, "finance:read_amounts")).toEqual(
-      financeContext.accessState.status === "authorized"
-        ? financeContext.accessState.user
+    expect(requireStaffUser(staffContext)).toEqual(
+      staffContext.accessState.status === "authorized"
+        ? staffContext.accessState.user
         : null,
     );
   });

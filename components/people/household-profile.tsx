@@ -35,7 +35,7 @@ export function HouseholdProfile({
   currentPersonRockId,
   profile,
 }: HouseholdProfileProps) {
-  const role = profile.amountsHidden ? "Pastoral Care" : "Admin";
+  const role = profile.amountsHidden ? "Limited access" : "Admin";
   const memberRows = profile.members.map(membershipToPersonRow);
   const givingRows = profile.givingPeople.map(personSummaryToMemberRow);
   const householdPersonIds = new Set(

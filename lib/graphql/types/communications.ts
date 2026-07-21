@@ -7,7 +7,7 @@ import type {
 } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { requirePermission } from "@/lib/graphql/context";
+import { requireStaffUser } from "@/lib/graphql/context";
 import { builder } from "@/lib/graphql/builder";
 import { listViewResourceEnum } from "@/lib/graphql/types/list-views";
 import {
@@ -191,9 +191,6 @@ const communicationAutomationReviewerType = builder
         resolve: (reviewer) => reviewer.reviewer.name,
       }),
       reviewerUserId: t.exposeString("reviewerUserId"),
-      role: t.string({
-        resolve: (reviewer) => reviewer.reviewer.role,
-      }),
     }),
   });
 
@@ -339,7 +336,7 @@ export function registerCommunicationTypes() {
       },
       type: [communicationPrepType],
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "communications:manage");
+        const actor = requireStaffUser(context);
 
         return listCommunicationPreps(
           {
@@ -359,10 +356,7 @@ export function registerCommunicationTypes() {
       },
       type: [communicationAutomationType],
       resolve: (_root, args, context) => {
-        const actor = requirePermission(
-          context,
-          "communications:automations:manage",
-        );
+        const actor = requireStaffUser(context);
 
         return listCommunicationAutomations({ limit: args.limit }, actor);
       },
@@ -377,10 +371,7 @@ export function registerCommunicationTypes() {
       nullable: true,
       type: communicationAutomationType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(
-          context,
-          "communications:automations:manage",
-        );
+        const actor = requireStaffUser(context);
 
         return getCommunicationAutomation(args.id, actor);
       },
@@ -395,7 +386,7 @@ export function registerCommunicationTypes() {
       },
       type: communicationTemplatePreviewType,
       resolve: async (_root, args, context) => {
-        requirePermission(context, "communications:automations:manage");
+        requireStaffUser(context);
 
         const rendered = await renderCommunicationTemplate({
           fields: parseTemplateFieldsJson(args.fieldsJson),
@@ -430,7 +421,7 @@ export function registerCommunicationTypes() {
       },
       type: communicationPrepType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "communications:manage");
+        const actor = requireStaffUser(context);
 
         return createCommunicationPrep(
           {
@@ -460,7 +451,7 @@ export function registerCommunicationTypes() {
       },
       type: communicationPrepType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "communications:manage");
+        const actor = requireStaffUser(context);
 
         return updateCommunicationPrep(
           {
@@ -480,10 +471,7 @@ export function registerCommunicationTypes() {
     t.field({
       type: communicationAutomationType,
       resolve: (_root, _args, context) => {
-        const actor = requirePermission(
-          context,
-          "communications:automations:manage",
-        );
+        const actor = requireStaffUser(context);
 
         return createJoiningNeverGivenAutomation(actor);
       },
@@ -498,10 +486,7 @@ export function registerCommunicationTypes() {
       },
       type: communicationAutomationType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(
-          context,
-          "communications:automations:manage",
-        );
+        const actor = requireStaffUser(context);
 
         return updateCommunicationAutomationTemplate(
           {
@@ -522,10 +507,7 @@ export function registerCommunicationTypes() {
       },
       type: communicationAutomationRecipientType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(
-          context,
-          "communications:automations:review",
-        );
+        const actor = requireStaffUser(context);
 
         return excludeAutomationRecipient(
           {

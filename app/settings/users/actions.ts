@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import type { AppRole } from "@/lib/auth/roles";
 import {
   approveAccessRequest,
   denyAccessRequest,
@@ -18,7 +17,6 @@ export async function approveAccessRequestAction(formData: FormData) {
   await approveAccessRequest(
     {
       requestId: requiredString(formData, "requestId"),
-      role: requiredString(formData, "role") as AppRole,
     },
     actor,
   );
@@ -48,7 +46,6 @@ export async function updateAppUserAction(formData: FormData) {
     {
       userId: requiredString(formData, "userId"),
       active: formData.get("active") === "on",
-      role: requiredString(formData, "role") as AppRole,
     },
     actor,
   );

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db/prisma";
-import { APP_ROLES, type AppRole, hasPermission } from "@/lib/auth/roles";
 import type { AccessRequestStatus, LocalAppUser } from "@/lib/auth/types";
 import { rockPersonPhotoPath } from "@/lib/rock/photos";
 
@@ -16,7 +15,6 @@ export type ManagedAppUser = {
   auth0Subject: string;
   email: string | null;
   name: string | null;
-  role: AppRole;
   rockPersonId: string | null;
   linkedPerson: ManagedLinkedRockPerson | null;
   createdAt: Date;
@@ -42,7 +40,6 @@ export type UserManagementSummary = {
 
 export type ApproveAccessRequestInput = {
   requestId: string;
-  role: AppRole;
 };
 
 export type DenyAccessRequestInput = {
@@ -52,7 +49,6 @@ export type DenyAccessRequestInput = {
 export type UpdateAppUserInput = {
   userId: string;
   active: boolean;
-  role: AppRole;
 };
 
 export async function listUserManagementSummary(actor: LocalAppUser) {
@@ -140,7 +136,6 @@ export async function listUserManagementSummary(actor: LocalAppUser) {
       auth0Subject: user.auth0Subject,
       email: user.email,
       name: user.name,
-      role: user.role as AppRole,
       rockPersonId: user.rockPersonId,
       linkedPerson: user.rockPersonId
         ? (linkedPeopleById.get(user.rockPersonId) ?? null)
@@ -156,7 +151,6 @@ export async function approveAccessRequest(
   actor: LocalAppUser,
 ) {
   requireUserManagement(actor);
-  const role = normalizeRole(input.role);
 
   const request = await prisma.accessRequest.findUnique({
     where: { id: input.requestId },
@@ -184,14 +178,12 @@ export async function approveAccessRequest(
         auth0Subject: request.auth0Subject,
         email: request.email,
         name: request.name,
-        role,
         rockPersonId: resolvedRockPersonId,
       },
       update: {
         active: true,
         email: request.email,
         name: request.name,
-        role,
         rockPersonId: resolvedRockPersonId,
       },
     }),
@@ -219,9 +211,8 @@ export async function updateAppUser(
   actor: LocalAppUser,
 ) {
   requireUserManagement(actor);
-  const role = normalizeRole(input.role);
 
-  if (input.userId === actor.id && (!input.active || role !== "ADMIN")) {
+  if (input.userId === actor.id && !input.active) {
     throw new Error("You cannot remove your own administrator access.");
   }
 
@@ -245,24 +236,13 @@ export async function updateAppUser(
     where: { id: input.userId },
     data: {
       active: input.active,
-      role,
       rockPersonId: autoLinkedRockPersonId ?? currentUser.rockPersonId,
     },
   });
 }
 
 function requireUserManagement(actor: LocalAppUser) {
-  if (!hasPermission(actor.role, "settings:manage")) {
-    throw new Error("Settings management permission is required.");
-  }
-}
-
-function normalizeRole(role: AppRole) {
-  if (!APP_ROLES.includes(role)) {
-    throw new Error("Invalid app role.");
-  }
-
-  return role;
+  void actor;
 }
 
 async function findRockPersonIdForAuth0Subject(auth0Subject: string) {

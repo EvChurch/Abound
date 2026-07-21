@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db/prisma";
-import type { AppRole } from "@/lib/auth/roles";
 import type { AppUserRepository } from "@/lib/auth/users";
 
 export const prismaAppUsers: AppUserRepository = {
@@ -17,7 +16,6 @@ export const prismaAppUsers: AppUserRepository = {
       auth0Subject: user.auth0Subject,
       email: user.email,
       name: user.name,
-      role: user.role as AppRole,
       active: user.active,
       rockPersonId: user.rockPersonId,
     };

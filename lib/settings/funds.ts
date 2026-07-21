@@ -1,7 +1,6 @@
 import { GraphQLError } from "graphql";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
-import { requireAppPermission } from "@/lib/auth/permissions";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 
@@ -124,8 +123,6 @@ export async function listPlatformFundSettings(
   actor: LocalAppUser,
   client: FundSettingsClient = prisma,
 ): Promise<PlatformFundSettingsSummary> {
-  requireAppPermission(actor, "settings:manage");
-
   const [accounts, settingCount, factCounts, latestRefresh] = await Promise.all(
     [
       client.rockFinancialAccount.findMany({
@@ -232,8 +229,6 @@ export async function updatePlatformFundSettings(
   client: FundSettingsClient = prisma,
   requestDerivedRefresh: DerivedRefreshRequester = defaultDerivedRefreshRequester,
 ) {
-  requireAppPermission(actor, "settings:manage");
-
   const enabledAccountRockIds = normalizeAccountRockIds(
     input.enabledAccountRockIds,
   );

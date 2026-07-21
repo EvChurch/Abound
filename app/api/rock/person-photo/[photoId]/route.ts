@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { prisma } from "@/lib/db/prisma";
 import { rockGetImageUrl } from "@/lib/rock/photos";
 
@@ -26,16 +25,6 @@ export async function GET(_request: Request, context: PersonPhotoRouteContext) {
   if (accessState.status === "needs_access") {
     return NextResponse.json(
       { error: "Local application access is required." },
-      { status: 403 },
-    );
-  }
-
-  if (
-    !hasPermission(accessState.user.role, "people:read_limited") &&
-    !hasPermission(accessState.user.role, "people:read_care_context")
-  ) {
-    return NextResponse.json(
-      { error: "You do not have permission to view Rock profile photos." },
       { status: 403 },
     );
   }

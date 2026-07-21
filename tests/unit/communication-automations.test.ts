@@ -38,13 +38,11 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
 };
 
-const financeUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "FINANCE",
 };
 
 describe("communication automation service", () => {
@@ -161,21 +159,50 @@ describe("communication automation service", () => {
     });
   });
 
-  it("blocks Finance users from creating automations", async () => {
+  it("allows another admin user to create automations", async () => {
+    mocks.getSavedListView.mockResolvedValueOnce({
+      filterDefinition: {},
+      id: "view_1",
+      name: "Joining - Never Given",
+      resource: "PEOPLE",
+    });
+
+    const create = vi.fn(async ({ data }) => ({
+      ...data,
+      id: "automation_2",
+    }));
+    const client = {
+      $transaction: vi.fn(async (callback) =>
+        callback({
+          communicationAutomation: {
+            create,
+          },
+        }),
+      ),
+      appUser: {
+        findMany: vi.fn(async () => [{ id: "user_3" }]),
+      },
+    } as unknown as PrismaClient;
+
     await expect(
       createCommunicationAutomation(
         {
-          name: "Finance automation",
+          name: "Admin automation",
           reviewerUserIds: ["user_3"],
           savedListViewId: "view_1",
           scheduleCron: "0 9 * * 2",
+          templateFields: {
+            format: "react-email-editor",
+            html: "<p>Hello {{ firstName }}</p>",
+            subject: "Hello",
+          },
           templateKey: "joining-never-given",
         },
-        financeUser,
-        {} as PrismaClient,
+        otherAdminUser,
+        client,
       ),
-    ).rejects.toMatchObject({
-      extensions: { code: "FORBIDDEN" },
+    ).resolves.toMatchObject({
+      id: "automation_2",
     });
   });
 

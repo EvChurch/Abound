@@ -14,7 +14,7 @@ The profile slice gives staff a focused view of synced Rock people and household
 
 Core files:
 
-- `lib/people/profiles.ts`: role-aware profile projection service.
+- `lib/people/profiles.ts`: staff profile projection service.
 - `lib/giving/metrics.ts`: compact giving summaries from `GivingFact`.
 - `lib/graphql/types/people.ts`: GraphQL profile contract.
 - `app/people/[rockId]/page.tsx`: staff person profile page.
@@ -49,15 +49,11 @@ Profile photo assumptions to verify against the live Rock instance:
 - `GetImage.ashx?id=<PhotoId>` returns the image for authorized REST-key requests.
 - The existing Rock REST key has read access to staff-visible profile photos.
 
-## Role Behavior
+## Staff Access
 
-Auth0 proves identity only. Local `AppUser` role controls visibility.
+Auth0 proves identity only. Active local `AppUser` access controls visibility.
 
-- Admin: can see profile context, local tasks, person giving summaries, and household giving summaries.
-- Finance: can see profile context, giving summaries, and local pledge recommendations needed to identify donors and reconcile giving data.
-- Pastoral Care: can see person/household care context and local tasks, but giving summaries and pledge recommendations are hidden.
-
-Pastoral Care receives an explicit "Giving amounts hidden" UI state instead of blank summary data. GraphQL returns `givingSummary: null`, `pledgeEditor: null`, and `amountsHidden: true`.
+Active local staff users can see profile context, local tasks, person giving summaries, household giving summaries, and local pledge recommendations. The profile services no longer branch by Finance, Pastoral Care, Admin, or any other local app role.
 
 ## Giving Summary Contract
 
@@ -77,7 +73,7 @@ Giving summaries use the Admin-configured platform fund set from `PlatformFundSe
 
 ## Local Pledge Contract
 
-Person profiles include a local pledge editor for Admin and Finance users. Pledges are app-owned staff commitments by person and Rock financial account/fund. They are not donor-submitted intent, Rock scheduled transactions, recurring gift setup, payment instructions, or processor-managed state.
+Person profiles include a local pledge editor for active local staff users. Pledges are app-owned staff commitments by person and Rock financial account/fund. They are not donor-submitted intent, Rock scheduled transactions, recurring gift setup, payment instructions, or processor-managed state.
 
 Pledge recommendations are derived from the latest 12 months of local `GivingFact` rows grouped by person and enabled platform fund. If a fund has no current-month giving yet, the analysis window ends at the previous month so the current month is not treated as a missing giving month. The first recommendation rule is intentionally conservative: it recommends a monthly pledge only when an enabled platform fund has giving in at least eight of the latest twelve months and no active or draft local pledge already exists for that person/fund.
 
@@ -92,7 +88,7 @@ The pledge UI supports:
 
 Rejected recommendations are stored as local recommendation decisions, not pledge records. The decision snapshots the recommendation evidence at the time of rejection and suppresses the same recommendation until confidence improves, giving continues after the rejection, or the recommended amount changes materially.
 
-Pledge mutations require local `pledges:manage` permission, currently granted to Admin and Finance. Mutations validate synced Rock person/fund links, require the fund to be enabled for platform calculations, and reject a second active pledge for the same person/fund.
+Pledge mutations require active local staff access. Mutations validate synced Rock person/fund links, require the fund to be enabled for platform calculations, and reject a second active pledge for the same person/fund.
 
 Verification expectations for this contract:
 

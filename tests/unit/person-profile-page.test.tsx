@@ -306,7 +306,7 @@ describe("PersonProfile", () => {
     expect(screen.getByText("Giving amounts hidden")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Giving amounts and pledge recommendations are hidden for this role.",
+        "Giving amounts and pledge recommendations are unavailable.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("$3,000.00")).not.toBeInTheDocument();

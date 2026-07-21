@@ -45,12 +45,11 @@ describe("tools pledge recommendation actions", () => {
       status: "authorized",
       user: {
         active: true,
-        auth0Subject: "auth0|finance",
+        auth0Subject: "auth0|admin",
         email: "finance@example.com",
         id: "user_1",
-        name: "Finance",
+        name: "Admin",
         rockPersonId: null,
-        role: "FINANCE",
       },
     };
     mocks.getSession.mockResolvedValue(null);

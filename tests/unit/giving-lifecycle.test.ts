@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyGivingLifecycle,
-  lifecycleExplanationForRole,
+  lifecycleExplanation,
   type GivingLifecycleFact,
 } from "@/lib/giving/lifecycle";
 
@@ -219,7 +219,7 @@ describe("giving lifecycle", () => {
     });
   });
 
-  it("keeps pastoral explanations free of amount details", () => {
+  it("includes amount details in lifecycle explanations", () => {
     const result = classifyGivingLifecycle(
       [
         fact("2025-11-15", { amount: "250.00" }),
@@ -235,12 +235,7 @@ describe("giving lifecycle", () => {
       },
     );
 
-    expect(lifecycleExplanationForRole(result, "FINANCE")).toContain("50.00");
-    expect(lifecycleExplanationForRole(result, "PASTORAL_CARE")).toBe(
-      "Previously consistent giving appears interrupted or reduced.",
-    );
-    expect(lifecycleExplanationForRole(result, "PASTORAL_CARE")).not.toMatch(
-      /\d+\.\d{2}/,
-    );
+    expect(lifecycleExplanation(result)).toContain("50.00");
+    expect(lifecycleExplanation(result)).toContain("750.00");
   });
 });

@@ -601,7 +601,6 @@ function actorFromAppUser(user: AppUser) {
     id: user.id,
     name: user.name,
     rockPersonId: user.rockPersonId,
-    role: user.role,
   };
 }
 

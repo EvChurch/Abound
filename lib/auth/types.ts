@@ -1,5 +1,3 @@
-import type { AppRole } from "@/lib/auth/roles";
-
 export type AuthenticatedIdentity = {
   sub: string;
   email?: string | null;
@@ -12,7 +10,6 @@ export type LocalAppUser = {
   auth0Subject: string;
   email: string | null;
   name: string | null;
-  role: AppRole;
   active: boolean;
   rockPersonId: string | null;
 };

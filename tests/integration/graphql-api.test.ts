@@ -79,7 +79,6 @@ const adminUser: LocalAppUser = {
   auth0Subject: "auth0|admin",
   email: "admin@example.com",
   name: "Admin",
-  role: "ADMIN",
   active: true,
   rockPersonId: null,
 };
@@ -97,7 +96,6 @@ const financeContext: GraphQLContext = {
     user: {
       ...adminUser,
       id: "user_2",
-      role: "FINANCE",
     },
   },
 };
@@ -112,7 +110,6 @@ describe("GraphQL API schema", () => {
           viewer {
             id
             email
-            role
           }
         }
       `,
@@ -123,7 +120,6 @@ describe("GraphQL API schema", () => {
       viewer: {
         id: "user_1",
         email: "admin@example.com",
-        role: "ADMIN",
       },
     });
   });
@@ -290,7 +286,22 @@ describe("GraphQL API schema", () => {
     );
   });
 
-  it("denies task mutations to finance users", async () => {
+  it("allows local users to create tasks", async () => {
+    mocks.createStaffTask.mockResolvedValueOnce({
+      assignedToUserId: null,
+      completedAt: null,
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      dueAt: null,
+      householdRockId: null,
+      id: "task_2",
+      notes: null,
+      personRockId: 910001,
+      priority: "NORMAL",
+      status: "OPEN",
+      title: "Call donor",
+      updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+    });
+
     const result = await graphql({
       contextValue: financeContext,
       schema,
@@ -303,13 +314,8 @@ describe("GraphQL API schema", () => {
       `,
     });
 
-    expect(result.data).toEqual({ createStaffTask: null });
-    expect(result.errors?.[0]).toMatchObject({
-      message: "You do not have permission to perform this action.",
-      extensions: {
-        code: "FORBIDDEN",
-      },
-    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({ createStaffTask: { id: "task_2" } });
   });
 
   it("returns stable bad input errors for invalid task dates", async () => {
@@ -427,29 +433,48 @@ describe("GraphQL API schema", () => {
     );
   });
 
-  it("denies communication prep mutations to finance users", async () => {
+  it("allows local users to create communication prep records", async () => {
+    mocks.createCommunicationPrep.mockResolvedValueOnce({
+      approvedAt: null,
+      audiencePreview: [],
+      audienceResource: "PEOPLE",
+      audienceSize: 0,
+      audienceTruncated: false,
+      canceledAt: null,
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      createdByUserId: "user_2",
+      handedOffAt: null,
+      handoffTarget: null,
+      householdRockId: null,
+      id: "prep_2",
+      personRockId: null,
+      readyForReviewAt: null,
+      reviewNotes: null,
+      savedListViewId: null,
+      segmentDefinition: { conditions: [], mode: "all", type: "group" },
+      segmentSummary: "Manual audience",
+      status: "DRAFT",
+      title: "Workflow comms",
+      updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+    });
+
     const result = await graphql({
       contextValue: financeContext,
       schema,
       source: /* GraphQL */ `
         mutation CreateCommunicationPrep {
-          createCommunicationPrep(title: "Finance comms", resource: PEOPLE) {
+          createCommunicationPrep(title: "Workflow comms", resource: PEOPLE) {
             id
           }
         }
       `,
     });
 
-    expect(result.data).toEqual({ createCommunicationPrep: null });
-    expect(result.errors?.[0]).toMatchObject({
-      message: "You do not have permission to perform this action.",
-      extensions: {
-        code: "FORBIDDEN",
-      },
-    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({ createCommunicationPrep: { id: "prep_2" } });
   });
 
-  it("returns role-aware Rock person profile data", async () => {
+  it("returns Rock person profile data for staff users", async () => {
     mocks.getRockPersonProfile.mockResolvedValueOnce({
       amountsHidden: false,
       deceased: false,
@@ -776,7 +801,7 @@ describe("GraphQL API schema", () => {
           query: /* GraphQL */ `
             query Viewer {
               viewer {
-                role
+                id
               }
             }
           `,
@@ -794,7 +819,7 @@ describe("GraphQL API schema", () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         viewer: {
-          role: "ADMIN",
+          id: "user_1",
         },
       },
     });

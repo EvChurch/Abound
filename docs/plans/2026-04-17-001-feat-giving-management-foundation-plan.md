@@ -522,7 +522,7 @@ flowchart LR
 - Added `docs/architecture/api-boundary.md` and `docs/architecture/auth0-user-management.md`.
 - Added tests in `tests/unit/graphql-auth.test.ts`, `tests/unit/tasks-service.test.ts`, and `tests/integration/graphql-api.test.ts`.
 - Review hardening added production introspection blocking, route-level Yoga coverage, stable bad-input errors, local-only task creation, assignee validation on task updates, a staff task list index migration, and staff API examples.
-- Remaining follow-on work after Unit 5: Unit 6 should add role-aware giving metrics and dashboard data, and future donor-facing GraphQL fields should remain deferred until payment/giving boundaries are verified.
+- Remaining follow-on work after Unit 5: Unit 6 should add shared giving metrics and dashboard data, and future donor-facing GraphQL fields should remain deferred until payment/giving boundaries are verified.
 
 - [ ] **Unit 6: Build Staff Dashboards and Explainable Giving Metrics**
 
@@ -703,7 +703,7 @@ flowchart LR
 | Sensitive donor or financial data leaks through logs, GraphQL errors, fixtures, or AI prompts | Add redaction utilities, safe error handling, fixture validation, and AI context tests before broad feature work.           |
 | GraphQL exposes too much because Prisma models are convenient                                 | Design schema fields deliberately through Pothos and domain services; do not expose raw models wholesale.                   |
 | Dashboards produce misleading metrics from stale or partial syncs                             | Include sync freshness and calculation explanations with dashboard data.                                                    |
-| Auth design blocks future donor-facing work                                                   | Use Auth0 for authentication, keep app authorization local, and keep permission checks role-aware.                          |
+| Auth design blocks future donor-facing work                                                   | Use Auth0 for authentication, keep app authorization local, and keep permission checks based on active local access.        |
 | Auth0 login accidentally grants staff access                                                  | Require an active local app user and local role before staff data access; route unknown users to the access-request screen. |
 | Access requests are not visible in the UI yet                                                 | Persist requests in the database and defer review/approval UI to the later user-management work.                            |
 | Project grows too broad before core sync is trustworthy                                       | Keep donor-facing payments, email sending, and advanced AI tools as separate plans.                                         |

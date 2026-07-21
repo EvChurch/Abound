@@ -23,6 +23,7 @@ type ListTableProps =
       columns?: ListColumnKey[];
       connection: PeopleConnection;
       kind: "people";
+      rowAccessory?: (row: PersonListRow) => ReactNode;
       viewMode?: PeopleViewMode;
     }
   | {
@@ -36,6 +37,7 @@ export function ListTable(props: ListTableProps) {
   const visibleColumns = normalizeColumns(columns);
   const peopleViewMode =
     kind === "people" ? (props.viewMode ?? "list") : "list";
+  const rowAccessory = kind === "people" ? props.rowAccessory : undefined;
 
   return (
     <div
@@ -56,12 +58,14 @@ export function ListTable(props: ListTableProps) {
             <PeopleGivingLifecycleRow
               columns={visibleColumns}
               key={edge.cursor}
+              rowAccessory={rowAccessory?.(edge.node as PersonListRow)}
               row={edge.node as PersonListRow}
             />
           ) : (
             <PeopleRow
               columns={visibleColumns}
               key={edge.cursor}
+              rowAccessory={rowAccessory?.(edge.node as PersonListRow)}
               row={edge.node as PersonListRow}
             />
           )
@@ -79,26 +83,23 @@ export function ListTable(props: ListTableProps) {
 
 function PeopleRow({
   columns,
+  rowAccessory,
   row,
 }: {
   columns: ListColumnKey[];
+  rowAccessory?: ReactNode;
   row: PersonListRow;
 }) {
   const showPledgeColumn = columns.includes("pledges");
   const showSignalColumn = showPledgeColumn || Boolean(row.givingSummary);
+  const gridClass = peopleRowGridClass(showSignalColumn, Boolean(rowAccessory));
 
   return (
     <article
       className="box-border flex min-h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle md:h-[84px]"
       role="listitem"
     >
-      <div
-        className={
-          showSignalColumn
-            ? "grid w-full min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center"
-            : "w-full min-w-0"
-        }
-      >
+      <div className={gridClass}>
         <div className="flex min-w-0 items-center gap-2.5">
           <PersonAvatar row={row} />
           <div className="min-w-0 flex-1 overflow-visible">
@@ -119,8 +120,12 @@ function PeopleRow({
         {showSignalColumn ? (
           <GivingSignalColumn
             givingSummary={row.givingSummary}
+            hasTrailingRail={Boolean(rowAccessory)}
             pledgeSummary={showPledgeColumn ? row.pledgeSummary : null}
           />
+        ) : null}
+        {rowAccessory ? (
+          <RowAccessoryRail>{rowAccessory}</RowAccessoryRail>
         ) : null}
       </div>
     </article>
@@ -129,9 +134,11 @@ function PeopleRow({
 
 function PeopleGivingLifecycleRow({
   columns,
+  rowAccessory,
   row,
 }: {
   columns: ListColumnKey[];
+  rowAccessory?: ReactNode;
   row: PersonListRow;
 }) {
   const lifecycleLabels = lifecycleLabelsForGivingView(row);
@@ -142,7 +149,13 @@ function PeopleGivingLifecycleRow({
       className="box-border flex min-h-[84px] items-center overflow-visible border-b border-app-border bg-app-surface px-4 py-3 text-[13px] transition-colors hover:bg-app-surface-subtle md:h-[84px]"
       role="listitem"
     >
-      <div className="grid w-full min-w-0 gap-3 md:grid-cols-[minmax(220px,0.9fr)_minmax(320px,1.15fr)] md:items-center">
+      <div
+        className={
+          rowAccessory
+            ? "grid w-full min-w-0 gap-3 md:grid-cols-[minmax(220px,0.9fr)_minmax(320px,1.15fr)_216px] md:items-center md:gap-0"
+            : "grid w-full min-w-0 gap-3 md:grid-cols-[minmax(220px,0.9fr)_minmax(320px,1.15fr)] md:items-center"
+        }
+      >
         <div className="flex min-w-0 items-center gap-2.5">
           <PersonAvatar row={row} />
           <div className="min-w-0 flex-1 overflow-hidden">
@@ -176,9 +189,39 @@ function PeopleGivingLifecycleRow({
           </div>
           <GivingPresenceTimeline months={row.givingPresence} />
         </div>
+        {rowAccessory ? (
+          <RowAccessoryRail>{rowAccessory}</RowAccessoryRail>
+        ) : null}
       </div>
     </article>
   );
+}
+
+function RowAccessoryRail({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-w-0 border-t border-app-border bg-app-background/45 px-0 py-3 md:-my-3 md:-mr-4 md:flex md:min-h-[84px] md:w-[216px] md:items-center md:justify-end md:border-l md:border-t-0 md:px-3 md:pl-3">
+      {children}
+    </div>
+  );
+}
+
+function peopleRowGridClass(
+  showSignalColumn: boolean,
+  showRowAccessory: boolean,
+) {
+  if (showSignalColumn && showRowAccessory) {
+    return "grid w-full min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_216px] md:items-center md:gap-0";
+  }
+
+  if (showSignalColumn) {
+    return "grid w-full min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center";
+  }
+
+  if (showRowAccessory) {
+    return "grid w-full min-w-0 gap-2.5 md:grid-cols-[minmax(0,1fr)_216px] md:items-center md:gap-0";
+  }
+
+  return "w-full min-w-0";
 }
 
 function HouseholdRow({
@@ -565,15 +608,20 @@ function formatTaskCount(count: number) {
 
 function GivingSignalColumn({
   givingSummary,
+  hasTrailingRail = false,
   pledgeSummary,
 }: {
   givingSummary: PersonListRow["givingSummary"];
+  hasTrailingRail?: boolean;
   pledgeSummary: PersonListRow["pledgeSummary"] | null;
 }) {
   const showPledges = pledgeSummary && !pledgeSummaryIsEmpty(pledgeSummary);
+  const columnClassName = hasTrailingRail
+    ? "relative -mb-2.5 min-h-10 min-w-0 overflow-hidden pb-2.5 pr-3 pt-1 text-[12px] leading-tight md:-my-2.5 md:py-2.5"
+    : "relative -mb-2.5 -mr-4 min-h-10 min-w-0 overflow-hidden pb-2.5 pr-4 pt-1 text-[12px] leading-tight md:-my-2.5 md:py-2.5";
 
   return (
-    <div className="relative -mb-2.5 -mr-4 min-h-10 min-w-0 overflow-hidden pb-2.5 pr-4 pt-1 text-[12px] leading-tight md:-my-2.5 md:py-2.5">
+    <div className={columnClassName}>
       {givingSummary ? (
         <GivingSparkline
           pledgeSummary={pledgeSummary}

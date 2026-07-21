@@ -12,6 +12,7 @@ node_modules/
 *.tsbuildinfo
 
 .context/
+.worktrees/
 
 /tmp/*
 !/tmp/.gitkeep

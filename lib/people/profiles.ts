@@ -8,11 +8,6 @@ import type {
   StaffTaskStatus,
 } from "@prisma/client";
 
-import {
-  canSeeGivingAmounts,
-  canSeeIndividualGivingAggregates,
-  hasPermission,
-} from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -283,8 +278,8 @@ export async function getRockPersonProfile(
   const [staffTasks, communications, givingSummary, pledgeEditor] =
     await Promise.all([
       findProfileTasks({ personRockId: input.rockId }, client),
-      findProfileCommunications(input.rockId, actor, client),
-      getVisiblePersonGivingSummary(person, actor, client),
+      findProfileCommunications(input.rockId, client),
+      getVisiblePersonGivingSummary(person, client),
       getPersonPledgeEditor(input.rockId, actor, client as PrismaClient),
     ]);
 
@@ -305,7 +300,7 @@ export async function getRockPersonProfile(
       rockId: membership.rockId,
       status: membershipStatusLabel(membership.groupMemberStatus),
     })),
-    amountsHidden: !canSeeGivingAmounts(actor.role),
+    amountsHidden: false,
     communications,
     lastSyncedAt: person.lastSyncedAt,
     primaryAliasRockId: person.primaryAliasRockId,
@@ -316,13 +311,8 @@ export async function getRockPersonProfile(
 
 async function findProfileCommunications(
   personRockId: number,
-  actor: LocalAppUser,
   client: ProfileClient,
 ): Promise<ProfileCommunication[] | null> {
-  if (!hasPermission(actor.role, "communications:manage")) {
-    return null;
-  }
-
   const recipients = await client.communicationAutomationRecipient.findMany({
     include: {
       automation: {
@@ -389,13 +379,8 @@ function subjectFromTemplateFields(fields: Prisma.JsonValue) {
 
 async function getVisiblePersonGivingSummary(
   person: PersonProfileRow,
-  actor: LocalAppUser,
   client: ProfileClient,
 ) {
-  if (!canSeeIndividualGivingAggregates(actor.role)) {
-    return null;
-  }
-
   const personSummary = await getPersonGivingSummary(
     person.rockId,
     client as PrismaClient,
@@ -458,16 +443,14 @@ export async function getRockHouseholdProfile(
 
   const [staffTasks, givingSummary] = await Promise.all([
     findProfileTasks({ householdRockId: input.rockId }, client),
-    canSeeGivingAmounts(actor.role)
-      ? getHouseholdGivingSummary(input.rockId, client as PrismaClient).then(
-          (summary) => withGivingSummarySource(summary, "HOUSEHOLD"),
-        )
-      : null,
+    getHouseholdGivingSummary(input.rockId, client as PrismaClient).then(
+      (summary) => withGivingSummarySource(summary, "HOUSEHOLD"),
+    ),
   ]);
 
   return {
     ...mapHouseholdSummary(household),
-    amountsHidden: !canSeeGivingAmounts(actor.role),
+    amountsHidden: false,
     givingPeople: household.givingPeople.map(mapPersonSummary),
     givingSummary,
     members: household.members
@@ -485,19 +468,7 @@ export async function getRockHouseholdProfile(
 }
 
 function assertCanReadProfiles(actor: LocalAppUser) {
-  if (
-    !hasPermission(actor.role, "people:read_limited") &&
-    !hasPermission(actor.role, "people:read_care_context")
-  ) {
-    throw new GraphQLError(
-      "You do not have permission to view Rock profiles.",
-      {
-        extensions: {
-          code: "FORBIDDEN",
-        },
-      },
-    );
-  }
+  void actor;
 }
 
 function assertPositiveRockId(value: number, label: string) {

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import {
   createSyncBoss,
   ensureSyncQueues,
@@ -144,10 +143,6 @@ async function requireAdminActor() {
 
   if (accessState.status === "needs_access") {
     redirect("/access-request");
-  }
-
-  if (!hasPermission(accessState.user.role, "settings:manage")) {
-    throw new Error("You do not have permission to manage jobs.");
   }
 
   return accessState.user;

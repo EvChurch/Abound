@@ -8,7 +8,7 @@ source_plan: docs/plans/2026-04-18-001-feat-graphql-api-boundary-plan.md
 
 ## Boundary
 
-Auth0 is the authentication platform. This app owns staff authorization through local `AppUser` records and local roles.
+Auth0 is the authentication platform. This app owns staff authorization through local `AppUser` records. Local access, not Auth0 login alone, determines whether a user can enter staff workflows.
 
 Rock RMS remains the source of truth for people, households, gifts, giving status, and Rock-owned fields. Rock users are not synced into app users, and a Rock person link is not required for authorization.
 
@@ -22,21 +22,13 @@ Rock RMS remains the source of truth for people, households, gifts, giving statu
 
 Pages and server actions already use this state. GraphQL now uses the same state through `lib/graphql/context.ts`.
 
-## Roles
+## Access Posture
 
-Local roles are defined in `lib/auth/roles.ts`:
+All active local app users have the same staff access. Shared segments, communication workflows, settings, giving context, and workflow edits are no longer gated by Finance, Pastoral Care, Admin, or any other local app role.
 
-- `ADMIN`
-- `FINANCE`
-- `PASTORAL_CARE`
+`AppUser` records do not store a role. New approvals and user updates only decide whether a local user is active, and `prisma/migrations/20260721000400_remove_app_user_roles/migration.sql` removes the old role column and enum.
 
-Current permission posture:
-
-- Admin has full access across finance, people, care context, tasks, communications, settings, and administration.
-- Finance can see giving amounts and limited people information needed for giving operations, but cannot manage care workflow tasks.
-- Pastoral Care can manage care workflows and communications and see care context, but cannot see actual giving amounts or individual-level giving aggregates.
-
-Any change to this matrix should update `tests/unit/auth-roles.test.ts` and the GraphQL permission tests.
+Any future change away from equal staff access should introduce a fresh authorization model with explicit requirements and update GraphQL staff access tests and workflow tests.
 
 ## Access Requests
 
@@ -51,17 +43,16 @@ The first implementation intentionally does not include a user-management UI or 
 GraphQL resolvers must not check Auth0 claims directly for staff authorization. They should use:
 
 - `requireStaffUser(context)` for any active local staff user.
-- `requirePermission(context, permission)` for permission-specific reads or mutations.
 
 Known failures should return safe GraphQL errors:
 
 - anonymous users: `UNAUTHENTICATED`
 - Auth0 users without local access: `FORBIDDEN`
-- local users without the required permission: `FORBIDDEN`
+- inactive local users: `FORBIDDEN`
 
 ## Seed Safety
 
-`prisma/seed.ts` may create a bootstrap admin when the Auth0 subject does not exist. It should not silently promote, reactivate, or repair existing authorization records. Authorization changes after bootstrap should be explicit administrator actions.
+`prisma/seed.ts` may create a bootstrap local user when the Auth0 subject does not exist. It should not silently reactivate or repair existing authorization records. Access changes after bootstrap should be explicit administrator actions.
 
 ## Sensitive Data Rules
 
@@ -72,4 +63,4 @@ Do not log or expose:
 - Payment instrument values or payment tokens.
 - Raw Rock payloads from production.
 
-Tests that touch auth, donor data access, role permissions, access request transitions, seed behavior, or GraphQL staff access should include denial cases as well as happy paths.
+Tests that touch auth, donor data access, access request transitions, seed behavior, or GraphQL staff access should include denial cases as well as happy paths.

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import {
   classifyGivingLifecycle,
   type GivingLifecycleActivePledge,
-  lifecycleExplanationForRole,
+  lifecycleExplanation,
   type GivingLifecycleFact,
 } from "@/lib/giving/lifecycle";
 import {
@@ -222,8 +222,7 @@ function buildSnapshotRows({
       lifecycle: result.kind,
       personRockId: resource === "PERSON" ? rockId : null,
       resource,
-      summary:
-        lifecycleExplanationForRole(result, "PASTORAL_CARE") ?? result.summary,
+      summary: lifecycleExplanation(result) ?? result.summary,
       windowEndedAt,
       windowStartedAt,
     };

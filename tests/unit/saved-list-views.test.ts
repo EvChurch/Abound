@@ -5,23 +5,49 @@ import type { LocalAppUser } from "@/lib/auth/types";
 import {
   archiveSavedListView,
   createSavedListView,
+  getSavedListView,
   listSavedListViews,
   revalidateSavedViewFilter,
 } from "@/lib/list-views/saved-views";
 
-const financeUser: LocalAppUser = {
+const adminUser: LocalAppUser = {
   active: true,
-  auth0Subject: "auth0|finance",
-  email: "finance@example.com",
+  auth0Subject: "auth0|admin",
+  email: "admin@example.com",
   id: "user_1",
-  name: "Finance",
+  name: "Admin",
   rockPersonId: null,
-  role: "FINANCE",
+};
+
+const otherAdminUser: LocalAppUser = {
+  active: true,
+  auth0Subject: "auth0|other-admin",
+  email: "other-admin@example.com",
+  id: "user_2",
+  name: "Other Admin",
+  rockPersonId: null,
 };
 
 describe("saved list views", () => {
-  it("lists only active saved views", async () => {
-    const findMany = vi.fn(async () => []);
+  it("lists active saved views across owners for any active local actor", async () => {
+    const sharedSegment = {
+      archivedAt: null,
+      columnDefinition: { columns: [] },
+      createdAt: new Date("2026-04-20T00:00:00.000Z"),
+      density: "COMFORTABLE",
+      description: null,
+      filterDefinition: { conditions: [], mode: "all", type: "group" },
+      id: "view_1",
+      isDefault: false,
+      name: "Shared segment",
+      ownerUserId: "user_2",
+      pageSize: 50,
+      resource: "PEOPLE",
+      sortDefinition: { direction: "ASC", field: "rockId" },
+      updatedAt: new Date("2026-04-20T00:00:00.000Z"),
+      visibility: "GLOBAL",
+    };
+    const findMany = vi.fn(async () => [sharedSegment]);
     const client = {
       savedListView: {
         findMany,
@@ -29,20 +55,97 @@ describe("saved list views", () => {
     } as unknown as PrismaClient;
 
     await expect(
-      listSavedListViews("PEOPLE", financeUser, client),
-    ).resolves.toEqual([]);
+      listSavedListViews("PEOPLE", adminUser, client),
+    ).resolves.toEqual([sharedSegment]);
 
     expect(findMany).toHaveBeenCalledWith({
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { name: "asc" }],
       where: {
         archivedAt: null,
-        ownerUserId: "user_1",
         resource: "PEOPLE",
       },
     });
   });
 
-  it("creates private app-owned views and clears existing defaults", async () => {
+  it("lists amount-filtered shared saved views for active local users", async () => {
+    const amountSegment = {
+      archivedAt: null,
+      columnDefinition: { columns: [] },
+      createdAt: new Date("2026-04-20T00:00:00.000Z"),
+      density: "COMFORTABLE",
+      description: null,
+      filterDefinition: {
+        conditions: [
+          {
+            field: "totalGiven",
+            operator: "GREATER_THAN",
+            type: "condition",
+            value: "1000.00",
+          },
+        ],
+        mode: "all",
+        type: "group",
+      },
+      id: "view_1",
+      isDefault: false,
+      name: "Amount segment",
+      ownerUserId: "user_1",
+      pageSize: 50,
+      resource: "PEOPLE",
+      sortDefinition: { direction: "ASC", field: "rockId" },
+      updatedAt: new Date("2026-04-20T00:00:00.000Z"),
+      visibility: "GLOBAL",
+    };
+    const findMany = vi.fn(async () => [amountSegment]);
+    const client = {
+      savedListView: {
+        findMany,
+      },
+    } as unknown as PrismaClient;
+
+    await expect(
+      listSavedListViews("PEOPLE", otherAdminUser, client),
+    ).resolves.toEqual([amountSegment]);
+  });
+
+  it("gets saved views created by another user", async () => {
+    const savedView = {
+      archivedAt: null,
+      columnDefinition: { columns: [] },
+      createdAt: new Date("2026-04-20T00:00:00.000Z"),
+      density: "COMFORTABLE",
+      description: null,
+      filterDefinition: { conditions: [], mode: "all", type: "group" },
+      id: "view_1",
+      isDefault: false,
+      name: "Shared segment",
+      ownerUserId: "user_2",
+      pageSize: 50,
+      resource: "PEOPLE",
+      sortDefinition: { direction: "ASC", field: "rockId" },
+      updatedAt: new Date("2026-04-20T00:00:00.000Z"),
+      visibility: "GLOBAL",
+    };
+    const findFirst = vi.fn(async () => savedView);
+    const client = {
+      savedListView: {
+        findFirst,
+      },
+    } as unknown as PrismaClient;
+
+    await expect(
+      getSavedListView("view_1", adminUser, client),
+    ).resolves.toEqual(savedView);
+
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "view_1",
+      },
+    });
+  });
+
+  it("creates shared app-owned views and clears existing defaults", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
     const client = {
       $transaction: vi.fn(async (callback) =>
         callback({
@@ -53,7 +156,7 @@ describe("saved list views", () => {
               id: "view_1",
               updatedAt: new Date("2026-04-20T00:00:00.000Z"),
             })),
-            updateMany: vi.fn(async () => ({ count: 1 })),
+            updateMany,
           },
         }),
       ),
@@ -78,7 +181,7 @@ describe("saved list views", () => {
           name: "At risk",
           resource: "PEOPLE",
         },
-        financeUser,
+        adminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -86,7 +189,13 @@ describe("saved list views", () => {
       isDefault: true,
       ownerUserId: "user_1",
       resource: "PEOPLE",
-      visibility: "PRIVATE",
+      visibility: "GLOBAL",
+    });
+    expect(updateMany).toHaveBeenCalledWith({
+      data: { isDefault: false },
+      where: {
+        resource: "PEOPLE",
+      },
     });
   });
 
@@ -120,7 +229,7 @@ describe("saved list views", () => {
     } as unknown as PrismaClient;
 
     await expect(
-      archiveSavedListView("view_1", financeUser, client),
+      archiveSavedListView("view_1", adminUser, client),
     ).resolves.toMatchObject({
       archivedAt: expect.any(Date),
       id: "view_1",
@@ -138,27 +247,26 @@ describe("saved list views", () => {
     });
   });
 
-  it("revalidates saved views against the current actor role", () => {
-    expect(() =>
-      revalidateSavedViewFilter(
-        "PEOPLE",
-        {
-          conditions: [
-            {
-              field: "totalGiven",
-              operator: "GREATER_THAN",
-              type: "condition",
-              value: "1000.00",
-            },
-          ],
-          mode: "all",
-          type: "group",
-        },
-        {
-          ...financeUser,
-          role: "PASTORAL_CARE",
-        },
-      ),
-    ).toThrow("Saved list view is no longer valid for this role.");
+  it("revalidates amount-filtered saved views for active local users", () => {
+    expect(
+      revalidateSavedViewFilter("PEOPLE", {
+        conditions: [
+          {
+            field: "totalGiven",
+            operator: "GREATER_THAN",
+            type: "condition",
+            value: "1000.00",
+          },
+        ],
+        mode: "all",
+        type: "group",
+      }),
+    ).toMatchObject({
+      conditions: [
+        expect.objectContaining({
+          field: "totalGiven",
+        }),
+      ],
+    });
   });
 });

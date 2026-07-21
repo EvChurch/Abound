@@ -76,7 +76,6 @@ describe("submitAccessRequest", () => {
       auth0Subject: "auth0|admin",
       email: "admin@example.com",
       name: "Admin",
-      role: "ADMIN",
       active: true,
       rockPersonId: null,
     };

@@ -155,7 +155,6 @@ describe("Communications pages", () => {
         id: "user_1",
         name: "Admin",
         rockPersonId: null,
-        role: "ADMIN",
       },
     };
 
@@ -205,7 +204,7 @@ describe("Communications pages", () => {
     );
   });
 
-  it("does not expose settings or pledge tools for pastoral care on the detail page", async () => {
+  it("exposes settings and pledge tools on the detail page", async () => {
     mocks.accessState = {
       status: "authorized",
       user: {
@@ -215,7 +214,6 @@ describe("Communications pages", () => {
         id: "user_3",
         name: "Care",
         rockPersonId: null,
-        role: "PASTORAL_CARE",
       },
     };
 
@@ -253,8 +251,8 @@ describe("Communications pages", () => {
     expect(mocks.navSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         active: "communications",
-        canManageSettings: false,
-        canManageTools: false,
+        canManageSettings: true,
+        canManageTools: true,
       }),
       undefined,
     );

@@ -15,13 +15,11 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
 };
 
-const financeUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "FINANCE",
 };
 
 function client({
@@ -129,14 +127,21 @@ describe("platform fund settings", () => {
     expect(requestRefresh).not.toHaveBeenCalled();
   });
 
-  it("rejects non-Admin updates", async () => {
+  it("allows another admin user to update funds", async () => {
+    const prisma = client();
+    const requestRefresh = vi.fn(async () => undefined);
+
     await expect(
       updatePlatformFundSettings(
         { enabledAccountRockIds: [101] },
-        financeUser,
-        client(),
+        otherAdminUser,
+        prisma,
+        requestRefresh,
       ),
-    ).rejects.toThrow("permission");
+    ).resolves.toMatchObject({
+      changed: true,
+      enabledAccountRockIds: [101],
+    });
   });
 
   it("rejects unknown Rock accounts", async () => {

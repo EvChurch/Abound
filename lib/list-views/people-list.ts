@@ -1,7 +1,6 @@
 import type { GivingPledgePeriod, Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
-import { canSeeGivingAmounts, hasPermission } from "@/lib/auth/roles";
 import type { LocalAppUser } from "@/lib/auth/types";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -210,7 +209,7 @@ export async function listPeople(
   const filterDefinition = resolveFilterDefinition(input, savedView);
   const validation = validateFilterDefinition(
     filterDefinition,
-    getListViewFilterCatalog("PEOPLE", actor.role),
+    getListViewFilterCatalog("PEOPLE"),
   );
 
   if (!validation.ok) {
@@ -262,15 +261,13 @@ export async function listPeople(
     totalWhere,
   });
   const pageRecords = records.slice(0, limit);
-  const givingSummaries = canSeeGivingAmounts(actor.role)
-    ? await givingSummariesByPerson(
-        pageRecords.map((record) => record.rockId),
-        client,
-      )
-    : new Map<number, GivingSummary>();
+  const givingSummaries = await givingSummariesByPerson(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
   const givingPresence = await givingPresenceByPerson(
     pageRecords.map((record) => record.rockId),
-    canSeeGivingAmounts(actor.role),
+    true,
     client,
   );
   const lifecycleLabels = await lifecycleLabelsByPerson(
@@ -281,12 +278,10 @@ export async function listPeople(
     pageRecords.map((record) => record.rockId),
     client,
   );
-  const pledgeSummaries = hasPermission(actor.role, "pledges:manage")
-    ? await pledgeSummariesByPerson(
-        pageRecords.map((record) => record.rockId),
-        client,
-      )
-    : new Map<number, PledgeListSummary>();
+  const pledgeSummaries = await pledgeSummariesByPerson(
+    pageRecords.map((record) => record.rockId),
+    client,
+  );
 
   return {
     appliedView: {
@@ -344,19 +339,15 @@ export async function listPeopleByRockIds(
     where: { rockId: { in: rockIds } },
   });
   const personRockIds = records.map((record) => record.rockId);
-  const givingSummaries = canSeeGivingAmounts(actor.role)
-    ? await givingSummariesByPerson(personRockIds, client)
-    : new Map<number, GivingSummary>();
+  const givingSummaries = await givingSummariesByPerson(personRockIds, client);
   const givingPresence = await givingPresenceByPerson(
     personRockIds,
-    canSeeGivingAmounts(actor.role),
+    true,
     client,
   );
   const lifecycleLabels = await lifecycleLabelsByPerson(personRockIds, client);
   const lastGiftMonths = await lastGiftMonthByPerson(personRockIds, client);
-  const pledgeSummaries = hasPermission(actor.role, "pledges:manage")
-    ? await pledgeSummariesByPerson(personRockIds, client)
-    : new Map<number, PledgeListSummary>();
+  const pledgeSummaries = await pledgeSummariesByPerson(personRockIds, client);
 
   return {
     appliedView: {
@@ -421,7 +412,9 @@ function filterToPersonWhere(
   filter: FilterDefinition,
   actor: LocalAppUser,
 ): Prisma.RockPersonWhereInput {
-  const where = nodeToPersonWhere(filter, actor) ?? {};
+  void actor;
+
+  const where = nodeToPersonWhere(filter) ?? {};
 
   const demographicWhere = filterIncludesAgeGroup(filter)
     ? currentHouseholdMembershipWhere()
@@ -543,21 +536,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function nodeToPersonWhere(
   node: FilterNode,
-  actor: LocalAppUser,
 ): Prisma.RockPersonWhereInput | null {
   if (node.type === "group") {
-    return groupToPersonWhere(node, actor);
+    return groupToPersonWhere(node);
   }
 
-  return conditionToPersonWhere(node, actor);
+  return conditionToPersonWhere(node);
 }
 
 function groupToPersonWhere(
   group: FilterGroup,
-  actor: LocalAppUser,
 ): Prisma.RockPersonWhereInput | null {
   const conditions = group.conditions
-    .map((condition) => nodeToPersonWhere(condition, actor))
+    .map((condition) => nodeToPersonWhere(condition))
     .filter((condition): condition is Prisma.RockPersonWhereInput =>
       Boolean(condition),
     );
@@ -571,7 +562,6 @@ function groupToPersonWhere(
 
 function conditionToPersonWhere(
   condition: FilterCondition,
-  actor: LocalAppUser,
 ): Prisma.RockPersonWhereInput | null {
   switch (condition.field) {
     case "search":
@@ -668,11 +658,6 @@ function conditionToPersonWhere(
     case "lastGiftAmount":
     case "trailingPeriodTotal":
     case "amountChange":
-      if (!canSeeGivingAmounts(actor.role)) {
-        throw new GraphQLError("Amount filters require finance permission.", {
-          extensions: { code: "FORBIDDEN" },
-        });
-      }
       return { givingFacts: { some: { amount: moneyWhere(condition) } } };
     default:
       return null;
@@ -1110,16 +1095,12 @@ async function resolvePledgeStateFilteredRockIds(
   actor: LocalAppUser,
   client: PeopleListClient,
 ) {
+  void actor;
+
   const requestedStates = pledgeStatesFromFilter(filter);
 
   if (requestedStates.length === 0) {
     return null;
-  }
-
-  if (!hasPermission(actor.role, "pledges:manage")) {
-    throw new GraphQLError("Pledge filters require pledge permission.", {
-      extensions: { code: "FORBIDDEN" },
-    });
   }
 
   const referenceDate = new Date();
@@ -1541,18 +1522,14 @@ function mapPersonRow(
   lastGiftMonths: Map<number, string>,
 ): PersonListRow {
   return {
-    amountsHidden: !canSeeGivingAmounts(actor.role),
+    amountsHidden: false,
     deceased: record.deceased,
     displayName: displayName(record),
     email: record.email,
     emailActive: record.emailActive,
-    givingSummary: canSeeGivingAmounts(actor.role)
-      ? (givingSummaries.get(record.rockId) ?? null)
-      : null,
+    givingSummary: givingSummaries.get(record.rockId) ?? null,
     givingPresence: givingPresence.get(record.rockId) ?? [],
-    pledgeSummary: hasPermission(actor.role, "pledges:manage")
-      ? (pledgeSummaries.get(record.rockId) ?? null)
-      : null,
+    pledgeSummary: pledgeSummaries.get(record.rockId) ?? null,
     lastGiftMonth: lastGiftMonths.get(record.rockId) ?? null,
     lastSyncedAt: record.lastSyncedAt,
     lifecycle: lifecycleLabels.get(record.rockId) ?? [],
@@ -1567,14 +1544,7 @@ function mapPersonRow(
 }
 
 function assertCanReadLists(actor: LocalAppUser) {
-  if (
-    !hasPermission(actor.role, "people:read_limited") &&
-    !hasPermission(actor.role, "people:read_care_context")
-  ) {
-    throw new GraphQLError("You do not have permission to view people lists.", {
-      extensions: { code: "FORBIDDEN" },
-    });
-  }
+  void actor;
 }
 
 function displayName(person: {

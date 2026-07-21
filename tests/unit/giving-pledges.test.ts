@@ -12,20 +12,18 @@ import {
   updateGivingPledge,
 } from "@/lib/giving/pledges";
 
-const financeUser: LocalAppUser = {
+const adminUser: LocalAppUser = {
   active: true,
-  auth0Subject: "auth0|finance",
-  email: "finance@example.com",
+  auth0Subject: "auth0|admin",
+  email: "admin@example.com",
   id: "user_1",
-  name: "Finance",
+  name: "Admin",
   rockPersonId: null,
-  role: "FINANCE",
 };
 
-const pastoralCareUser: LocalAppUser = {
-  ...financeUser,
+const otherAdminUser: LocalAppUser = {
+  ...adminUser,
   id: "user_2",
-  role: "PASTORAL_CARE",
 };
 
 const generalFund = {
@@ -287,7 +285,7 @@ describe("giving pledge analysis", () => {
     try {
       const candidates = await listPledgeCandidates(
         { limit: 10 },
-        financeUser,
+        adminUser,
         client,
       );
 
@@ -520,7 +518,7 @@ describe("giving pledge analysis", () => {
     await expect(
       quickCreateGivingPledge(
         { accountRockId: 101, personRockId: 910001 },
-        financeUser,
+        adminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -545,7 +543,7 @@ describe("giving pledge analysis", () => {
     await expect(
       createDraftGivingPledgeFromRecommendation(
         { accountRockId: 101, personRockId: 910001 },
-        financeUser,
+        adminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -563,7 +561,7 @@ describe("giving pledge analysis", () => {
           personRockId: 910001,
           reason: "Not appropriate now",
         },
-        financeUser,
+        adminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -576,17 +574,16 @@ describe("giving pledge analysis", () => {
     expect(client.givingPledgeRecommendationDecision.upsert).toHaveBeenCalled();
   });
 
-  it("blocks pastoral care from pledge mutation", async () => {
+  it("allows another admin user to create pledges", async () => {
     await expect(
       quickCreateGivingPledge(
         { accountRockId: 101, personRockId: 910001 },
-        pastoralCareUser,
+        otherAdminUser,
         serviceClient(),
       ),
-    ).rejects.toMatchObject({
-      extensions: {
-        code: "FORBIDDEN",
-      },
+    ).resolves.toMatchObject({
+      accountRockId: 101,
+      personRockId: 910001,
     });
   });
 
@@ -600,7 +597,7 @@ describe("giving pledge analysis", () => {
     await expect(
       quickCreateGivingPledge(
         { accountRockId: 101, personRockId: 910001 },
-        financeUser,
+        adminUser,
         client,
       ),
     ).rejects.toMatchObject({
@@ -633,7 +630,7 @@ describe("giving pledge analysis", () => {
     await expect(
       updateGivingPledge(
         { id: "pledge_1", status: "ACTIVE" },
-        financeUser,
+        adminUser,
         client,
       ),
     ).rejects.toMatchObject({

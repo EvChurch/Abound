@@ -1,6 +1,4 @@
 import type { GiftReliabilityKind, GivingPledgePeriod } from "@prisma/client";
-import type { AppRole } from "@/lib/auth/roles";
-import { canSeeGivingAmounts } from "@/lib/auth/roles";
 
 export const GIVING_LIFECYCLE_KINDS = [
   "NEW",
@@ -223,15 +221,12 @@ export function classifyGivingLifecycle(
   };
 }
 
-export function lifecycleExplanationForRole(
-  result: GivingLifecycleResult,
-  role: AppRole,
-) {
+export function lifecycleExplanation(result: GivingLifecycleResult) {
   if (!result.kind || !result.summary) {
     return null;
   }
 
-  if (!canSeeGivingAmounts(role) || !result.financeDetail) {
+  if (!result.financeDetail) {
     return result.summary;
   }
 

@@ -50,10 +50,10 @@ Automation records add:
 
 `lib/communications/segments.ts` resolves audiences from the same list-view engine used by People and Households:
 
-- `SavedListView` filters are revalidated against the current staff role before use.
-- People and household list services apply the existing role-aware filter catalog.
+- `SavedListView` filters are revalidated against the shared staff catalog before use.
+- People and household list services apply the existing shared filter catalog.
 - Audience previews store only operational contact/readiness context and plain-language explanations.
-- Pastoral Care explanations must remain non-numeric and must not include individual giving amounts or amount deltas.
+- Segment explanations may include the staff-visible giving context needed to explain audience membership.
 
 The audience resolver scans a bounded number of rows for a first-pass size and preview. If the result exceeds the scan cap, `audienceTruncated` stays true so staff know the prep needs a broader review/export path later.
 

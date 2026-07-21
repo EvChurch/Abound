@@ -22,21 +22,18 @@ const adminUser: LocalAppUser = {
   auth0Subject: "auth0|admin",
   email: "admin@example.com",
   name: "Admin",
-  role: "ADMIN",
   active: true,
   rockPersonId: null,
 };
 
-const pastoralCareUser: LocalAppUser = {
+const secondAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "PASTORAL_CARE",
 };
 
-const financeUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_3",
-  role: "FINANCE",
 };
 
 describe("communication prep service", () => {
@@ -51,8 +48,7 @@ describe("communication prep service", () => {
           contactState: "Email-ready",
           displayName: "Jane Donor",
           email: "jane@example.com",
-          explanation:
-            "Matches this audience's care-context criteria; giving amounts are hidden for this role.",
+          explanation: "Matches this audience's criteria.",
           householdName: "Donor Household",
           resource: "PERSON",
           rockId: 910001,
@@ -88,7 +84,7 @@ describe("communication prep service", () => {
           savedViewId: "view_1",
           title: "  At-risk giver encouragement  ",
         },
-        pastoralCareUser,
+        secondAdminUser,
         client,
       ),
     ).resolves.toMatchObject({
@@ -102,7 +98,7 @@ describe("communication prep service", () => {
       data: expect.objectContaining({
         audiencePreview: expect.arrayContaining([
           expect.objectContaining({
-            explanation: expect.stringContaining("giving amounts are hidden"),
+            explanation: "Matches this audience's criteria.",
           }),
         ]),
         handoffTarget: null,
@@ -111,20 +107,43 @@ describe("communication prep service", () => {
     });
   });
 
-  it("blocks finance users from managing communication prep", async () => {
+  it("allows another admin user to manage communication prep", async () => {
+    mocks.resolveCommunicationAudience.mockResolvedValueOnce({
+      audienceSize: 0,
+      audienceTruncated: false,
+      preview: [],
+      resource: "HOUSEHOLDS",
+      savedViewId: null,
+      segmentDefinition: { conditions: [], mode: "all", type: "group" },
+      segmentSummary: "Manual audience",
+    });
+    const client = {
+      communicationPrep: {
+        create: vi.fn(async ({ data }) => ({
+          ...data,
+          createdAt: new Date("2026-04-20T10:00:00.000Z"),
+          id: "prep_2",
+          status: "DRAFT",
+          updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+        })),
+      },
+      rockHousehold: { findUnique: vi.fn(async () => null) },
+      rockPerson: { findUnique: vi.fn(async () => null) },
+    } as unknown as PrismaClient;
+
     await expect(
       createCommunicationPrep(
         {
           resource: "HOUSEHOLDS",
-          title: "Finance should not manage comms",
+          title: "Admin comms",
         },
-        financeUser,
-        {} as PrismaClient,
+        otherAdminUser,
+        client,
       ),
-    ).rejects.toMatchObject({
-      extensions: {
-        code: "FORBIDDEN",
-      },
+    ).resolves.toMatchObject({
+      createdByUserId: "user_3",
+      id: "prep_2",
+      title: "Admin comms",
     });
   });
 

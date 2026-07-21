@@ -2,7 +2,7 @@ import type { StaffTaskPriority, StaffTaskStatus } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
 import { builder } from "@/lib/graphql/builder";
-import { requirePermission } from "@/lib/graphql/context";
+import { requireStaffUser } from "@/lib/graphql/context";
 import {
   createStaffTask,
   listStaffTasks,
@@ -63,7 +63,7 @@ export function registerTaskTypes() {
       },
       type: [staffTaskType],
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "tasks:manage");
+        const actor = requireStaffUser(context);
 
         return listStaffTasks(
           {
@@ -90,7 +90,7 @@ export function registerTaskTypes() {
       },
       type: staffTaskType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "tasks:manage");
+        const actor = requireStaffUser(context);
 
         return createStaffTask(
           {
@@ -121,7 +121,7 @@ export function registerTaskTypes() {
       },
       type: staffTaskType,
       resolve: (_root, args, context) => {
-        const actor = requirePermission(context, "tasks:manage");
+        const actor = requireStaffUser(context);
 
         return updateStaffTask(
           {

@@ -18,14 +18,14 @@ This is a product slice on top of the GraphQL boundary from `docs/architecture/a
 
 The app can now sync Rock data and expose staff-safe GraphQL operations, but staff still cannot answer the basic operational question: "Who is this person or household, and what context do we have locally?" Without a person/household detail surface, later giving dashboards, task workflows, and communication prep have nowhere coherent to link.
 
-The slice should prove the staff profile pattern without racing into full giving analytics. It should expose enough identity, household, campus, membership, task, and role-aware giving summary context to make the synced Rock mirror useful.
+The slice should prove the staff profile pattern without racing into full giving analytics. It should expose enough identity, household, campus, membership, task, and staff-visible giving summary context to make the synced Rock mirror useful.
 
 ## Scope
 
 In scope:
 
 - Add a domain service that returns safe person and household profile DTOs from synced Rock mirror tables.
-- Add role-aware amount visibility:
+- Add shared amount visibility:
   - Admin and Finance can see giving amount summaries.
   - Pastoral Care can see care/context details but not giving amounts or individual giving aggregates.
 - Add GraphQL fields for person and household detail by Rock ID.
@@ -88,7 +88,7 @@ Institutional learnings to follow:
 
 - Build both person and household detail in the same slice. A person profile needs household context to be useful, and a household profile needs member context; splitting them would force a second near-identical boundary pass.
 - Prefer a domain service over Prisma queries inside GraphQL resolvers or pages. The service owns permission-aware projection, not the transport layer.
-- Use role-aware nullability for sensitive fields. Pastoral Care should receive `null` for giving amount summaries rather than a disguised zero.
+- Use staff-visible nullability for sensitive fields. Inactive or unauthorized users should be denied before profile data is returned.
 - Start with read-by-Rock-ID detail fields. A broader search/list can follow after the detail contract is stable. The UI may include a simple Rock ID lookup form for navigation, but not a full directory search yet.
 - Keep transaction-level detail out of the first slice. Summaries from `GivingFact` are enough to prove the profile and reduce privacy risk.
 - Use `GivingFact.householdRockId` for household summaries and `GivingFact.personRockId` only for person-visible summaries when the role permits individual aggregates.
@@ -178,8 +178,8 @@ Approach:
 
 - Add `getRockPersonProfile({ rockId }, actor)` and `getRockHouseholdProfile({ rockId }, actor)`.
 - Require a local active actor before any profile read.
-- Allow profile reads when the actor has either `people:read_limited` or `people:read_care_context`.
-- Derive `canSeeGivingAmounts` and `canSeeIndividualGivingAggregates` from `lib/auth/roles.ts`.
+- Allow profile reads for any active local staff actor.
+- Return giving summaries to any active local staff actor.
 - Select only fields needed for the profile. Avoid returning raw Prisma records.
 - Include household and campus context through Prisma `include`/`select`.
 - Include app-owned staff tasks linked to the person or household, ordered consistently with the existing task service.
@@ -197,7 +197,7 @@ Test scenarios:
 Progress note 2026-04-18:
 
 - Added `lib/people/profiles.ts`.
-- Centralized role-aware profile projections for people and households.
+- Centralized staff profile projections for people and households.
 - Added staff task summaries and Pastoral Care amount hiding.
 
 - [x] **Unit 2: Add Giving Summary Aggregation**

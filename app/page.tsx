@@ -50,7 +50,6 @@ export default async function HomePage() {
     <StaffDashboard
       givingPerAdult={givingPerAdult}
       householdDonorTrend={householdDonorTrend}
-      user={accessState.user}
     />
   );
 }

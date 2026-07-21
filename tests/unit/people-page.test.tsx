@@ -66,7 +66,6 @@ const accessUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN" as const,
 };
 
 const emptyPeopleConnection: PeopleConnection = {

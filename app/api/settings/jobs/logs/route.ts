@@ -1,6 +1,5 @@
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import { listJobWorkerEvents } from "@/lib/sync/worker-events";
 
 const STREAM_POLL_INTERVAL_MS = 2000;
@@ -12,10 +11,6 @@ export async function GET(request: Request) {
 
   if (accessState.status !== "authorized") {
     return new Response("Unauthorized", { status: 401 });
-  }
-
-  if (!hasPermission(accessState.user.role, "settings:manage")) {
-    return new Response("Forbidden", { status: 403 });
   }
 
   const url = new URL(request.url);

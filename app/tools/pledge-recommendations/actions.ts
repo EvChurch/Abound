@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 
 import { getCurrentAccessState } from "@/lib/auth/access-control";
 import { auth0 } from "@/lib/auth/auth0";
-import { hasPermission } from "@/lib/auth/roles";
 import {
   quickCreateGivingPledge,
   rejectGivingPledgeRecommendation,
@@ -69,10 +68,6 @@ async function requirePledgeActor() {
 
   if (accessState.status === "needs_access") {
     redirect("/access-request");
-  }
-
-  if (!hasPermission(accessState.user.role, "pledges:manage")) {
-    throw new Error("Pledge management permissions are required.");
   }
 
   return accessState.user;

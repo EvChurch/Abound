@@ -100,7 +100,7 @@ const OPERATORS_BY_FIELD_TYPE: Record<FilterFieldType, FilterOperator[]> = {
   STRING: ["CONTAINS", "EQUALS", "EXISTS"],
 };
 
-const FINANCE_FIELD_HINTS = [
+const AMOUNT_FIELD_HINTS = [
   "amount",
   "change",
   "gift",
@@ -271,7 +271,7 @@ function validateCondition(
 
   if (!field) {
     errors.push({
-      code: looksLikeFinanceField(input.field)
+      code: looksLikeAmountField(input.field)
         ? "FORBIDDEN_FIELD"
         : "INVALID_FIELD",
       message: `Filter field ${input.field} is not available.`,
@@ -360,10 +360,10 @@ function isFilterOperator(value: unknown): value is FilterOperator {
   );
 }
 
-function looksLikeFinanceField(field: string) {
+function looksLikeAmountField(field: string) {
   const normalizedField = field.toLowerCase();
 
-  return FINANCE_FIELD_HINTS.some((hint) => normalizedField.includes(hint));
+  return AMOUNT_FIELD_HINTS.some((hint) => normalizedField.includes(hint));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

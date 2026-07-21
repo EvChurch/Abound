@@ -14,19 +14,16 @@ const adminUser: LocalAppUser = {
   id: "user_1",
   name: "Admin",
   rockPersonId: null,
-  role: "ADMIN",
 };
 
-const pastoralCareUser: LocalAppUser = {
+const otherAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_2",
-  role: "PASTORAL_CARE",
 };
 
-const financeUser: LocalAppUser = {
+const thirdAdminUser: LocalAppUser = {
   ...adminUser,
   id: "user_3",
-  role: "FINANCE",
 };
 
 const campus = {
@@ -244,10 +241,10 @@ function profileClient() {
 }
 
 describe("people profile service", () => {
-  it("returns role-visible person profile data for finance users", async () => {
+  it("returns admin-visible person profile data", async () => {
     const profile = await getRockPersonProfile(
       { rockId: 910001 },
-      financeUser,
+      thirdAdminUser,
       profileClient(),
     );
 
@@ -288,14 +285,14 @@ describe("people profile service", () => {
     });
   });
 
-  it("hides giving summaries from pastoral care users", async () => {
+  it("shows giving summaries for staff users", async () => {
     const profile = await getRockPersonProfile(
       { rockId: 910001 },
-      pastoralCareUser,
+      otherAdminUser,
       profileClient(),
     );
 
-    expect(profile?.amountsHidden).toBe(true);
+    expect(profile?.amountsHidden).toBe(false);
     expect(profile?.communications).toMatchObject([
       {
         automationName: "Latest communication",
@@ -307,22 +304,24 @@ describe("people profile service", () => {
         status: "ACCEPTED",
       },
     ]);
-    expect(profile?.givingSummary).toBeNull();
-    expect(profile?.pledgeEditor).toBeNull();
+    expect(profile?.givingSummary).toMatchObject({
+      totalGiven: "125.50",
+    });
+    expect(profile?.pledgeEditor).toMatchObject({
+      rows: expect.any(Array),
+    });
   });
 
-  it("does not load communications for roles without communications access", async () => {
+  it("loads communications for staff users", async () => {
     const client = profileClient();
     const profile = await getRockPersonProfile(
       { rockId: 910001 },
-      financeUser,
+      thirdAdminUser,
       client,
     );
 
-    expect(profile?.communications).toBeNull();
-    expect(
-      client.communicationAutomationRecipient.findMany,
-    ).not.toHaveBeenCalled();
+    expect(profile?.communications).toHaveLength(2);
+    expect(client.communicationAutomationRecipient.findMany).toHaveBeenCalled();
   });
 
   it("falls back to household giving for adult people with no direct gifts", async () => {
@@ -354,7 +353,7 @@ describe("people profile service", () => {
 
     const profile = await getRockPersonProfile(
       { rockId: 910001 },
-      financeUser,
+      thirdAdminUser,
       client,
     );
 

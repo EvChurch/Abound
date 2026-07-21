@@ -44,7 +44,6 @@ describe("resolveAccessState", () => {
               auth0Subject: "auth0|admin",
               email: "admin@example.com",
               name: "Admin",
-              role: "ADMIN",
               active: true,
               rockPersonId: null,
             };
@@ -53,7 +52,7 @@ describe("resolveAccessState", () => {
       ),
     ).resolves.toMatchObject({
       status: "authorized",
-      user: { role: "ADMIN" },
+      user: { id: expect.any(String) },
     });
   });
 });

@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => ({
           email: "admin@example.com",
           id: "user_1",
           name: "Admin",
-          role: "ADMIN",
         },
         reviewerUserId: "user_1",
       },
@@ -46,7 +45,6 @@ const mocks = vi.hoisted(() => ({
           email: "care@example.com",
           id: "user_2",
           name: "Care",
-          role: "PASTORAL_CARE",
         },
         reviewerUserId: "user_2",
       },
@@ -295,7 +293,6 @@ describe("Communication workflow pages", () => {
         id: "user_1",
         name: "Admin",
         rockPersonId: null,
-        role: "ADMIN",
       },
     };
     mocks.automations = [mocks.automation];
@@ -956,6 +953,8 @@ describe("Communication workflow pages", () => {
     expect(
       screen.queryByRole("heading", { name: "Recipient events" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText("Latest event")).not.toBeInTheDocument();
+    expect(screen.getByText("Show 1 prior event")).toBeInTheDocument();
     expect(screen.getAllByText("Opened").length).toBeGreaterThan(0);
     expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
     expect(screen.queryByText("Delivered")).not.toBeInTheDocument();

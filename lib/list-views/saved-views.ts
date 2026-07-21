@@ -46,28 +46,28 @@ export type SavedListViewInput = {
 
 export async function listSavedListViews(
   resource: SavedListViewResource,
-  actor: LocalAppUser,
+  _actor: LocalAppUser,
   client: SavedViewClient = prisma,
 ) {
-  return client.savedListView.findMany({
+  const savedViews = await client.savedListView.findMany({
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { name: "asc" }],
     where: {
       archivedAt: null,
-      ownerUserId: actor.id,
       resource,
     },
   });
+
+  return savedViews;
 }
 
 export async function getSavedListView(
   id: string,
-  actor: LocalAppUser,
+  _actor: LocalAppUser,
   client: SavedViewClient = prisma,
 ) {
   const savedView = await client.savedListView.findFirst({
     where: {
       id,
-      ownerUserId: actor.id,
     },
   });
 
@@ -79,11 +79,7 @@ export async function getSavedListView(
     });
   }
 
-  revalidateSavedViewFilter(
-    savedView.resource,
-    savedView.filterDefinition,
-    actor,
-  );
+  revalidateSavedViewFilter(savedView.resource, savedView.filterDefinition);
 
   return savedView;
 }
@@ -93,14 +89,13 @@ export async function createSavedListView(
   actor: LocalAppUser,
   client: SavedViewClient = prisma,
 ) {
-  const data = normalizeSavedListViewInput(input, actor);
+  const data = normalizeSavedListViewInput(input);
 
   return client.$transaction(async (tx) => {
     if (data.isDefault) {
       await tx.savedListView.updateMany({
         data: { isDefault: false },
         where: {
-          ownerUserId: actor.id,
           resource: data.resource,
         },
       });
@@ -122,28 +117,24 @@ export async function updateSavedListView(
   client: SavedViewClient = prisma,
 ) {
   const existing = await getSavedListView(id, actor, client);
-  const data = normalizeSavedListViewInput(
-    {
-      columnDefinition: existing.columnDefinition,
-      density: existing.density,
-      description: existing.description,
-      filterDefinition: existing.filterDefinition,
-      isDefault: existing.isDefault,
-      name: existing.name,
-      pageSize: existing.pageSize,
-      resource: existing.resource,
-      sortDefinition: existing.sortDefinition,
-      ...input,
-    },
-    actor,
-  );
+  const data = normalizeSavedListViewInput({
+    columnDefinition: existing.columnDefinition,
+    density: existing.density,
+    description: existing.description,
+    filterDefinition: existing.filterDefinition,
+    isDefault: existing.isDefault,
+    name: existing.name,
+    pageSize: existing.pageSize,
+    resource: existing.resource,
+    sortDefinition: existing.sortDefinition,
+    ...input,
+  });
 
   return client.$transaction(async (tx) => {
     if (data.isDefault) {
       await tx.savedListView.updateMany({
         data: { isDefault: false },
         where: {
-          ownerUserId: actor.id,
           resource: data.resource,
           id: {
             not: id,
@@ -206,7 +197,6 @@ export async function setDefaultSavedListView(
     await tx.savedListView.updateMany({
       data: { isDefault: false },
       where: {
-        ownerUserId: actor.id,
         resource: existing.resource,
       },
     });
@@ -221,32 +211,25 @@ export async function setDefaultSavedListView(
 export function revalidateSavedViewFilter(
   resource: SavedListViewResource,
   filterDefinition: unknown,
-  actor: LocalAppUser,
 ) {
   const result = validateFilterDefinition(
     filterDefinition,
-    getListViewFilterCatalog(resource, actor.role),
+    getListViewFilterCatalog(resource),
   );
 
   if (!result.ok) {
-    throw new GraphQLError(
-      "Saved list view is no longer valid for this role.",
-      {
-        extensions: {
-          code: "FORBIDDEN",
-          validationErrors: result.errors,
-        },
+    throw new GraphQLError("Saved list view is no longer valid.", {
+      extensions: {
+        code: "BAD_USER_INPUT",
+        validationErrors: result.errors,
       },
-    );
+    });
   }
 
   return result.definition;
 }
 
-function normalizeSavedListViewInput(
-  input: SavedListViewInput,
-  actor: LocalAppUser,
-) {
+function normalizeSavedListViewInput(input: SavedListViewInput) {
   const name = input.name.trim();
 
   if (!name) {
@@ -257,7 +240,7 @@ function normalizeSavedListViewInput(
     });
   }
 
-  const filterDefinition = normalizeFilter(input, actor);
+  const filterDefinition = normalizeFilter(input);
   const pageSize = input.pageSize ?? 50;
 
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
@@ -280,15 +263,15 @@ function normalizeSavedListViewInput(
     sortDefinition: jsonObject(
       input.sortDefinition ?? { field: "rockId", direction: "ASC" },
     ),
-    visibility: "PRIVATE" as const,
+    visibility: "GLOBAL" as const,
   };
 }
 
-function normalizeFilter(input: SavedListViewInput, actor: LocalAppUser) {
+function normalizeFilter(input: SavedListViewInput) {
   const filterDefinition = input.filterDefinition ?? createEmptyFilter();
   const result = validateFilterDefinition(
     filterDefinition,
-    getListViewFilterCatalog(input.resource, actor.role),
+    getListViewFilterCatalog(input.resource),
   );
 
   if (!result.ok) {

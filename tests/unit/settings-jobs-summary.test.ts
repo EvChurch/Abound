@@ -12,7 +12,6 @@ describe("listJobsDashboardSummary", () => {
     id: "user_admin",
     name: "Admin",
     rockPersonId: null,
-    role: "ADMIN",
   } as const;
 
   it("returns queue telemetry plus running jobs inferred from worker events", async () => {
