@@ -13,8 +13,8 @@ export function CopySnippet({ code, label }: CopySnippetProps) {
 
   return (
     <div className="overflow-hidden rounded-[8px] border border-app-border bg-app-surface">
-      <div className="flex min-h-10 items-center justify-between gap-3 border-b border-app-border bg-app-chip px-3">
-        <h3 className="text-[12px] font-semibold text-app-foreground">
+      <div className="flex min-h-11 items-center justify-between gap-3 border-b border-app-border bg-app-chip px-3">
+        <h3 className="text-[13px] font-semibold text-app-foreground">
           {label}
         </h3>
         <button
@@ -35,7 +35,7 @@ export function CopySnippet({ code, label }: CopySnippetProps) {
           <span className="sr-only">{copied ? "Copied" : "Copy"}</span>
         </button>
       </div>
-      <pre className="overflow-x-auto p-3 text-[12px] leading-5 text-app-foreground">
+      <pre className="whitespace-pre-wrap break-words p-3 text-[12px] leading-5 text-app-foreground [overflow-wrap:anywhere]">
         <code>{code}</code>
       </pre>
     </div>

@@ -93,15 +93,14 @@ describe("McpSetupPage", () => {
       screen.getByRole("heading", { name: "Connect Abound to Your AI App" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Top nav mcp")).toBeInTheDocument();
-    expect(container).toHaveTextContent("https://abound.example.test/mcp");
+    expect(screen.getByText("Create a personal MCP token")).toBeInTheDocument();
+    expect(screen.getByLabelText("Token name")).toBeInTheDocument();
     expect(
-      screen.getByText("Copy the Abound connection address"),
+      screen.getByRole("button", { name: /create token/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Personal MCP tokens")).toBeInTheDocument();
     expect(
       screen.getByText("No active personal MCP tokens."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Add it to your AI app")).toBeInTheDocument();
     expect(screen.getByText("Ask a question")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -131,8 +130,13 @@ describe("McpSetupPage", () => {
     expect(
       screen.getByText("Summarize the giving context for a donor I name next."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Open Settings.")).toBeInTheDocument();
-    expect(screen.getAllByText("Paste the Abound address.")).toHaveLength(3);
+    expect(container).not.toHaveTextContent("Codex command");
+    expect(container).not.toHaveTextContent("Paste the Abound address.");
+    expect(container).not.toHaveTextContent("https://abound.example.test/mcp");
+    expect(container).not.toHaveTextContent("sign in");
+    expect(container).not.toHaveTextContent(
+      "Auth0 dynamic client registration",
+    );
     expect(container).not.toHaveTextContent("codex mcp list");
     expect(container).not.toHaveTextContent("claude mcp list");
     expect(screen.queryByText("Advanced Setup")).not.toBeInTheDocument();

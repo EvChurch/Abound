@@ -27,7 +27,7 @@ async function handleAuthenticatedMcpRequest(request: Request) {
     if (error instanceof McpAuthError) {
       return error.status === 403
         ? forbiddenMcpResponse()
-        : unauthorizedMcpResponse(config);
+        : unauthorizedMcpResponse();
     }
 
     return Response.json(
