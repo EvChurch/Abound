@@ -1,22 +1,23 @@
 # Staff Read-Only MCP
 
-Abound exposes a staff-only MCP endpoint at `/mcp`. It lets external AI clients use OAuth bearer tokens to query the same bounded read models that staff already use inside the app.
+Abound exposes a staff-only MCP endpoint at `/mcp`. It lets external AI clients use personal bearer tokens to query the same bounded read models that staff already use inside the app.
 
 ## Authentication
 
-The MCP endpoint is an OAuth protected resource. Requests must include `Authorization: Bearer <access-token>`.
+The MCP endpoint is a token-protected resource. Requests must include `Authorization: Bearer <personal-mcp-token>`.
 
-Token validation checks the configured Auth0 issuer and JWKS, and requires the access token audience to match the MCP resource. After token validation, Abound resolves the token subject against the local `AppUser` table. Only active local app users can access MCP tools. Auth0 login alone is not authorization.
+Personal tokens are created by an active staff user from the MCP tools page, are stored only as SHA-256 hashes, are scoped to `abound:staff:read`, and can be revoked by the same user. Personal token authentication still resolves to an active local `AppUser`; revoking or deactivating that user removes MCP access.
 
-For AI clients where Auth0 OAuth is not a good fit, Abound also supports personal MCP bearer tokens. Personal tokens are created by an active staff user from the MCP tools page, are stored only as SHA-256 hashes, are scoped to `abound:staff:read`, and can be revoked by the same user. Personal token authentication still resolves to an active local `AppUser`; revoking or deactivating that user removes MCP access.
+Unauthorized callers receive `401`. Valid personal tokens for inactive or removed local users receive `401` because the token is no longer valid for MCP access.
 
-Unauthorized callers receive `401` with a `WWW-Authenticate` challenge that points to `/.well-known/oauth-protected-resource`. Authenticated users without active local app access receive `403`.
+Codex can store the personal token as an HTTP authorization header in `~/.codex/config.toml`:
 
-Codex can use the personal token path without dynamic client registration:
+```toml
+[mcp_servers.abound]
+url = "https://abound.ev.church/mcp"
 
-```bash
-export ABOUND_MCP_TOKEN="abound_mcp_..."
-codex mcp add abound --url https://abound.ev.church/mcp --bearer-token-env-var ABOUND_MCP_TOKEN
+[mcp_servers.abound.http_headers]
+Authorization = "Bearer abound_mcp_..."
 ```
 
 ## Configuration
@@ -25,10 +26,6 @@ Set these environment variables in deployment:
 
 - `MCP_PUBLIC_BASE_URL`: public app origin hosting `/mcp`.
 - `MCP_RESOURCE`: canonical resource identifier for the MCP endpoint. Defaults to `MCP_PUBLIC_BASE_URL + /mcp`.
-- `MCP_AUDIENCE`: Auth0 API audience expected in access tokens. Defaults to `MCP_RESOURCE`.
-- `MCP_AUTH0_ISSUER`: Auth0 issuer URL. Defaults to `AUTH0_DOMAIN`.
-- `MCP_AUTHORIZATION_SERVER`: value advertised in protected resource metadata. Defaults to `MCP_AUTH0_ISSUER`.
-- `MCP_AUTH0_JWKS_URI`: JWKS URL. Defaults to `MCP_AUTH0_ISSUER + /.well-known/jwks.json`.
 
 Localhost `http://` URLs are allowed for development. Non-localhost MCP URLs must use `https://`.
 

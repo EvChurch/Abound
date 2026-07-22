@@ -5,6 +5,7 @@ import { Check, KeyRound, Trash2 } from "lucide-react";
 
 import type { CreateMcpTokenState } from "@/app/tools/mcp/actions";
 import { CopyField } from "@/components/tools/copy-field";
+import { CopySnippet } from "@/components/tools/copy-snippet";
 
 export type McpTokenManagerToken = {
   id: string;
@@ -21,6 +22,7 @@ type McpTokenManagerProps = {
     state: CreateMcpTokenState,
     formData: FormData,
   ) => Promise<CreateMcpTokenState>;
+  mcpUrl: string;
   revokeAction: (formData: FormData) => Promise<void>;
   tokens: McpTokenManagerToken[];
 };
@@ -29,6 +31,7 @@ const initialState: CreateMcpTokenState = {};
 
 export function McpTokenManager({
   createAction,
+  mcpUrl,
   revokeAction,
   tokens,
 }: McpTokenManagerProps) {
@@ -45,23 +48,59 @@ export function McpTokenManager({
         <div className="flex items-center gap-2">
           <KeyRound aria-hidden="true" className="h-4 w-4 text-app-muted" />
           <h2 className="text-base font-semibold text-app-foreground">
-            Personal MCP tokens
+            Create a personal MCP token
           </h2>
         </div>
         <p className="max-w-3xl text-sm leading-6 text-app-muted">
-          Use a personal token when your AI app cannot use the Auth0 sign-in
-          flow. Tokens are read-only, tied to your Abound user, and visible only
-          when created.
+          Name this token for the app or device that will use it. The token is
+          read-only, tied to your Abound user, and visible only once.
         </p>
       </div>
 
       {state.plainTextToken ? (
-        <div className="grid gap-2 rounded-[8px] border border-app-accent bg-app-background p-3">
+        <div className="grid gap-4 rounded-[8px] border border-app-accent bg-app-background p-3">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-app-foreground">
             <Check aria-hidden="true" className="h-4 w-4 text-app-accent" />
-            Copy this token now
+            Token created. Copy it now.
           </div>
           <CopyField label="MCP bearer token" value={state.plainTextToken} />
+          <div className="grid gap-4">
+            <div className="grid gap-2 border-t border-app-border pt-4">
+              <div>
+                <h3 className="text-base font-semibold text-app-foreground">
+                  Codex
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-app-muted">
+                  Paste this block into{" "}
+                  <span className="font-mono text-app-foreground">
+                    ~/.codex/config.toml
+                  </span>
+                  , then restart Codex.
+                </p>
+              </div>
+              <CopySnippet
+                code={`[mcp_servers.abound]\nurl = "${mcpUrl}"\n\n[mcp_servers.abound.http_headers]\nAuthorization = "Bearer ${state.plainTextToken}"`}
+                label="config.toml"
+              />
+            </div>
+            <div className="grid gap-2 border-t border-app-border pt-4">
+              <div>
+                <h3 className="text-base font-semibold text-app-foreground">
+                  Claude Code
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-app-muted">
+                  Run this command in your terminal, then open Claude Code and
+                  run{" "}
+                  <span className="font-mono text-app-foreground">/mcp</span> to
+                  confirm Abound is connected.
+                </p>
+              </div>
+              <CopySnippet
+                code={`claude mcp add --transport http abound ${mcpUrl} \\\n  --header "Authorization: Bearer ${state.plainTextToken}"`}
+                label="Terminal command"
+              />
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -92,7 +131,10 @@ export function McpTokenManager({
         </p>
       ) : null}
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 border-t border-app-border pt-4">
+        <h3 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-app-muted">
+          Existing tokens
+        </h3>
         {activeTokens.length > 0 ? (
           activeTokens.map((token) => (
             <TokenRow

@@ -4,10 +4,6 @@ import type { McpAuthConfig } from "@/lib/mcp/auth";
 import { McpAuthError } from "@/lib/mcp/errors";
 
 const config: McpAuthConfig = {
-  audience: "https://abound.example.test/mcp",
-  authorizationServer: "https://auth.example.test/",
-  issuer: "https://auth.example.test/",
-  jwksUri: "https://auth.example.test/.well-known/jwks.json",
   publicBaseUrl: "https://abound.example.test",
   resource: "https://abound.example.test/mcp",
 };
@@ -43,7 +39,7 @@ describe("MCP route", () => {
     mocks.getMcpAuthConfig.mockReturnValue(config);
   });
 
-  it("challenges unauthenticated callers with protected resource metadata", async () => {
+  it("challenges unauthenticated callers with a bearer token challenge", async () => {
     mocks.authenticateMcpRequest.mockRejectedValue(
       new McpAuthError("Authentication is required.", {
         code: "UNAUTHENTICATED",
@@ -56,8 +52,8 @@ describe("MCP route", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(response.headers.get("WWW-Authenticate")).toContain(
-      'resource_metadata="https://abound.example.test/.well-known/oauth-protected-resource"',
+    expect(response.headers.get("WWW-Authenticate")).toBe(
+      'Bearer scope="abound:staff:read"',
     );
     expect(await response.json()).toEqual({
       error: "Authentication is required.",
