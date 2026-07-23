@@ -62,6 +62,10 @@ const mcpAccessTokensMigration = readFileSync(
   "prisma/migrations/20260721000600_add_mcp_access_tokens/migration.sql",
   "utf8",
 );
+const communicationCompletionReportsMigration = readFileSync(
+  "prisma/migrations/20260722000100_add_communication_completion_reports/migration.sql",
+  "utf8",
+);
 
 describe("synced data model migration", () => {
   it("creates source-traceable Rock and sync tables", () => {
@@ -394,5 +398,26 @@ describe("synced data model migration", () => {
         `ADD VALUE IF NOT EXISTS '${eventType}'`,
       );
     }
+  });
+
+  it("adds communication automation completion report configuration", () => {
+    expect(communicationCompletionReportsMigration).toContain(
+      'CREATE TABLE "CommunicationAutomationCompletionReportRecipient"',
+    );
+    expect(communicationCompletionReportsMigration).toContain(
+      'ADD COLUMN "completionReportSentAt" TIMESTAMP(3)',
+    );
+    expect(communicationCompletionReportsMigration).toContain(
+      'ADD COLUMN "completionReportFailedAt" TIMESTAMP(3)',
+    );
+    expect(communicationCompletionReportsMigration).toContain(
+      'CREATE UNIQUE INDEX "CommunicationAutomationCompletionReportRecipient_automationId_email_key"',
+    );
+    expect(communicationCompletionReportsMigration).toContain(
+      'CREATE INDEX "CommunicationAutomationCompletionReportRecipient_email_idx"',
+    );
+    expect(communicationCompletionReportsMigration).toContain(
+      'FOREIGN KEY ("automationId") REFERENCES "CommunicationAutomation"("id") ON DELETE CASCADE',
+    );
   });
 });

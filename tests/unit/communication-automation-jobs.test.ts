@@ -578,6 +578,301 @@ describe("communication automation jobs", () => {
     );
   });
 
+  it("sends completion reports after terminal runs", async () => {
+    const transaction = vi.fn(async () => undefined);
+    const updateRun = vi.fn(async ({ data, where }) => ({
+      id: where.id,
+      status: "SENT",
+      ...data,
+    }));
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const client = {
+      $transaction: transaction,
+      communicationAutomationRecipient: {
+        findUnique: vi.fn(async () => ({
+          automation: {
+            cooldownDays: null,
+            suppressionMode: "NEVER_RESEND",
+          },
+          automationId: "automation_1",
+          householdRockId: null,
+          id: "recipient_1",
+          personRockId: 101,
+          resource: "PERSON",
+          runId: "run_1",
+        })),
+        update: vi.fn((args) => args),
+      },
+      communicationAutomationRecipientEvent: {
+        create: vi.fn((args) => args),
+      },
+      communicationAutomationSuppression: {
+        upsert: vi.fn((args) => args),
+      },
+      communicationAutomationRun: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            automation: {
+              archivedAt: null,
+              fromEmail: "hello@example.org",
+              fromName: "Church Team",
+              pausedAt: null,
+              replyToEmail: "reply@example.org",
+              templateFields: {
+                format: "react-email-editor",
+                html: "<p>Hello {{ firstName }}</p>",
+                subject: "Hello {{ firstName }}",
+                text: "Hello {{ firstName }}",
+              },
+              templateKey: "joining-never-given",
+            },
+            automationId: "automation_1",
+            deliverableCount: 1,
+            id: "run_1",
+            scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
+            status: "READY_TO_SEND",
+          })
+          .mockResolvedValueOnce({
+            automation: {
+              archivedAt: null,
+              fromEmail: "hello@example.org",
+              fromName: "Church Team",
+              pausedAt: null,
+              replyToEmail: "reply@example.org",
+              templateFields: {
+                format: "react-email-editor",
+                html: "<p>Hello {{ firstName }}</p>",
+                subject: "Hello {{ firstName }}",
+                text: "Hello {{ firstName }}",
+              },
+              templateKey: "joining-never-given",
+            },
+            automationId: "automation_1",
+            deliverableCount: 1,
+            id: "run_1",
+            recipients: [
+              {
+                displayNameSnapshot: "Jane Citizen",
+                emailSnapshot: "jane@example.com",
+                id: "recipient_1",
+                status: "READY",
+              },
+            ],
+            scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
+            status: "READY_TO_SEND",
+          })
+          .mockResolvedValueOnce({
+            automation: {
+              completionReportRecipients: [
+                {
+                  email: "membership@example.com",
+                  id: "report_1",
+                },
+              ],
+              fromEmail: "hello@example.org",
+              fromName: "Church Team",
+              name: "New giver follow-up",
+              replyToEmail: "reply@example.org",
+            },
+            automationId: "automation_1",
+            completionReportSentAt: null,
+            id: "run_1",
+            recipients: [
+              {
+                displayNameSnapshot: "Jane Citizen",
+                emailSnapshot: "jane@example.com",
+                id: "recipient_1",
+                status: "ACCEPTED",
+              },
+            ],
+            status: "SENT",
+          }),
+        update: updateRun,
+        updateMany,
+      },
+    };
+    const emailSender = {
+      send: vi.fn(async () => ({
+        providerMessageId: "email_123",
+        status: "ACCEPTED" as const,
+      })),
+    };
+
+    await expect(
+      performCommunicationAutomationSendJob(
+        { runId: "run_1" },
+        {
+          emailSender,
+          now: new Date("2026-07-07T09:00:01.000Z"),
+          prisma: client as never,
+        },
+      ),
+    ).resolves.toEqual({
+      runId: "run_1",
+      status: "SENT",
+    });
+
+    expect(emailSender.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientEmail: "membership@example.com",
+        subject: "New giver follow-up staff summary",
+        tags: expect.objectContaining({ type: "completion-report" }),
+        text: expect.stringContaining("Jane Citizen - jane@example.com - Sent"),
+      }),
+    );
+    expect(updateMany).toHaveBeenCalledWith({
+      data: {
+        completionReportFailedAt: null,
+        completionReportSentAt: new Date("2026-07-07T09:00:01.000Z"),
+      },
+      where: {
+        completionReportSentAt: null,
+        id: "run_1",
+      },
+    });
+  });
+
+  it("records completion report failures without failing the run", async () => {
+    const client = {
+      communicationAutomationRun: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            automation: {
+              archivedAt: null,
+              fromEmail: "hello@example.org",
+              fromName: "Church Team",
+              pausedAt: null,
+              replyToEmail: "reply@example.org",
+            },
+            deliverableCount: 0,
+            id: "run_1",
+            scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
+            status: "READY_TO_SEND",
+          })
+          .mockResolvedValueOnce({
+            automation: {
+              completionReportRecipients: [
+                {
+                  email: "membership@example.com",
+                  id: "report_1",
+                },
+              ],
+              fromEmail: "hello@example.org",
+              fromName: "Church Team",
+              name: "New giver follow-up",
+              replyToEmail: "reply@example.org",
+            },
+            automationId: "automation_1",
+            completionReportSentAt: null,
+            id: "run_1",
+            recipients: [
+              {
+                displayNameSnapshot: "Skipped Person",
+                emailSnapshot: "skipped@example.com",
+                id: "recipient_1",
+                skipReason: "Missing active email.",
+                status: "SKIPPED",
+              },
+            ],
+            status: "SKIPPED",
+          }),
+        update: vi.fn(async ({ data, where }) => ({
+          id: where.id,
+          status: "SKIPPED",
+          ...data,
+        })),
+      },
+    };
+    const emailSender = {
+      send: vi.fn(async () => ({
+        errorMessage: "Report send failed.",
+        status: "FAILED" as const,
+      })),
+    };
+    const now = new Date("2026-07-07T09:00:01.000Z");
+
+    await expect(
+      performCommunicationAutomationSendJob(
+        { runId: "run_1" },
+        {
+          emailSender,
+          now,
+          prisma: client as never,
+        },
+      ),
+    ).resolves.toEqual({
+      runId: "run_1",
+      status: "SKIPPED",
+    });
+
+    expect(client.communicationAutomationRun.update).toHaveBeenCalledWith({
+      data: {
+        completionReportFailedAt: now,
+      },
+      where: { id: "run_1" },
+    });
+  });
+
+  it("does not resend completion reports that are already marked sent", async () => {
+    const client = {
+      communicationAutomationRun: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            automation: {
+              archivedAt: null,
+              pausedAt: null,
+            },
+            deliverableCount: 0,
+            id: "run_1",
+            scheduledSendAt: new Date("2026-07-07T09:00:00.000Z"),
+            status: "READY_TO_SEND",
+          })
+          .mockResolvedValueOnce({
+            automation: {
+              completionReportRecipients: [
+                {
+                  email: "membership@example.com",
+                  id: "report_1",
+                },
+              ],
+              name: "New giver follow-up",
+            },
+            completionReportSentAt: new Date("2026-07-07T09:01:00.000Z"),
+            id: "run_1",
+            recipients: [],
+            status: "SKIPPED",
+          }),
+        update: vi.fn(async ({ data, where }) => ({
+          id: where.id,
+          status: "SKIPPED",
+          ...data,
+        })),
+      },
+    };
+    const emailSender = {
+      send: vi.fn(),
+    };
+
+    await expect(
+      performCommunicationAutomationSendJob(
+        { runId: "run_1" },
+        {
+          emailSender,
+          now: new Date("2026-07-07T09:00:01.000Z"),
+          prisma: client as never,
+        },
+      ),
+    ).resolves.toEqual({
+      runId: "run_1",
+      status: "SKIPPED",
+    });
+
+    expect(emailSender.send).not.toHaveBeenCalled();
+  });
+
   it("forces ready runs through the sender even before the scheduled time", async () => {
     const transaction = vi.fn(async () => undefined);
     const client = {

@@ -14,6 +14,16 @@ const mocks = vi.hoisted(() => ({
     activatedByUserId: null,
     archivedAt: null,
     cooldownDays: null,
+    completionReportRecipients: [
+      {
+        automationId: "automation_1",
+        createdAt: new Date("2026-07-02T00:00:00.000Z"),
+        email: "membership@example.com",
+        id: "report_1",
+        label: null,
+        updatedAt: new Date("2026-07-02T00:00:00.000Z"),
+      },
+    ],
     createdAt: new Date("2026-07-02T00:00:00.000Z"),
     createdByUserId: "user_1",
     fromEmail: null,
@@ -54,6 +64,8 @@ const mocks = vi.hoisted(() => ({
         acceptedCount: 2,
         automationId: "automation_1",
         completedAt: null,
+        completionReportFailedAt: null,
+        completionReportSentAt: null,
         createdAt: new Date("2026-07-08T00:00:00.000Z"),
         deliverableCount: 2,
         excludedCount: 1,
@@ -619,6 +631,8 @@ describe("Communication workflow pages", () => {
       screen.getByRole("button", { name: "Repeat sending" }),
     ).toHaveTextContent("Send once per person");
     expect(screen.getByLabelText(/Schedule/)).toHaveValue("0 9 * * 2");
+    expect(screen.getByLabelText(/Completion report/)).toHaveValue("");
+    expect(screen.getByText("membership@example.com")).toBeInTheDocument();
     expect(screen.getByText("Tuesday at 9:00 AM")).toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Email body" }),

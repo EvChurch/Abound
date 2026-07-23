@@ -146,6 +146,9 @@ describe("communication automation service", () => {
         activatedAt: expect.any(Date),
         activatedByUserId: "user_1",
         audienceResource: "PEOPLE",
+        completionReportRecipients: {
+          create: [],
+        },
         createdByUserId: "user_1",
         name: "Joining follow-up",
         reviewers: {
@@ -155,7 +158,10 @@ describe("communication automation service", () => {
         segmentSummary: "Saved view: Joining - Never Given",
         suppressionMode: "NEVER_RESEND",
       }),
-      include: { reviewers: true },
+      include: {
+        completionReportRecipients: true,
+        reviewers: true,
+      },
     });
   });
 
@@ -251,6 +257,7 @@ describe("communication automation service", () => {
     });
 
     const deleteMany = vi.fn(async () => ({ count: 1 }));
+    const deleteReportRecipients = vi.fn(async () => ({ count: 1 }));
     const updateRuns = vi.fn(async () => ({ count: 1 }));
     const update = vi.fn(async ({ data, where }) => ({
       id: where.id,
@@ -264,6 +271,9 @@ describe("communication automation service", () => {
           },
           communicationAutomationReviewer: {
             deleteMany,
+          },
+          communicationAutomationCompletionReportRecipient: {
+            deleteMany: deleteReportRecipients,
           },
           communicationAutomationRun: {
             updateMany: updateRuns,
@@ -311,6 +321,9 @@ describe("communication automation service", () => {
     expect(deleteMany).toHaveBeenCalledWith({
       where: { automationId: "automation_1" },
     });
+    expect(deleteReportRecipients).toHaveBeenCalledWith({
+      where: { automationId: "automation_1" },
+    });
     expect(updateRuns).toHaveBeenCalledWith({
       data: {
         noticeDueAt: expect.any(Date),
@@ -325,6 +338,9 @@ describe("communication automation service", () => {
     });
     expect(update).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        completionReportRecipients: {
+          create: [],
+        },
         reviewers: {
           create: [{ reviewerUserId: "user_3" }],
         },
@@ -332,6 +348,101 @@ describe("communication automation service", () => {
       }),
       include: expect.any(Object),
       where: { id: "automation_1" },
+    });
+  });
+
+  it("normalizes arbitrary completion report email addresses", async () => {
+    mocks.getSavedListView.mockResolvedValueOnce({
+      filterDefinition: {},
+      id: "view_1",
+      name: "Joining - Never Given",
+      resource: "PEOPLE",
+    });
+
+    const create = vi.fn(async ({ data }) => ({
+      ...data,
+      id: "automation_1",
+    }));
+    const client = {
+      $transaction: vi.fn(async (callback) =>
+        callback({
+          communicationAutomation: {
+            create,
+          },
+        }),
+      ),
+      appUser: {
+        findMany: vi.fn(async () => [{ id: "user_3" }]),
+      },
+    } as unknown as PrismaClient;
+
+    await createCommunicationAutomation(
+      {
+        completionReportEmails: [
+          "Membership@Example.COM",
+          " steve@example.com, membership@example.com ",
+        ],
+        name: "Joining follow-up",
+        reviewerUserIds: ["user_3"],
+        savedListViewId: "view_1",
+        scheduleCron: "0 9 * * 2",
+        templateFields: {
+          format: "react-email-editor",
+          html: "<p>Hello {{ firstName }}</p>",
+          subject: "Hello",
+        },
+        templateKey: "joining-never-given",
+      },
+      adminUser,
+      client,
+    );
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        completionReportRecipients: {
+          create: [
+            { email: "membership@example.com" },
+            { email: "steve@example.com" },
+          ],
+        },
+      }),
+      include: {
+        completionReportRecipients: true,
+        reviewers: true,
+      },
+    });
+  });
+
+  it("rejects invalid completion report email addresses", async () => {
+    mocks.getSavedListView.mockResolvedValueOnce({
+      filterDefinition: {},
+      id: "view_1",
+      name: "Joining - Never Given",
+      resource: "PEOPLE",
+    });
+
+    const client = {
+      appUser: {
+        findMany: vi.fn(async () => [{ id: "user_3" }]),
+      },
+    } as unknown as PrismaClient;
+
+    await expect(
+      createCommunicationAutomation(
+        {
+          completionReportEmails: ["not-an-email"],
+          name: "Joining follow-up",
+          reviewerUserIds: ["user_3"],
+          savedListViewId: "view_1",
+          scheduleCron: "0 9 * * 2",
+          templateKey: "joining-never-given",
+        },
+        adminUser,
+        client,
+      ),
+    ).rejects.toMatchObject({
+      extensions: { code: "BAD_USER_INPUT" },
+      message: "Completion report email addresses must be valid.",
     });
   });
 

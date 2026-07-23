@@ -40,6 +40,7 @@ Automation records add:
 - recurring cron schedule and timezone
 - pre-send reviewer notice timing
 - selected reviewer users
+- completion report recipients for post-run operational summaries
 - structured React Email template key, version, and editable fields
 - sender mode (`CAPTURE` or `RESEND`)
 - suppression policy (`NEVER_RESEND` or cooldown days)
@@ -73,6 +74,8 @@ Status changes are local workflow state. They do not mutate Rock.
 
 Automation run statuses track the scheduled communication lifecycle: pending notice, notice sent, ready to send, sending, sent/partial/failed, canceled, or skipped. Recipient statuses track readiness, suppression, exclusion, provider acceptance, delivery, delay, bounce, complaint, or failure.
 
+When a run finishes attempting all eligible sends and reaches `SENT`, `PARTIAL`, `FAILED`, or `SKIPPED`, completion reporting should use the frozen run recipients and their outcome states to summarize who was included. The report subject should use the report or workflow name, and the first recipient detail should include name and email. These reports are non-critical operational staff summaries; report delivery failure should be recorded without marking the automation run failed. They must not include gift amounts, payment data, raw provider payloads, or finance-only explanations, and they do not mutate Rock membership or activity data.
+
 ## Sending And Suppression
 
 Templates are developer-owned React Email components with app-editable fields. Staff can edit subject, preview text, heading, body, CTA label, CTA URL, and signature, but cannot provide arbitrary HTML, CSS, or React code. Only approved tokens are rendered.
@@ -103,6 +106,8 @@ Local commands:
 - `pnpm communications:schedule`: register pg-boss schedules for active automations.
 - `pnpm communications:worker`: process automation evaluation, notice, and send queues.
 - `pnpm communications:worker -- --once`: process one queued automation job and exit.
+
+Completion report delivery uses the same sender mode as other communication automation email. In capture mode, reports are captured without contacting Resend; in live mode, report delivery failures are recorded on the run without changing the run's terminal send status.
 
 Environment variables:
 

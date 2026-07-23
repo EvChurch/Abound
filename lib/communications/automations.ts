@@ -33,6 +33,7 @@ const ACTIVE_RUN_STATUSES = [
 export type CommunicationAutomationRecord =
   Prisma.CommunicationAutomationGetPayload<{
     include: {
+      completionReportRecipients: true;
       reviewers: {
         include: {
           reviewer: {
@@ -76,6 +77,7 @@ export type CommunicationAutomationReviewerOption = {
 };
 
 export type CreateCommunicationAutomationInput = {
+  completionReportEmails?: string[];
   cooldownDays?: number | null;
   fromEmail?: string | null;
   fromName?: string | null;
@@ -102,6 +104,7 @@ export type UpdateCommunicationAutomationTemplateInput = {
 };
 
 export type UpdateCommunicationAutomationInput = {
+  completionReportEmails?: string[];
   cooldownDays?: number | null;
   id: string;
   name: string;
@@ -276,6 +279,9 @@ export async function createCommunicationAutomation(
     client,
   );
   const reviewerUserIds = uniqueStrings(input.reviewerUserIds);
+  const completionReportEmails = normalizeEmailList(
+    input.completionReportEmails ?? [],
+  );
 
   if (reviewerUserIds.length === 0) {
     throw badInput("Communication automation requires at least one reviewer.");
@@ -323,8 +329,12 @@ export async function createCommunicationAutomation(
             reviewerUserId,
           })),
         },
+        completionReportRecipients: {
+          create: completionReportEmails.map((email) => ({ email })),
+        },
       },
       include: {
+        completionReportRecipients: true,
         reviewers: true,
       },
     }),
@@ -375,6 +385,9 @@ export async function updateCommunicationAutomation(
     client,
   );
   const reviewerUserIds = uniqueStrings(input.reviewerUserIds);
+  const completionReportEmails = normalizeEmailList(
+    input.completionReportEmails ?? [],
+  );
 
   if (reviewerUserIds.length === 0) {
     throw badInput("Communication automation requires at least one reviewer.");
@@ -396,6 +409,9 @@ export async function updateCommunicationAutomation(
 
   return client.$transaction(async (tx) => {
     await tx.communicationAutomationReviewer.deleteMany({
+      where: { automationId: input.id },
+    });
+    await tx.communicationAutomationCompletionReportRecipient.deleteMany({
       where: { automationId: input.id },
     });
 
@@ -422,6 +438,9 @@ export async function updateCommunicationAutomation(
           create: reviewerUserIds.map((reviewerUserId) => ({
             reviewerUserId,
           })),
+        },
+        completionReportRecipients: {
+          create: completionReportEmails.map((email) => ({ email })),
         },
         savedListViewId: savedView.id,
         scheduleCron,
@@ -549,6 +568,9 @@ export function clampAutomationLimit(limit: number | null | undefined) {
 }
 
 const automationRecordInclude = {
+  completionReportRecipients: {
+    orderBy: [{ email: "asc" }, { id: "asc" }],
+  },
   reviewers: {
     include: {
       reviewer: {
@@ -718,6 +740,26 @@ function normalizeTemplateVersion(value: number) {
 
 function uniqueStrings(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function normalizeEmailList(values: string[]) {
+  const emails = uniqueStrings(
+    values
+      .flatMap((value) => value.split(/[\s,;]+/))
+      .map((value) => value.toLowerCase()),
+  );
+
+  for (const email of emails) {
+    if (!isValidOperationalEmail(email)) {
+      throw badInput("Completion report email addresses must be valid.");
+    }
+  }
+
+  return emails;
+}
+
+function isValidOperationalEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function badInput(message: string) {

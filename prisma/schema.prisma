@@ -1025,6 +1025,7 @@ model CommunicationAutomation {
   activatedBy                            AppUser?                                @relation("CommunicationAutomationActivatedBy", fields: [activatedByUserId], references: [id])
   savedListView                          SavedListView                           @relation(fields: [savedListViewId], references: [id])
   reviewers                              CommunicationAutomationReviewer[]
+  completionReportRecipients             CommunicationAutomationCompletionReportRecipient[]
   runs                                   CommunicationAutomationRun[]
   suppressions                           CommunicationAutomationSuppression[]
   communicationAutomationRecipients      CommunicationAutomationRecipient[]
@@ -1051,6 +1052,20 @@ model CommunicationAutomationReviewer {
   @@index([reviewerUserId])
 }
 
+model CommunicationAutomationCompletionReportRecipient {
+  id           String   @id @default(cuid())
+  automationId String
+  email        String
+  label        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  automation CommunicationAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, email])
+  @@index([email])
+}
+
 model CommunicationAutomationRun {
   id               String                           @id @default(cuid())
   automationId     String
@@ -1066,6 +1081,8 @@ model CommunicationAutomationRun {
   excludedCount    Int                              @default(0)
   acceptedCount    Int                              @default(0)
   failedCount      Int                              @default(0)
+  completionReportSentAt   DateTime?
+  completionReportFailedAt DateTime?
   workerJobId      String?
   createdAt        DateTime                         @default(now())
   updatedAt        DateTime                         @updatedAt
