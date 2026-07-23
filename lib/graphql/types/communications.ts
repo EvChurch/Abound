@@ -194,6 +194,18 @@ const communicationAutomationReviewerType = builder
     }),
   });
 
+const communicationAutomationCompletionReportRecipientType = builder
+  .objectRef<
+    CommunicationAutomationRecord["completionReportRecipients"][number]
+  >("CommunicationAutomationCompletionReportRecipient")
+  .implement({
+    fields: (t) => ({
+      email: t.exposeString("email"),
+      id: t.exposeString("id"),
+      label: t.exposeString("label", { nullable: true }),
+    }),
+  });
+
 const communicationAutomationRecipientType = builder
   .objectRef<
     CommunicationAutomationRecord["runs"][number]["recipients"][number]
@@ -283,6 +295,10 @@ const communicationAutomationType = builder
     fields: (t) => ({
       activationReadinessIssues: t.stringList({
         resolve: activationReadinessIssues,
+      }),
+      completionReportRecipients: t.field({
+        type: [communicationAutomationCompletionReportRecipientType],
+        resolve: (automation) => automation.completionReportRecipients,
       }),
       cooldownDays: t.exposeInt("cooldownDays", { nullable: true }),
       id: t.exposeString("id"),

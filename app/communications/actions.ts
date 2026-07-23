@@ -53,6 +53,7 @@ export async function createCommunicationAutomationFromSegmentAction(
 
   const automation = await createCommunicationAutomation(
     {
+      completionReportEmails: completionReportEmailsFromFormData(formData),
       name,
       reviewerUserIds,
       savedListViewId,
@@ -134,6 +135,7 @@ export async function updateCommunicationAutomationAction(formData: FormData) {
 
   await updateCommunicationAutomation(
     {
+      completionReportEmails: completionReportEmailsFromFormData(formData),
       id,
       name:
         optionalString(formData.get("name")) ??
@@ -555,6 +557,10 @@ function reviewerUserIdsFromFormData(
     .filter((value): value is string => Boolean(value));
 
   return reviewerUserIds.length > 0 ? reviewerUserIds : [fallbackUserId];
+}
+
+function completionReportEmailsFromFormData(formData: FormData) {
+  return formData.getAll("completionReportEmail").map((value) => String(value));
 }
 
 function parseRecipientReviewDecisions(value: string) {

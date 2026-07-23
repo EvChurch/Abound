@@ -154,6 +154,10 @@ describe("communication automation actions", () => {
     formData.set("name", "First-time guests");
     formData.set("reviewerUserId", "user_2");
     formData.append("reviewerUserId", "user_3");
+    formData.set(
+      "completionReportEmail",
+      "membership@example.com\nsteve@example.com",
+    );
     formData.set("scheduleCron", "0 10 * * 3");
     formData.set("suppressionMode", "EVERY_RUN");
     formData.set("subject", "Welcome {{firstName}}");
@@ -171,6 +175,7 @@ describe("communication automation actions", () => {
 
     expect(mocks.createCommunicationAutomation).toHaveBeenCalledWith(
       expect.objectContaining({
+        completionReportEmails: ["membership@example.com\nsteve@example.com"],
         name: "First-time guests",
         reviewerUserIds: ["user_2", "user_3"],
         savedListViewId: "view_123",
@@ -193,6 +198,7 @@ describe("communication automation actions", () => {
     formData.set("name", "Returning guests");
     formData.set("reviewerUserId", "user_2");
     formData.append("reviewerUserId", "user_3");
+    formData.set("completionReportEmail", "membership@example.com");
     formData.set("scheduleCron", "30 8 * * 1");
     formData.set("suppressionMode", "COOLDOWN");
     formData.set("cooldownDays", "45");
@@ -208,6 +214,7 @@ describe("communication automation actions", () => {
 
     expect(mocks.updateCommunicationAutomation).toHaveBeenCalledWith(
       expect.objectContaining({
+        completionReportEmails: ["membership@example.com"],
         id: "automation_1",
         name: "Returning guests",
         reviewerUserIds: ["user_2", "user_3"],

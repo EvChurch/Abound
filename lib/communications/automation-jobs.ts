@@ -8,6 +8,7 @@ import {
   recordAcceptedAutomationRecipient,
   type EmailSender,
 } from "@/lib/communications/email-sender";
+import { renderCompletionReport } from "@/lib/communications/completion-reports";
 import { createCommunicationEmailSender } from "@/lib/communications/sender-factory";
 import {
   SYSTEM_EMAIL_HEADER_IMAGE_ALT,
@@ -422,6 +423,13 @@ export async function performCommunicationAutomationSendJob(
       where: { id: run.id },
     });
 
+    await sendCompletionReportForRun(
+      updated.id,
+      dependencies.emailSender ?? createCommunicationEmailSender(),
+      client,
+      now,
+    );
+
     return { runId: updated.id, status: updated.status };
   }
 
@@ -555,7 +563,98 @@ export async function performCommunicationAutomationSendJob(
     where: { id: run.id },
   });
 
+  await sendCompletionReportForRun(updated.id, sender, client, now);
+
   return { runId: updated.id, status: updated.status };
+}
+
+async function sendCompletionReportForRun(
+  runId: string,
+  emailSender: EmailSender,
+  client: PrismaClient,
+  now: Date,
+) {
+  const run = await client.communicationAutomationRun.findUnique({
+    include: {
+      automation: {
+        include: {
+          completionReportRecipients: {
+            orderBy: [{ email: "asc" }, { id: "asc" }],
+          },
+        },
+      },
+      recipients: {
+        include: {
+          person: {
+            select: {
+              photoRockId: true,
+            },
+          },
+        },
+        orderBy: [{ displayNameSnapshot: "asc" }, { id: "asc" }],
+      },
+    },
+    where: { id: runId },
+  });
+
+  if (
+    !run ||
+    run.completionReportSentAt ||
+    !["SENT", "PARTIAL", "FAILED", "SKIPPED"].includes(run.status) ||
+    (run.automation.completionReportRecipients ?? []).length === 0
+  ) {
+    return;
+  }
+  const reportRecipients = run.automation.completionReportRecipients ?? [];
+
+  const rendered = renderCompletionReport({
+    recipients: run.recipients,
+    workflowName: run.automation.name,
+  });
+
+  try {
+    for (const reportRecipient of reportRecipients) {
+      const result = await emailSender.send({
+        automationId: run.automationId,
+        from: senderFromAutomation(run.automation),
+        html: rendered.html,
+        recipientEmail: reportRecipient.email,
+        recipientId: `completion-report:${reportRecipient.id}`,
+        replyTo: run.automation.replyToEmail,
+        runId: run.id,
+        subject: rendered.subject,
+        tags: {
+          automationId: run.automationId,
+          reportRecipientId: reportRecipient.id,
+          runId: run.id,
+          type: "completion-report",
+        },
+        text: rendered.text,
+      });
+
+      if (result.status === "FAILED") {
+        throw new Error(result.errorMessage);
+      }
+    }
+
+    await client.communicationAutomationRun.updateMany({
+      data: {
+        completionReportFailedAt: null,
+        completionReportSentAt: now,
+      },
+      where: {
+        completionReportSentAt: null,
+        id: run.id,
+      },
+    });
+  } catch {
+    await client.communicationAutomationRun.update({
+      data: {
+        completionReportFailedAt: now,
+      },
+      where: { id: run.id },
+    });
+  }
 }
 
 export function scheduleKeyForAutomation(automationId: string) {

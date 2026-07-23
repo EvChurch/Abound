@@ -66,10 +66,20 @@ The first automation should feel operational and reviewable:
 
 **Authorization, Privacy, And Auditability**
 
-- R25. Auth0 authentication alone is insufficient; local app users and roles must authorize automation setup, review, exclusion, activation, and sending behavior.
-- R26. Finance-only giving amounts or individual giving aggregates must not appear in Pastoral Care messaging, previews, reviewer notices, or explanations.
+- R25. Auth0 authentication alone is insufficient; an active local app user profile must authorize automation setup, review, exclusion, activation, completion reporting, and sending behavior.
+- R26. Finance-only giving amounts or individual giving aggregates must not appear in Pastoral Care messaging, previews, reviewer notices, completion reports, or explanations.
 - R27. AI may assist with draft copy or explanations only as staff-reviewable output. It must not choose recipients, activate automations, exclude recipients, or send messages autonomously.
 - R28. The app must not write communication, connection-status, gift, or giving-lifecycle changes back to Rock as part of this automation workflow.
+
+**Completion Reporting**
+
+- R29. Staff can configure one or more arbitrary completion report email addresses for an automation, independent of the pre-send reviewers, including shared staff inboxes that are not local app users.
+- R30. After an automation run finishes attempting all recipient sends and reaches `SENT`, `PARTIAL`, `FAILED`, or `SKIPPED`, the app sends a completion report to the configured report recipients.
+- R31. The completion report lists each included person's name and email address and clearly distinguishes sent, skipped, excluded, failed, and pending/unknown outcomes using the run's frozen recipient snapshot and delivery state.
+- R32. For a first-time-giver or new-giver workflow, the completion report is intended to help membership staff review who entered the giving follow-up path, including people who were inactive and were separately reactivated upstream.
+- R33. Completion reports must avoid unnecessary donor-sensitive detail such as gift amounts, payment data, full provider payloads, or finance-only explanations.
+- R34. Completion report email subjects should use the report/workflow name so staff can recognize the summary in their inbox.
+- R35. Completion report delivery is non-critical operational notification; report send failure must not mark the automation run itself as failed.
 
 ## Success Criteria
 
@@ -77,6 +87,7 @@ The first automation should feel operational and reviewable:
 - The automation can run on a recurring schedule, freeze a recipient list, and notify selected reviewers before sending.
 - Reviewers can remove specific recipients without canceling the whole run.
 - Resend-accepted recipients are suppressed from receiving the same automation again unless the configured cooldown permits it.
+- Configured completion report recipients receive a post-run summary showing who was included and each recipient's outcome without exposing giving amounts or payment detail.
 - Staff can edit content safely through structured React Email template fields and verify the rendered message before activation.
 - Production delivery remains disabled until Resend configuration and communication preference/suppression ownership are verified.
 - Audit history explains who configured, activated, reviewed, excluded, and sent each scheduled run without exposing sensitive payloads.
@@ -87,6 +98,7 @@ The first automation should feel operational and reviewable:
 - Do not support SMS, push, direct mail, multi-channel journeys, A/B testing, or branching drip campaigns in the first version.
 - Do not build delay-after-entering-segment automation timing in the first version.
 - Do not send autonomously without a configured automation, selected reviewers, and the pre-send review window.
+- Do not use the completion report as the mechanism for mutating Rock membership, connection status, activity status, or giving lifecycle data.
 - Do not let staff define arbitrary HTML, arbitrary CSS, or arbitrary React template code in the app.
 - Do not mutate Rock people, connection statuses, gifts, communication records, or giving lifecycle state.
 - Do not use Rock as the production sender for this workflow unless a later requirements document changes the delivery boundary.
@@ -98,6 +110,8 @@ The first automation should feel operational and reviewable:
 - **Hybrid audience timing:** Each run evaluates the segment before reviewer notification, then freezes that list for the scheduled send.
 - **Reviewer exclusion, not mandatory per-recipient approval:** Selected reviewers can remove individuals during the review window while the automation remains useful.
 - **Resend is the intended production sender:** Resend acceptance is the suppression event for deciding whether someone already received the automation.
+- **Completion reporting is operational reporting, not membership automation:** Post-run reports give membership staff a reviewable list of new-giver workflow participants, including people separately reactivated upstream, but they do not decide or apply membership changes.
+- **Per-run reports first:** Completion reports send after each automation run finishes, not as a monthly digest. A monthly Rock data view or recurring report can remain separate if membership later wants aggregate reactivation review.
 - **Structured React Email editor:** Staff can customize content fields and tokens while developers keep layout control for email-client compatibility.
 
 ## Dependencies / Assumptions
@@ -120,7 +134,7 @@ The first automation should feel operational and reviewable:
 - [Affects R12, R13][Needs research] Which Resend API events and response states should count as accepted, failed, bounced, or suppressed for this product's audit model?
 - [Affects R12, R18][Needs research] Which system is authoritative for communication preferences, unsubscribes, bounces, and suppression before live Resend delivery is enabled?
 - [Affects R19-R24][Technical] Which React Email template fields and approved tokens should ship in the first `Joining` plus `Never Given` template?
-- [Affects R25][Product/technical] Should activation, reviewer exclusion, and production send use one `communications:manage` permission initially or split into separate local permissions?
+- [Affects R25][Product/technical] If the app later reintroduces differentiated staff permissions, should activation, reviewer exclusion, completion reporting, and production send use one `communications:manage` permission or split into separate local permissions?
 - [Affects R17, R26][Technical] What exact recipient and provider metadata is necessary for support without over-storing donor PII?
 
 ## Next Steps

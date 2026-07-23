@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     activatedAt: null,
     activatedByUserId: null,
     archivedAt: null,
+    completionReportRecipients: [],
     cooldownDays: null,
     createdAt: new Date("2026-07-02T00:00:00.000Z"),
     createdByUserId: "user_1",

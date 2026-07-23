@@ -105,6 +105,9 @@ export default async function EditCommunicationAutomationPage({
             <AutomationSetupForm
               action={updateCommunicationAutomationAction}
               automationId={automation.id}
+              defaultCompletionReportEmails={automation.completionReportRecipients.map(
+                (recipient) => recipient.email,
+              )}
               defaultName={automation.name}
               defaultCooldownDays={automation.cooldownDays}
               defaultRepeatSending={automation.suppressionMode}

@@ -22,6 +22,7 @@ describe("GraphQL communication automation schema", () => {
     expect(Object.keys(objectFields("CommunicationAutomation"))).toEqual(
       expect.arrayContaining([
         "activationReadinessIssues",
+        "completionReportRecipients",
         "reviewers",
         "runs",
         "templateFieldsJson",

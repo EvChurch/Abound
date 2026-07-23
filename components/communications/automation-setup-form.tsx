@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 
 import { createCommunicationAutomationFromSegmentAction } from "@/app/communications/actions";
+import { CompletionReportEmailField } from "@/components/communications/completion-report-email-field";
 import { RepeatSendingField } from "@/components/communications/repeat-sending-field";
 import { ScheduleCronField } from "@/components/communications/schedule-cron-field";
 import { TemplateMetadataFields } from "@/components/communications/template-editor";
@@ -12,6 +13,7 @@ import type { SavedListViewRecord } from "@/lib/list-views/saved-views";
 type AutomationSetupFormProps = {
   action?: (formData: FormData) => Promise<void>;
   automationId?: string;
+  defaultCompletionReportEmails?: string[];
   defaultName?: string;
   defaultReviewerUserIds?: string[];
   defaultSavedListViewId?: string;
@@ -27,6 +29,7 @@ type AutomationSetupFormProps = {
 export function AutomationSetupForm({
   action = createCommunicationAutomationFromSegmentAction,
   automationId,
+  defaultCompletionReportEmails = [],
   defaultName,
   defaultReviewerUserIds = [],
   defaultSavedListViewId,
@@ -119,6 +122,10 @@ export function AutomationSetupForm({
       <ScheduleCronField
         defaultValue={defaultScheduleCron}
         name="scheduleCron"
+      />
+      <CompletionReportEmailField
+        defaultEmails={defaultCompletionReportEmails}
+        formId={formId}
       />
       <div className="border-t border-app-border pt-4">
         <h2 className="text-[12px] font-semibold text-app-foreground">Email</h2>
