@@ -43,6 +43,13 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 - Use structured parsers and typed APIs for integration data. Avoid ad hoc string parsing when a schema or generated type can be used.
 - If a change affects donor data, auth, payments, sync behavior, or external APIs, document the failure modes and verification steps.
 
+## Deployment Standards
+
+- Production deployments must be managed through GitHub as the source of truth. Do not deploy local worktree archives directly to Railway production with `railway up`.
+- The expected production path is: commit changes, push a branch, open/review/merge through GitHub, then let the GitHub-connected Railway deployment flow deploy the merged source.
+- Railway CLI/MCP may be used for read-only inspection, logs, environment/status checks, and explicitly approved operational commands. It must not be used to bypass GitHub review or deploy unmerged local code to production.
+- Emergency production data repair or operational intervention requires explicit stakeholder approval, a written record of the command/query, and a follow-up GitHub-managed code path when code changes are involved.
+
 ## Compound Engineering Workflow
 
 - Compound Engineering is the default operating model for every agent step in this repo. Before acting, identify which Compound Engineering phase applies and use the matching skill or workflow.

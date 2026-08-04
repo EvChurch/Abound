@@ -120,6 +120,7 @@ Applied on 2026-08-04:
   - Web deployment `25a5a657-5646-407b-816b-874ada3af5a6`.
 - Reconciled production `GivingFact` attribution from synced Rock mirror tables.
 - Refreshed fund-scoped derived lifecycle and pledge recommendation snapshots.
+- Retrospective deployment note: this direct Railway deploy was not the desired operating model. Future production deploys must be managed through GitHub as the source of truth: branch, review/merge, then the GitHub-connected Railway deployment flow.
 
 Verification after reconciliation:
 
