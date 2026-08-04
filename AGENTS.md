@@ -46,7 +46,7 @@ This repo is for a church giving management platform. Rock RMS is the source of 
 ## Deployment Standards
 
 - Production deployments must be managed through GitHub as the source of truth. Do not deploy local worktree archives directly to Railway production with `railway up`.
-- The expected production path is: commit changes, push a branch, open/review/merge through GitHub, then let the GitHub-connected Railway deployment flow deploy the merged source.
+- The expected production path is: commit changes, push a branch, open/review/merge through GitHub, wait for CI to pass on `main`, and let the GitHub-connected Railway deployment flow deploy the merged `main` source.
 - Railway CLI/MCP may be used for read-only inspection, logs, environment/status checks, and explicitly approved operational commands. It must not be used to bypass GitHub review or deploy unmerged local code to production.
 - Emergency production data repair or operational intervention requires explicit stakeholder approval, a written record of the command/query, and a follow-up GitHub-managed code path when code changes are involved.
 
