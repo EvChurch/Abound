@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   deleteStaleRockGroupMemberIdentity,
   normalizeRockText,
+  resolveAuthorizedPersonRockId,
 } from "@/lib/sync/run-sync";
 
 describe("sync normalization", () => {
@@ -59,5 +60,45 @@ describe("sync normalization", () => {
         }),
       }),
     );
+  });
+
+  it("resolves authorized person through Rock alias ownership before primary aliases", () => {
+    const people = [
+      {
+        primaryAliasRockId: 9505,
+        rockId: 9498,
+      },
+      {
+        primaryAliasRockId: 13808,
+        rockId: 13801,
+      },
+    ];
+    const personRockIdByAliasRockId = new Map([
+      [9505, 9498],
+      [13808, 9498],
+    ]);
+
+    expect(
+      resolveAuthorizedPersonRockId({
+        aliasRockId: 13808,
+        people,
+        personRockIdByAliasRockId,
+      }),
+    ).toBe(9498);
+  });
+
+  it("falls back to primary alias matching when alias ownership is unavailable", () => {
+    expect(
+      resolveAuthorizedPersonRockId({
+        aliasRockId: 13808,
+        people: [
+          {
+            primaryAliasRockId: 13808,
+            rockId: 13801,
+          },
+        ],
+        personRockIdByAliasRockId: new Map(),
+      }),
+    ).toBe(13801);
   });
 });

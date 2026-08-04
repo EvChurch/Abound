@@ -1027,6 +1027,13 @@ function rockPersonSliceToNormalized(
   const personAliasIds = new Set(
     personAliases.map((personAlias) => personAlias.rockId),
   );
+  const personRockIdByAliasRockId = new Map(
+    personAliases.flatMap((personAlias) =>
+      personAlias.personRockId
+        ? [[personAlias.rockId, personAlias.personRockId]]
+        : [],
+    ),
+  );
 
   const householdMembers = slice.familyMembers.flatMap((member) => {
     if (
@@ -1161,7 +1168,12 @@ function rockPersonSliceToNormalized(
         : null,
     authorizedPersonRockId: people.find(
       (person) =>
-        person.primaryAliasRockId === transaction.AuthorizedPersonAliasId,
+        person.rockId ===
+        resolveAuthorizedPersonRockId({
+          aliasRockId: transaction.AuthorizedPersonAliasId,
+          people,
+          personRockIdByAliasRockId,
+        }),
     )?.rockId,
     scheduledTransactionRockId: transaction.ScheduledTransactionId,
     transactionDate: toDate(transaction.TransactionDateTime) ?? new Date(),
@@ -1236,7 +1248,12 @@ function rockPersonSliceToNormalized(
           : null,
       authorizedPersonRockId: people.find(
         (person) =>
-          person.primaryAliasRockId === transaction.AuthorizedPersonAliasId,
+          person.rockId ===
+          resolveAuthorizedPersonRockId({
+            aliasRockId: transaction.AuthorizedPersonAliasId,
+            people,
+            personRockIdByAliasRockId,
+          }),
       )?.rockId,
       transactionFrequencyValueRockId:
         transaction.TransactionFrequencyValueId &&
@@ -1409,6 +1426,28 @@ export function normalizeRockText(value: string | null | undefined) {
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : null;
+}
+
+export function resolveAuthorizedPersonRockId({
+  aliasRockId,
+  people,
+  personRockIdByAliasRockId,
+}: {
+  aliasRockId?: number | null;
+  people: Pick<
+    Prisma.RockPersonCreateManyInput,
+    "primaryAliasRockId" | "rockId"
+  >[];
+  personRockIdByAliasRockId: Map<number, number>;
+}) {
+  if (!aliasRockId) {
+    return undefined;
+  }
+
+  return (
+    personRockIdByAliasRockId.get(aliasRockId) ??
+    people.find((person) => person.primaryAliasRockId === aliasRockId)?.rockId
+  );
 }
 
 function centsToDecimal(cents: number) {
