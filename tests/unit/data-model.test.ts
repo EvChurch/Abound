@@ -137,6 +137,7 @@ describe("data model guardrails", () => {
     expect(personBlock).toContain("givingGroupRockId");
     expect(personBlock).toContain("givingId");
     expect(personBlock).toContain("givingLeaderRockId");
+    expect(personBlock).toContain("mergedIntoPersonRockId");
     expect(personBlock).toContain("connectionStatusValueRockId");
     expect(personBlock).toContain("PersonConnectionStatus");
     expect(householdBlock).toContain("groupTypeRockId");
@@ -226,5 +227,28 @@ describe("data model guardrails", () => {
         /lastSyncRunId\s+String/,
       );
     }
+  });
+
+  it("tracks Rock person alias movement as an audit trail", () => {
+    const movementBlock = modelBlock("RockPersonAliasMovement");
+    const syncRunBlock = modelBlock("SyncRun");
+    const aliasBlock = modelBlock("RockPersonAlias");
+    const personBlock = modelBlock("RockPerson");
+
+    expect(movementBlock).toBeTruthy();
+    expect(movementBlock).toContain("aliasRockId");
+    expect(movementBlock).toContain("fromPersonRockId");
+    expect(movementBlock).toContain("toPersonRockId");
+    expect(movementBlock).toContain("syncRunId");
+    expect(movementBlock).toContain("@@index([aliasRockId])");
+    expect(movementBlock).toContain("@@index([fromPersonRockId])");
+    expect(movementBlock).toContain("@@index([toPersonRockId])");
+    expect(syncRunBlock).toContain("personAliasMovements");
+    expect(aliasBlock).toContain("movements");
+    expect(personBlock).toContain("aliasMovementsFrom");
+    expect(personBlock).toContain("aliasMovementsTo");
+    expect(personBlock).toContain("mergedIntoPerson");
+    expect(personBlock).toContain("mergedPeople");
+    expect(personBlock).toContain("@@index([mergedIntoPersonRockId])");
   });
 });

@@ -124,6 +124,27 @@ describe("people list view", () => {
                 },
               },
             }),
+            expect.objectContaining({
+              mergedIntoPersonRockId: null,
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("excludes Rock people that have been merged into another person", async () => {
+    const prisma = client();
+
+    await listPeople({ first: 10 }, adminUser, prisma);
+
+    expect(prisma.rockPerson.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              mergedIntoPersonRockId: null,
+            },
           ]),
         }),
       }),
@@ -252,7 +273,12 @@ describe("people list view", () => {
           { lastName: { nulls: "last", sort: "asc" } },
           { rockId: "asc" },
         ],
-        where: { rockId: { in: [101, 202] } },
+        where: {
+          AND: [
+            { mergedIntoPersonRockId: null },
+            { rockId: { in: [101, 202] } },
+          ],
+        },
       }),
     );
     expect(connection.edges.map((edge) => edge.node.displayName)).toEqual([

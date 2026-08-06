@@ -73,6 +73,7 @@ const person = {
   lastSyncedAt: new Date("2026-04-18T10:01:00.000Z"),
   lastSyncRunId: "sync_1",
   lastName: "Donor",
+  mergedIntoPersonRockId: null,
   nickName: "Jane",
   photoRockId: 12345,
   primaryAliasRockId: 1001,
@@ -322,6 +323,49 @@ describe("people profile service", () => {
 
     expect(profile?.communications).toHaveLength(2);
     expect(client.communicationAutomationRecipient.findMany).toHaveBeenCalled();
+  });
+
+  it("follows merged-away people to the surviving Rock person", async () => {
+    const client = profileClient();
+    const findUnique = vi.fn(async (args: { where: { rockId?: number } }) =>
+      args.where.rockId === 15588
+        ? {
+            ...person,
+            mergedIntoPersonRockId: 910001,
+            rockId: 15588,
+          }
+        : person,
+    );
+    (client.rockPerson.findUnique as unknown as typeof findUnique) = findUnique;
+
+    const profile = await getRockPersonProfile(
+      { rockId: 15588 },
+      thirdAdminUser,
+      client,
+    );
+
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          rockId: 15588,
+        },
+      }),
+    );
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          rockId: 910001,
+        },
+      }),
+    );
+    expect(profile?.rockId).toBe(910001);
+    expect(client.givingFact.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          personRockId: 910001,
+        }),
+      }),
+    );
   });
 
   it("falls back to household giving for adult people with no direct gifts", async () => {
