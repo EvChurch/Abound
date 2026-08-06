@@ -210,6 +210,7 @@ const personProfileSelect = {
   lastSyncedAt: true,
   lastSyncRunId: true,
   lastName: true,
+  mergedIntoPersonRockId: true,
   nickName: true,
   photoRockId: true,
   primaryAliasRockId: true,
@@ -273,6 +274,17 @@ export async function getRockPersonProfile(
 
   if (!person) {
     return null;
+  }
+
+  if (
+    person.mergedIntoPersonRockId &&
+    person.mergedIntoPersonRockId !== input.rockId
+  ) {
+    return getRockPersonProfile(
+      { rockId: person.mergedIntoPersonRockId },
+      actor,
+      client,
+    );
   }
 
   const [staffTasks, communications, givingSummary, pledgeEditor] =

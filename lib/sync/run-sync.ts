@@ -205,6 +205,8 @@ async function persistNormalizedSync(
           ...person,
           primaryAliasRockId: null,
           givingLeaderRockId: null,
+          mergedAt: null,
+          mergedIntoPersonRockId: null,
         };
 
         await tx.rockPerson.upsert({
@@ -222,11 +224,15 @@ async function persistNormalizedSync(
       chunkSize,
       progress,
       async (tx, personAlias) => {
+        await recordRockPersonAliasMovement(tx, personAlias);
+
         await tx.rockPersonAlias.upsert({
           where: { rockId: personAlias.rockId },
           create: personAlias,
           update: personAlias,
         });
+
+        await resolveRockPersonPrimaryAliasOwnership(tx, personAlias);
       },
     );
 
@@ -1617,6 +1623,229 @@ export async function deleteStaleRockGroupMemberIdentity(
       },
     },
   });
+}
+
+export async function recordRockPersonAliasMovement(
+  tx: RockPersonMergeTransaction & Pick<PrismaTransaction, "rockPersonAlias">,
+  personAlias: Pick<
+    Prisma.RockPersonAliasCreateManyInput,
+    "personRockId" | "rockId" | "sourceUpdatedAt" | "lastSyncRunId"
+  >,
+) {
+  const existingAlias = await tx.rockPersonAlias.findUnique({
+    where: {
+      rockId: personAlias.rockId,
+    },
+    select: {
+      personRockId: true,
+    },
+  });
+
+  if (!existingAlias) {
+    return;
+  }
+
+  await resolveRockPersonAliasMovement(tx, {
+    aliasRockId: personAlias.rockId,
+    fromPersonRockId: existingAlias.personRockId,
+    sourceUpdatedAt: personAlias.sourceUpdatedAt,
+    syncRunId: personAlias.lastSyncRunId,
+    toPersonRockId: personAlias.personRockId ?? null,
+  });
+}
+
+export async function resolveRockPersonAliasMovement(
+  tx: RockPersonMergeTransaction,
+  movement: {
+    aliasRockId: number;
+    fromPersonRockId?: number | null;
+    sourceUpdatedAt?: Date | string | null;
+    syncRunId: string;
+    toPersonRockId?: number | null;
+  },
+) {
+  if (
+    !movement.fromPersonRockId ||
+    !movement.toPersonRockId ||
+    movement.fromPersonRockId === movement.toPersonRockId
+  ) {
+    return;
+  }
+
+  await tx.rockPersonAliasMovement.create({
+    data: {
+      aliasRockId: movement.aliasRockId,
+      fromPersonRockId: movement.fromPersonRockId,
+      toPersonRockId: movement.toPersonRockId,
+      sourceUpdatedAt: movement.sourceUpdatedAt,
+      syncRunId: movement.syncRunId,
+    },
+  });
+
+  await transferLocalRockPersonOwnership(tx, {
+    fromPersonRockId: movement.fromPersonRockId,
+    toPersonRockId: movement.toPersonRockId,
+  });
+
+  await tx.rockPerson.updateMany({
+    where: {
+      rockId: movement.fromPersonRockId,
+    },
+    data: {
+      mergedAt: new Date(),
+      mergedIntoPersonRockId: movement.toPersonRockId,
+    },
+  });
+}
+
+export async function resolveRockPersonPrimaryAliasOwnership(
+  tx: RockPersonMergeTransaction,
+  personAlias: Pick<
+    Prisma.RockPersonAliasCreateManyInput,
+    "personRockId" | "rockId"
+  >,
+) {
+  if (!personAlias.personRockId) {
+    return;
+  }
+
+  const stalePeople = await tx.rockPerson.findMany({
+    where: {
+      primaryAliasRockId: personAlias.rockId,
+      rockId: {
+        not: personAlias.personRockId,
+      },
+    },
+    select: {
+      rockId: true,
+    },
+  });
+
+  for (const stalePerson of stalePeople) {
+    await transferLocalRockPersonOwnership(tx, {
+      fromPersonRockId: stalePerson.rockId,
+      toPersonRockId: personAlias.personRockId,
+    });
+  }
+
+  await tx.rockPerson.updateMany({
+    where: {
+      rockId: {
+        in: stalePeople.map((person) => person.rockId),
+      },
+    },
+    data: {
+      mergedAt: new Date(),
+      mergedIntoPersonRockId: personAlias.personRockId,
+    },
+  });
+}
+
+type RockPersonMergeTransaction = Pick<
+  PrismaTransaction,
+  | "$executeRaw"
+  | "appUser"
+  | "communicationAutomationRecipient"
+  | "communicationPrep"
+  | "givingPledge"
+  | "rockPerson"
+  | "rockPersonAliasMovement"
+  | "staffTask"
+>;
+
+export async function transferLocalRockPersonOwnership(
+  tx: RockPersonMergeTransaction,
+  {
+    fromPersonRockId,
+    toPersonRockId,
+  }: {
+    fromPersonRockId: number;
+    toPersonRockId: number;
+  },
+) {
+  await Promise.all([
+    tx.appUser.updateMany({
+      where: {
+        rockPersonId: String(fromPersonRockId),
+      },
+      data: {
+        rockPersonId: String(toPersonRockId),
+      },
+    }),
+    tx.staffTask.updateMany({
+      where: {
+        personRockId: fromPersonRockId,
+      },
+      data: {
+        personRockId: toPersonRockId,
+      },
+    }),
+    tx.communicationPrep.updateMany({
+      where: {
+        personRockId: fromPersonRockId,
+      },
+      data: {
+        personRockId: toPersonRockId,
+      },
+    }),
+    tx.communicationAutomationRecipient.updateMany({
+      where: {
+        personRockId: fromPersonRockId,
+        resource: "PERSON",
+      },
+      data: {
+        personRockId: toPersonRockId,
+        recipientKey: `PERSON:${toPersonRockId}`,
+      },
+    }),
+    tx.givingPledge.updateMany({
+      where: {
+        personRockId: fromPersonRockId,
+      },
+      data: {
+        personRockId: toPersonRockId,
+      },
+    }),
+  ]);
+
+  await tx.$executeRaw`
+    DELETE FROM "GivingPledgeRecommendationDecision" old_decision
+    WHERE old_decision."personRockId" = ${fromPersonRockId}
+      AND EXISTS (
+        SELECT 1
+        FROM "GivingPledgeRecommendationDecision" survivor_decision
+        WHERE survivor_decision."personRockId" = ${toPersonRockId}
+          AND survivor_decision."accountRockId" = old_decision."accountRockId"
+          AND survivor_decision."status" = old_decision."status"
+      )
+  `;
+
+  await tx.$executeRaw`
+    UPDATE "GivingPledgeRecommendationDecision"
+    SET "personRockId" = ${toPersonRockId}
+    WHERE "personRockId" = ${fromPersonRockId}
+  `;
+
+  await tx.$executeRaw`
+    DELETE FROM "CommunicationAutomationSuppression" old_suppression
+    WHERE old_suppression."personRockId" = ${fromPersonRockId}
+      AND old_suppression."resource" = 'PERSON'
+      AND EXISTS (
+        SELECT 1
+        FROM "CommunicationAutomationSuppression" survivor_suppression
+        WHERE survivor_suppression."automationId" = old_suppression."automationId"
+          AND survivor_suppression."recipientKey" = ${`PERSON:${toPersonRockId}`}
+      )
+  `;
+
+  await tx.$executeRaw`
+    UPDATE "CommunicationAutomationSuppression"
+    SET
+      "personRockId" = ${toPersonRockId},
+      "recipientKey" = ${`PERSON:${toPersonRockId}`}
+    WHERE "personRockId" = ${fromPersonRockId}
+      AND "resource" = 'PERSON'
+  `;
 }
 
 async function persistSyncIssues(

@@ -336,7 +336,9 @@ export async function listPeopleByRockIds(
       { rockId: "asc" },
     ],
     select: personListSelect,
-    where: { rockId: { in: rockIds } },
+    where: {
+      AND: [activeRockPersonWhere(), { rockId: { in: rockIds } }],
+    },
   });
   const personRockIds = records.map((record) => record.rockId);
   const givingSummaries = await givingSummariesByPerson(personRockIds, client);
@@ -420,7 +422,7 @@ function filterToPersonWhere(
     ? currentHouseholdMembershipWhere()
     : adultWhere();
 
-  return { AND: [demographicWhere, where] };
+  return { AND: [activeRockPersonWhere(), demographicWhere, where] };
 }
 
 function withRockIdFilter(
@@ -432,6 +434,12 @@ function withRockIdFilter(
   }
 
   return { AND: [where, { rockId: { in: rockIds } }] };
+}
+
+function activeRockPersonWhere(): Prisma.RockPersonWhereInput {
+  return {
+    mergedIntoPersonRockId: null,
+  };
 }
 
 function intersectRockIds(left: number[] | null, right: number[] | null) {

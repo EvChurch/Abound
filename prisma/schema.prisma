@@ -292,6 +292,7 @@ model SyncRun {
   groupRoles                           RockGroupRole[]
   definedValues                        RockDefinedValue[]
   personAliases                        RockPersonAlias[]
+  personAliasMovements                 RockPersonAliasMovement[]
   campuses                             RockCampus[]
   people                               RockPerson[]
   households                           RockHousehold[]
@@ -414,9 +415,31 @@ model RockPersonAlias {
   primaryForPeople         RockPerson[]                        @relation("PersonPrimaryAlias")
   authorizedTransactions   RockFinancialTransaction[]
   authorizedScheduledGifts RockFinancialScheduledTransaction[]
+  movements                RockPersonAliasMovement[]
 
   @@index([personRockId])
   @@index([lastSyncRunId])
+}
+
+model RockPersonAliasMovement {
+  id               String    @id @default(cuid())
+  aliasRockId      Int
+  fromPersonRockId Int?
+  toPersonRockId   Int?
+  detectedAt       DateTime  @default(now())
+  sourceUpdatedAt  DateTime?
+  syncRunId        String
+
+  alias      RockPersonAlias @relation(fields: [aliasRockId], references: [rockId], onDelete: Cascade)
+  fromPerson RockPerson?     @relation("AliasMovedFromPerson", fields: [fromPersonRockId], references: [rockId], onDelete: SetNull)
+  toPerson   RockPerson?     @relation("AliasMovedToPerson", fields: [toPersonRockId], references: [rockId], onDelete: SetNull)
+  syncRun    SyncRun         @relation(fields: [syncRunId], references: [id], onDelete: Cascade)
+
+  @@index([aliasRockId])
+  @@index([fromPersonRockId])
+  @@index([toPersonRockId])
+  @@index([syncRunId])
+  @@index([detectedAt])
 }
 
 model RockCampus {
@@ -461,6 +484,8 @@ model RockPerson {
   emailActive                 Boolean?
   recordStatusValueRockId     Int?
   connectionStatusValueRockId Int?
+  mergedIntoPersonRockId      Int?
+  mergedAt                    DateTime?
   deceased                    Boolean   @default(false)
   sourceUpdatedAt             DateTime?
   firstSyncedAt               DateTime  @default(now())
@@ -474,7 +499,11 @@ model RockPerson {
   givingHousehold                     RockHousehold?                       @relation("PersonGivingHousehold", fields: [givingGroupRockId], references: [rockId])
   givingLeader                        RockPerson?                          @relation("PersonGivingLeader", fields: [givingLeaderRockId], references: [rockId])
   givingMembers                       RockPerson[]                         @relation("PersonGivingLeader")
+  mergedIntoPerson                    RockPerson?                          @relation("PersonMergeResolution", fields: [mergedIntoPersonRockId], references: [rockId])
+  mergedPeople                        RockPerson[]                         @relation("PersonMergeResolution")
   aliases                             RockPersonAlias[]                    @relation("PersonAliases")
+  aliasMovementsFrom                  RockPersonAliasMovement[]            @relation("AliasMovedFromPerson")
+  aliasMovementsTo                    RockPersonAliasMovement[]            @relation("AliasMovedToPerson")
   recordStatus                        RockDefinedValue?                    @relation("PersonRecordStatus", fields: [recordStatusValueRockId], references: [rockId])
   connectionStatus                    RockDefinedValue?                    @relation("PersonConnectionStatus", fields: [connectionStatusValueRockId], references: [rockId])
   householdMembers                    RockHouseholdMember[]
@@ -496,6 +525,7 @@ model RockPerson {
   @@index([givingGroupRockId])
   @@index([givingId])
   @@index([givingLeaderRockId])
+  @@index([mergedIntoPersonRockId])
   @@index([recordStatusValueRockId])
   @@index([connectionStatusValueRockId])
   @@index([primaryCampusRockId])
