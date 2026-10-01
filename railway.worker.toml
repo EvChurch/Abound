@@ -1,11 +1,11 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm prisma:generate && pnpm build"
+buildCommand = "pnpm prisma:generate && pnpm build:workers"
 watchPatterns = []
 
 [deploy]
 preDeployCommand = "echo 'Skipping database migrations for worker'"
-startCommand = "pnpm worker"
+startCommand = "node dist/workers/worker.mjs"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 runtime = "V2"

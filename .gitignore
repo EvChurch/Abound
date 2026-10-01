@@ -3,6 +3,7 @@
 !.env.example
 
 .next/
+dist/
 coverage/
 node_modules/
 .pnp-store/
