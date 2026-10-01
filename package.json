@@ -31,7 +31,9 @@
     "maildev": "maildev --web 1080 --smtp 1025",
     "communications:schedule": "tsx scripts/communication-automation-schedule.ts",
     "communications:worker": "tsx scripts/communication-automation-worker.ts",
-    "communications:worker:maildev": "COMMUNICATION_EMAIL_SENDER=maildev tsx scripts/communication-automation-worker.ts"
+    "communications:worker:maildev": "COMMUNICATION_EMAIL_SENDER=maildev tsx scripts/communication-automation-worker.ts",
+    "build:workers": "node scripts/build-workers.mjs",
+    "test:workers": "pnpm build:workers && node --test tests/integration/worker-runtime.test.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "4.16.2",
@@ -71,6 +73,7 @@
     "@types/react": "19.2.13",
     "@types/react-dom": "19.2.3",
     "dotenv": "17.2.3",
+    "esbuild": "0.28.1",
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.6",
     "husky": "9.1.7",
