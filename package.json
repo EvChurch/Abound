@@ -88,7 +88,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@react-email/ui>next": "16.3.8"
+      "@react-email/ui>next": "16.3.8",
+      "@maildev/smtp>nodemailer": "10.0.9"
     }
   }
 }

@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@react-email/ui>next': 16.3.8
+  '@maildev/smtp>nodemailer': 10.0.9
 
 importers:
 
@@ -4419,12 +4420,12 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
+  nodemailer@10.0.9:
+    resolution: {integrity: sha512-BF0qcyplCwp+jMk6HCjFykBz/YhhZSsxrARhOldLwFWH+8kGjQsd2WIMIZhqEuyXRoGFi0ONbDeWDMDoL8MhLw==}
+    engines: {node: '>=20.0.0'}
+
   nodemailer@9.0.3:
     resolution: {integrity: sha512-n+YP+NKwR5zRWa60k3GiQ6Q3B4KXCoAw40dAKeCtYn020iNN74aWK2liXIC3ZEATeGql7we3tE3t8QwhY0eskw==}
-    engines: {node: '>=6.0.0'}
-
-  nodemailer@9.1.1:
-    resolution: {integrity: sha512-izw9mVKFix6YSnC9eLgV6g1opl9DUlRio9ZNcq+Wu9Ujn2UwF+8Nl0B8nz22kEC+CTZCvinkxwJ0DeFbb6NwcQ==}
     engines: {node: '>=6.0.0'}
 
   non-error@0.1.0:
@@ -6568,7 +6569,7 @@ snapshots:
       dompurify: 3.4.16
       jsdom: 26.1.0
       mailparser: 3.9.14
-      nodemailer: 9.1.1
+      nodemailer: 10.0.9
       smtp-server: 3.19.2
       wildstring: 1.0.9
     transitivePeerDependencies:
@@ -10030,9 +10031,9 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  nodemailer@9.0.3: {}
+  nodemailer@10.0.9: {}
 
-  nodemailer@9.1.1: {}
+  nodemailer@9.0.3: {}
 
   non-error@0.1.0: {}
 
