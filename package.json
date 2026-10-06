@@ -64,7 +64,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.2.1",
+    "@tailwindcss/postcss": "4.3.3",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.3",
     "@types/node": "25.9.9",
@@ -81,7 +81,7 @@
     "maildev": "3.0.0-rc.1",
     "prettier": "3.9.9",
     "prisma": "7.10.0",
-    "tailwindcss": "4.2.1",
+    "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
