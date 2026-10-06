@@ -247,11 +247,7 @@ export function renderCompletionReport(input: CompletionReportInput) {
 }
 
 type CompletionReportOutcome =
-  | "Excluded"
-  | "Failed"
-  | "Pending"
-  | "Sent"
-  | "Skipped";
+  "Excluded" | "Failed" | "Pending" | "Sent" | "Skipped";
 
 function outcomeForRecipient(status: string): CompletionReportOutcome {
   if (status === "ACCEPTED" || status === "DELIVERED") {
