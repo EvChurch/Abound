@@ -67,7 +67,7 @@
     "@tailwindcss/postcss": "4.2.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.3",
-    "@types/node": "25.5.0",
+    "@types/node": "25.9.9",
     "@types/nodemailer": "8.0.1",
     "@types/pg": "8.15.6",
     "@types/react": "19.2.13",
