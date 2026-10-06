@@ -176,9 +176,9 @@ const communicationPrepType = builder
   });
 
 const communicationAutomationReviewerType = builder
-  .objectRef<
-    CommunicationAutomationRecord["reviewers"][number]
-  >("CommunicationAutomationReviewer")
+  .objectRef<CommunicationAutomationRecord["reviewers"][number]>(
+    "CommunicationAutomationReviewer",
+  )
   .implement({
     fields: (t) => ({
       email: t.string({
@@ -228,9 +228,9 @@ const communicationAutomationRecipientType = builder
   });
 
 const communicationAutomationRecipientEventType = builder
-  .objectRef<
-    CommunicationAutomationRecord["runs"][number]["events"][number]
-  >("CommunicationAutomationRecipientEvent")
+  .objectRef<CommunicationAutomationRecord["runs"][number]["events"][number]>(
+    "CommunicationAutomationRecipientEvent",
+  )
   .implement({
     fields: (t) => ({
       eventType: t.field({
@@ -257,9 +257,9 @@ const communicationAutomationRecipientEventType = builder
   });
 
 const communicationAutomationRunType = builder
-  .objectRef<
-    CommunicationAutomationRecord["runs"][number]
-  >("CommunicationAutomationRun")
+  .objectRef<CommunicationAutomationRecord["runs"][number]>(
+    "CommunicationAutomationRun",
+  )
   .implement({
     fields: (t) => ({
       deliverableCount: t.exposeInt("deliverableCount"),

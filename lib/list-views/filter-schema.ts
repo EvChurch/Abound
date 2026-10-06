@@ -34,12 +34,7 @@ export type RelativeDateValue = {
 };
 
 export type FilterValue =
-  | boolean
-  | number
-  | string
-  | null
-  | RelativeDateValue
-  | FilterValue[];
+  boolean | number | string | null | RelativeDateValue | FilterValue[];
 
 export type FilterCondition = {
   field: string;
