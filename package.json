@@ -80,7 +80,7 @@
     "jsdom": "29.1.1",
     "maildev": "3.0.0-rc.1",
     "prettier": "3.9.9",
-    "prisma": "7.7.0",
+    "prisma": "7.10.0",
     "tailwindcss": "4.2.1",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
