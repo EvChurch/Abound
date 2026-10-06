@@ -41,9 +41,9 @@ const syncIssueType = builder
   });
 
 const syncedCountsType = builder
-  .objectRef<
-    Awaited<ReturnType<typeof getSyncStatusSummary>>["syncedCounts"]
-  >("SyncedCounts")
+  .objectRef<Awaited<ReturnType<typeof getSyncStatusSummary>>["syncedCounts"]>(
+    "SyncedCounts",
+  )
   .implement({
     fields: (t) => ({
       people: t.exposeInt("people"),

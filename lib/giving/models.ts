@@ -8,10 +8,7 @@ export const GROUP_MEMBER_STATUS = {
 } as const;
 
 export type GiftReliabilityKind =
-  | "ONE_OFF"
-  | "SCHEDULED_RECURRING"
-  | "INFERRED_RECURRING"
-  | "PLEDGE";
+  "ONE_OFF" | "SCHEDULED_RECURRING" | "INFERRED_RECURRING" | "PLEDGE";
 
 export type GiftReliabilityInput = {
   scheduledTransactionRockId?: number | null;

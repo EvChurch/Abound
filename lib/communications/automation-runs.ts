@@ -36,9 +36,7 @@ export type ExcludeAutomationRecipientInput = {
 };
 
 export type AutomationRecipientReviewDecision =
-  | "SEND"
-  | "SKIP_BATCH"
-  | "PERMANENTLY_EXCLUDE";
+  "SEND" | "SKIP_BATCH" | "PERMANENTLY_EXCLUDE";
 
 export type UpdateAutomationRecipientReviewDecisionInput = {
   decision: AutomationRecipientReviewDecision;

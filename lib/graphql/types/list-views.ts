@@ -90,9 +90,9 @@ const listCampusType = builder
   });
 
 const listHouseholdSummaryType = builder
-  .objectRef<
-    NonNullable<PersonListRow["primaryHousehold"]>
-  >("ListHouseholdSummary")
+  .objectRef<NonNullable<PersonListRow["primaryHousehold"]>>(
+    "ListHouseholdSummary",
+  )
   .implement({
     fields: (t) => ({
       active: t.exposeBoolean("active"),
@@ -168,9 +168,9 @@ const personListRowType = builder
   });
 
 const householdPrimaryContactType = builder
-  .objectRef<
-    HouseholdListRow["primaryContacts"][number]
-  >("HouseholdPrimaryContact")
+  .objectRef<HouseholdListRow["primaryContacts"][number]>(
+    "HouseholdPrimaryContact",
+  )
   .implement({
     fields: (t) => ({
       displayName: t.exposeString("displayName"),

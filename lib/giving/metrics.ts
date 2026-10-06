@@ -80,9 +80,7 @@ export type GivingPerAdult = {
 };
 
 export type DashboardLifecycleKind =
-  | GivingLifecycleKind
-  | "HEALTHY"
-  | "NEVER_GIVEN";
+  GivingLifecycleKind | "HEALTHY" | "NEVER_GIVEN";
 
 export type LifecycleCounts = Record<DashboardLifecycleKind, number>;
 
@@ -93,10 +91,7 @@ export type ConnectionStatusLifecycleSummary = {
 };
 
 export type HouseholdMovementKind =
-  | "DROPPED"
-  | "NEW"
-  | "REACTIVATED"
-  | "RETAINED";
+  "DROPPED" | "NEW" | "REACTIVATED" | "RETAINED";
 
 export type HouseholdMovementSummary = {
   campusSummaries: CampusHouseholdMovementSummary[];

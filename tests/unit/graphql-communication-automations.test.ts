@@ -60,8 +60,7 @@ describe("GraphQL communication automation schema", () => {
 
 function objectFields(typeName: string) {
   const type = schema.getType(typeName) as
-    | { getFields?: () => Record<string, unknown> }
-    | undefined;
+    { getFields?: () => Record<string, unknown> } | undefined;
 
   return type?.getFields?.() ?? {};
 }
