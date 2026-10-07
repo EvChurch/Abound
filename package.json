@@ -36,7 +36,7 @@
     "test:workers": "pnpm build:workers && node --test tests/integration/worker-runtime.test.mjs"
   },
   "dependencies": {
-    "@auth0/nextjs-auth0": "4.16.2",
+    "@auth0/nextjs-auth0": "4.31.1",
     "@envelop/core": "5.5.1",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@pothos/core": "4.12.0",
