@@ -44,11 +44,7 @@ export type RockFixtureCampus = {
 };
 
 export type RockFixtureGroupType =
-  | "family"
-  | "small_group"
-  | "ministry"
-  | "serving_team"
-  | "unknown";
+  "family" | "small_group" | "ministry" | "serving_team" | "unknown";
 
 export type RockFixtureGroup = {
   fixtureId: string;
@@ -96,11 +92,7 @@ export type RockFixtureGift = {
 };
 
 export type RockFixtureRecurringGiftStatus =
-  | "active"
-  | "paused"
-  | "canceled"
-  | "failed"
-  | "unknown";
+  "active" | "paused" | "canceled" | "failed" | "unknown";
 
 export type RockFixtureRecurringGift = {
   fixtureId: string;

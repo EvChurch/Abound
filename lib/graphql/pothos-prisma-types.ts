@@ -390,11 +390,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "lastSyncRun"
-      | "households"
-      | "groups"
-      | "groupRoles"
-      | "groupMembers";
+      "lastSyncRun" | "households" | "groups" | "groupRoles" | "groupMembers";
     ListRelations: "households" | "groups" | "groupRoles" | "groupMembers";
     Relations: {
       lastSyncRun: {
@@ -435,10 +431,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "lastSyncRun"
-      | "groupType"
-      | "householdMembers"
-      | "groupMembers";
+      "lastSyncRun" | "groupType" | "householdMembers" | "groupMembers";
     ListRelations: "householdMembers" | "groupMembers";
     Relations: {
       lastSyncRun: {
@@ -620,11 +613,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "lastSyncRun"
-      | "people"
-      | "households"
-      | "groups"
-      | "financialAccounts";
+      "lastSyncRun" | "people" | "households" | "groups" | "financialAccounts";
     ListRelations: "people" | "households" | "groups" | "financialAccounts";
     Relations: {
       lastSyncRun: {
@@ -1042,11 +1031,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "lastSyncRun"
-      | "group"
-      | "person"
-      | "groupType"
-      | "groupRole";
+      "lastSyncRun" | "group" | "person" | "groupType" | "groupRole";
     ListRelations: never;
     Relations: {
       lastSyncRun: {
@@ -1472,10 +1457,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "lastSyncRun"
-      | "scheduledTransaction"
-      | "account"
-      | "givingFacts";
+      "lastSyncRun" | "scheduledTransaction" | "account" | "givingFacts";
     ListRelations: "givingFacts";
     Relations: {
       lastSyncRun: {
@@ -1783,12 +1765,7 @@ export default interface PrismaTypes {
     Create: {};
     Update: {};
     RelationName:
-      | "automation"
-      | "run"
-      | "person"
-      | "household"
-      | "excludedBy"
-      | "events";
+      "automation" | "run" | "person" | "household" | "excludedBy" | "events";
     ListRelations: "events";
     Relations: {
       automation: {
