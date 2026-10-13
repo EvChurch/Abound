@@ -106,7 +106,11 @@ RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
-RUN uv python install 3.13 --default
+# Only UV manages packages here; pip and its optional bootstrap are unused.
+# Remove them in the install layer so their vendored dependencies are not shipped.
+RUN uv python install 3.13 --default && \
+  uv pip uninstall --python "$(uv python find 3.13 --managed-python)" --break-system-packages pip && \
+  python3 -c 'import pathlib, shutil, sysconfig; shutil.rmtree(pathlib.Path(sysconfig.get_path("stdlib")) / "ensurepip")'
 
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
