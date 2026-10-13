@@ -78,7 +78,7 @@
     "eslint-config-next": "16.3.8",
     "husky": "9.1.7",
     "jsdom": "29.1.1",
-    "maildev": "3.0.0-rc.1",
+    "maildev": "3.0.0",
     "prettier": "3.9.9",
     "prisma": "7.10.0",
     "tailwindcss": "4.3.3",
@@ -88,7 +88,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@react-email/ui>next": "16.3.8"
+      "@react-email/ui>next": "16.3.8",
+      "@maildev/smtp>nodemailer": "10.0.9"
     }
   }
 }
