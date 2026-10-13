@@ -1,5 +1,10 @@
 // @vitest-environment node
 import { realpathSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { MailDev } from "maildev";
+import type { Transporter } from "nodemailer";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -38,3 +43,70 @@ describe("Maildev SMTP address parser security", () => {
     ]);
   });
 });
+
+it("captures SMTP MIME messages with the scoped Nodemailer client", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "abound-maildev-contract-"));
+  const server = new MailDev({
+    smtp: 0,
+    web: 0,
+    ip: "127.0.0.1",
+    webIp: "127.0.0.1",
+    mailDirectory: directory,
+    autoRelay: false,
+    silent: true,
+  });
+  try {
+    await server.start();
+    const { smtp, api } = server.getServers()!;
+    expect(smtp).not.toBeNull();
+    expect(api).not.toBeNull();
+    const base = `http://127.0.0.1:${api!.getPort()}/api`;
+    expect((await fetch(`${base}/healthz`)).ok).toBe(true);
+    const createTransport = smtpRequire("nodemailer")
+      .createTransport as (options: {
+      host: string;
+      port: number;
+      ignoreTLS: boolean;
+    }) => Transporter;
+    const client = createTransport({
+      host: "127.0.0.1",
+      port: smtp!.getPort(),
+      ignoreTLS: true,
+    });
+    try {
+      await client.sendMail({
+        from: '"Fixture Sender" <sender@example.invalid>',
+        to: "receiver@example.invalid",
+        subject: "isolated SMTP compatibility fixture",
+        text: "synthetic body",
+        attachments: [
+          { filename: "fixture.txt", content: "synthetic attachment" },
+        ],
+      });
+    } finally {
+      client.close();
+    }
+    const emails = (await (await fetch(`${base}/email`)).json()) as Array<{
+      id: string;
+      subject: string;
+      to: Array<{ address: string }>;
+      text: string;
+      attachments: Array<{ filename: string; generatedFileName: string }>;
+    }>;
+    expect(emails).toHaveLength(1);
+    expect(emails[0].subject).toBe("isolated SMTP compatibility fixture");
+    expect(emails[0].to[0].address).toBe("receiver@example.invalid");
+    expect(emails[0].text).toContain("synthetic body");
+    expect(emails[0].attachments[0].filename).toBe("fixture.txt");
+    expect(
+      await (
+        await fetch(
+          `${base}/email/${emails[0].id}/attachment/${emails[0].attachments[0].generatedFileName}`,
+        )
+      ).text(),
+    ).toBe("synthetic attachment");
+  } finally {
+    await server.stop();
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 15_000);
