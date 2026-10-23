@@ -90,5 +90,8 @@
     "overrides": {
       "@react-email/ui>next": "16.3.8"
     }
+  },
+  "engines": {
+    "node": "22.23.4"
   }
 }
