@@ -54,3 +54,10 @@ jobs:
           --volume "$PWD/tests:/app/tests:ro"
           --volume "$PWD/vitest.config.ts:/app/vitest.config.ts:ro"
           abound-ci pnpm test
+      - name: Verify authenticated production HTTP access and inactive-user denial
+        run: >-
+          docker run --rm --network host
+          --env DATABASE_URL=postgresql://postgres:disposable-ci-fixture@127.0.0.1:5432/abound_image_test
+          --env SECURITY_TEST_DATABASE_URL=postgresql://postgres:disposable-ci-fixture@127.0.0.1:5432/abound_image_test
+          --volume "$PWD/tests:/app/tests:ro"
+          abound-ci node tests/security-authenticated-serving.mjs
