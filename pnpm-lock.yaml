@@ -135,7 +135,7 @@ importers:
         version: 29.1.1
       maildev:
         specifier: 3.0.0
-        version: 3.0.0(@types/react@19.2.13)(fastify@5.12.5)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6)
+        version: 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6)
       prettier:
         specifier: 3.9.9
         version: 3.9.9
@@ -3417,8 +3417,8 @@ packages:
   fastify-plugin@6.0.0:
     resolution: {integrity: sha512-fZOty7z3O7vOliF6d8bHE3wiEh1KcNnKEQensSgTk9C1DvN6nRLS++XVd86v33Hw/8u9Un8A1zDrQ8ujcQDHEg==}
 
-  fastify@5.12.5:
-    resolution: {integrity: sha512-OB2k1dlxs5/NAABqeKV2FUHkSD2BbENsCak8yULVcymn3fHIPDVa9TI3SDnJSWYSllZmSYuZXy2gTnsT+Sut1A==}
+  fastify@5.12.7:
+    resolution: {integrity: sha512-v4pEPsTRPuqlDIYiQFB+BHjVN4SdHX9u0ABk0ZDUKbbdY1vsNryUd1j4Z+jQEZajvYIVk047Kimva9/AJ79GYw==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -6325,7 +6325,7 @@ snapshots:
       '@maildev/mcp': 3.0.0
       '@maildev/smtp': 3.0.0
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
-      fastify: 5.12.5
+      fastify: 5.12.7
       fastify-plugin: 5.1.0
       socket.io: 4.8.3
     transitivePeerDependencies:
@@ -6362,13 +6362,13 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@maildev/ui@3.0.0(@types/react@19.2.13)(fastify@5.12.5)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))':
+  '@maildev/ui@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))':
     dependencies:
       '@fastify/static': 10.1.5
       '@maildev/core': 3.0.0
       '@tanstack/react-query': 5.101.2(react@19.2.5)
       clsx: 2.1.1
-      fastify: 5.12.5
+      fastify: 5.12.7
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       socket.io-client: 4.8.3
@@ -8963,7 +8963,7 @@ snapshots:
 
   fastify-plugin@6.0.0: {}
 
-  fastify@5.12.5:
+  fastify@5.12.7:
     dependencies:
       '@fastify/ajv-compiler': 4.0.5
       '@fastify/error': 4.2.0
@@ -9712,13 +9712,13 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  maildev@3.0.0(@types/react@19.2.13)(fastify@5.12.5)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6):
+  maildev@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6):
     dependencies:
       '@maildev/api': 3.0.0(zod@4.3.6)
       '@maildev/core': 3.0.0
       '@maildev/mcp': 3.0.0
       '@maildev/smtp': 3.0.0
-      '@maildev/ui': 3.0.0(@types/react@19.2.13)(fastify@5.12.5)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))
+      '@maildev/ui': 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))
       commander: 12.1.0
     transitivePeerDependencies:
       - '@cfworker/json-schema'
