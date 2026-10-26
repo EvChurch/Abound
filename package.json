@@ -91,5 +91,8 @@
       "@react-email/ui>next": "16.3.8",
       "@maildev/smtp>nodemailer": "10.0.9"
     }
+  },
+  "engines": {
+    "node": "22.23.4"
   }
 }
