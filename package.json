@@ -38,7 +38,7 @@
   "dependencies": {
     "@auth0/nextjs-auth0": "4.33.0",
     "@envelop/core": "5.5.1",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@pothos/core": "4.12.0",
     "@pothos/plugin-prisma": "4.14.3",
     "@prisma/adapter-pg": "7.7.0",

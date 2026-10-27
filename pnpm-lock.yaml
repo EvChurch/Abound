@@ -19,8 +19,8 @@ importers:
         specifier: 5.5.1
         version: 5.5.1
       '@modelcontextprotocol/sdk':
-        specifier: 1.29.0
-        version: 1.29.0(zod@4.3.6)
+        specifier: 1.32.2
+        version: 1.32.2(zod@4.3.6)
       '@pothos/core':
         specifier: 4.12.0
         version: 4.12.0(graphql@16.13.2)
@@ -1054,8 +1054,8 @@ packages:
     peerDependencies:
       fastify: ^5.0.0
 
-  '@modelcontextprotocol/sdk@1.29.0':
-    resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
+  '@modelcontextprotocol/sdk@1.32.2':
+    resolution: {integrity: sha512-SWsVtH/0vULSQStoZ6xxH2K09Li8fXYTMC64ZeogCdpZ3XSi1eCPOByV1OpuJxuI3OcmHhosDWYyii07tpPsLw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -6307,7 +6307,7 @@ snapshots:
       '@maildev/core': 3.0.0
       '@maildev/mcp': 3.0.0
       '@maildev/smtp': 3.0.0
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.32.2(zod@4.3.6)
       fastify: 5.12.7
       fastify-plugin: 5.1.0
       socket.io: 4.8.3
@@ -6324,7 +6324,7 @@ snapshots:
   '@maildev/mcp@3.0.0':
     dependencies:
       '@maildev/core': 3.0.0
-      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.32.2(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -6365,7 +6365,7 @@ snapshots:
       - use-sync-external-store
       - utf-8-validate
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.32.2(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 1.19.11(hono@4.12.14)
       ajv: 8.18.0
@@ -6387,7 +6387,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.32.2(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.11(hono@4.12.14)
       ajv: 8.18.0
