@@ -2,7 +2,7 @@
   "name": "church-giving-management",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.34.6",
+  "packageManager": "pnpm@10.34.9",
   "scripts": {
     "dev": "next dev -p 7000",
     "build": "next build",
