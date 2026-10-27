@@ -6,7 +6,7 @@ settings:
 
 overrides:
   '@react-email/ui>next': 16.3.8
-  '@maildev/smtp>nodemailer': 10.0.9
+  '@maildev/smtp>nodemailer': 10.2.1
 
 importers:
 
@@ -52,8 +52,8 @@ importers:
         specifier: 5.21.0
         version: 5.21.0(graphql@16.13.2)
       jose:
-        specifier: 6.2.12
-        version: 6.2.12
+        specifier: 6.2.13
+        version: 6.2.13
       lucide-react:
         specifier: 1.8.0
         version: 1.8.0(react@19.2.5)
@@ -3873,8 +3873,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jose@6.2.12:
-    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+  jose@6.2.13:
+    resolution: {integrity: sha512-7TIg10ZE1x82YediN+lcrPNvGMKge9yFHQD+Qho/b8y2adfugU3AsvvHfxV0fzyFllT6l9xCjf4RWY9g/Z9PJQ==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -4268,8 +4268,8 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
-  nodemailer@10.0.9:
-    resolution: {integrity: sha512-BF0qcyplCwp+jMk6HCjFykBz/YhhZSsxrARhOldLwFWH+8kGjQsd2WIMIZhqEuyXRoGFi0ONbDeWDMDoL8MhLw==}
+  nodemailer@10.2.1:
+    resolution: {integrity: sha512-ZrDNsPFoDMwefNs7sJwrYiEJ/CG4ClJWDZv05iNJsEBWa8GRDry1QJHTJxsuTAY9eDDKjX4k+q3SxslXJOao7w==}
     engines: {node: '>=20.0.0'}
 
   nodemailer@9.0.3:
@@ -5614,7 +5614,7 @@ snapshots:
     dependencies:
       '@edge-runtime/cookies': 5.0.2
       '@panva/hkdf': 1.2.1
-      jose: 6.2.12
+      jose: 6.2.13
       next: 16.3.8(@babel/core@7.29.0)(@types/node@25.9.9)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       oauth4webapi: 3.8.5
       openid-client: 6.8.3
@@ -6336,7 +6336,7 @@ snapshots:
       dompurify: 3.4.16
       jsdom: 26.1.0
       mailparser: 3.9.14
-      nodemailer: 10.0.9
+      nodemailer: 10.2.1
       smtp-server: 3.19.2
       wildstring: 1.0.9
     transitivePeerDependencies:
@@ -6378,7 +6378,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
       hono: 4.12.14
-      jose: 6.2.12
+      jose: 6.2.13
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -6400,7 +6400,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
       hono: 4.12.14
-      jose: 6.2.12
+      jose: 6.2.13
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -9457,7 +9457,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@6.2.12: {}
+  jose@6.2.13: {}
 
   js-tokens@4.0.0: {}
 
@@ -9840,7 +9840,7 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  nodemailer@10.0.9: {}
+  nodemailer@10.2.1: {}
 
   nodemailer@9.0.3: {}
 
@@ -9918,7 +9918,7 @@ snapshots:
 
   openid-client@6.8.3:
     dependencies:
-      jose: 6.2.12
+      jose: 6.2.13
       oauth4webapi: 3.8.5
 
   optionator@0.9.4:
