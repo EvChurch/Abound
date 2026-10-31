@@ -66,3 +66,7 @@ Notification destination: the connected personal Gmail profile verifies `tataiho
 ## Delivery record
 
 The initial HP-001/HP-002/HP-003 findings were emailed to Tataihono alone at his verified personal Gmail address on 31 October. Each included why review is needed and a suggested check/action. Subject: Abound review findings — Christian-status source and membership reconciliation. Gmail confirmed sent message `1a19132388f6d0d7` in thread `1a19132388f6d0d7`. No Rowan/Vincent/staff recipients were included. Findings remain open until Tataihono records their disposition.
+
+## Subsequent release and marker investigation
+
+See [release verification and Christian-marker investigation](2026-10-31-unichurch-release-verification.md) for the merged/deployed PR #61, exact UniChurch comparison and the newly identified shared Non-Christian person tags. These tags are a stronger candidate for Rowan's person-record marker than the Visitor Entry workflow field, but their maintenance policy and a positive Christian source remain unverified. The earlier counts above are retained as the pre-release baseline.

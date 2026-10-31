@@ -1,7 +1,7 @@
 ---
 title: Household participation implementation plan
 date: 2026-10-24
-status: first-slice-pr-review-source-binding-pending
+status: first-slice-deployed-and-verified-source-binding-pending
 roadmap: RM-007
 ---
 
@@ -104,7 +104,7 @@ Completed: Rowan replied on 31 October and his feedback is reconciled in `docs/r
 
 Local code now retains Connect Group types 25 and 46, uses the shared active-membership classifier in fixture and live normalization, resolves omitted member types from their parent group, flags contradictory types and includes both types in sync-status counts. Existing household/people filters consume the same persisted `activeConnectGroup` flag. No schema or endpoint change is required. Regression tests cover both types, parent links, inactive/archived group and member states, pending membership and contradictory types.
 
-Code review checked normalization, full/person fetch paths, status and downstream predicates. Existing automation runs retain frozen recipients; future runs resolve current saved-view audiences (`lib/communications/automation-runs.ts`). Therefore review both inclusion and exclusion segments before the post-deploy sync changes flags. Live taxonomy verification and current saved-view audience review are complete. GitHub release and full-sync/idempotency checks remain pending. See the feedback record for test results.
+Code review checked normalization, full/person fetch paths, status and downstream predicates. Existing automation runs retain frozen recipients; future runs resolve current saved-view audiences (`lib/communications/automation-runs.ts`). Therefore review both inclusion and exclusion segments before the post-deploy sync changes flags. Live taxonomy verification and current saved-view audience review are complete. GitHub release and initial full-sync checks are complete; repeat-sync stability is left to the next scheduled run. See the feedback record for test results.
 
 ## Live verification follow-up
 
@@ -112,4 +112,6 @@ See [31 October source verification and review findings](../research/2026-10-31-
 
 ## Release tracking
 
-The locally verified UniChurch slice and confirmed requirements are in [PR #61](https://github.com/EvChurch/Abound/pull/61), targeting current `main`. GitHub CI and production-image verification run on the branch. The PR is unmerged; no production deployment or sync has been triggered. Christian person-field binding and standard-group membership reconciliation remain explicit follow-up findings.
+The locally verified UniChurch slice and confirmed requirements are in [PR #61](https://github.com/EvChurch/Abound/pull/61), targeting current `main`. GitHub CI and production-image verification run on the branch. PR #61 is merged as `ac07f83`; both GitHub-connected Railway services are deployed successfully. The authorized normal full sync completed successfully. UniChurch group/member set and state comparisons match Rock exactly: six groups, 106 memberships and 104 active memberships. The deployed sync-status service reports 34 Connect Groups overall. Christian person-field binding and standard-group membership reconciliation remain explicit follow-up findings.
+
+Latest operational and source investigation evidence is in [release verification](../research/2026-10-31-unichurch-release-verification.md). Person tag 8 (Non-Christian) and tag 36 (Non-Christian This Year) are populated negative-marker candidates, not a verified positive Christian source. Their coverage and maintenance policy need review; an absent tag remains Unknown. Do not bind classification to either tag or infer Christianity from absence while this source-contract review is open.
