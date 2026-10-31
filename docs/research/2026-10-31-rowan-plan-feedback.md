@@ -58,3 +58,7 @@ See [31 October source verification and review findings](../research/2026-10-31-
 ## Verification against current main
 
 The first slice was rebased onto `origin/main` at `bf8a2d1`. Frozen-lockfile install and Prisma client generation completed; formatting, lint, typecheck and the full suite passed (417 tests passed, one isolated-database integration test skipped). Local runtime was Node 24.22.1; GitHub CI uses the repository-pinned Node 22.23.4 and remains the release check for that runtime.
+
+## Release verification completed
+
+Tataihono subsequently authorized merging PR #61 and the normal production release/sync. Both Railway services deployed `ac07f83`, and the manual full-sync queue job completed successfully on 31 October. UniChurch matches Rock exactly: six groups, 106 memberships and 104 active memberships, with zero set/state discrepancies. The complete operational record and further Christian-marker findings are in `docs/research/2026-10-31-unichurch-release-verification.md`. That follow-up supersedes the earlier pending-release status above.

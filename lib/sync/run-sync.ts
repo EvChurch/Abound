@@ -41,6 +41,7 @@ export type SyncProgressEvent = {
 export type SyncRunOptions = {
   chunkSize?: number;
   onProgress?: (event: SyncProgressEvent) => void;
+  sourceIssues?: readonly SyncIssueInput[];
 };
 
 type NormalizedSyncData = {
@@ -115,7 +116,10 @@ async function persistNormalizedSync(
   });
 
   try {
-    const normalized = withSyncRunId(data, syncRun.id);
+    const normalized = withSyncRunId(
+      { ...data, issues: [...data.issues, ...(options.sourceIssues ?? [])] },
+      syncRun.id,
+    );
     let written = 0;
     const progress = (stage: string, completed: number, total: number) => {
       options.onProgress?.({ syncRunId: syncRun.id, stage, completed, total });
@@ -460,7 +464,7 @@ async function persistNormalizedSync(
       recordsRead,
       recordsWritten: written,
       recordsSkipped: normalized.issues.length,
-      issueCount: data.issues.length,
+      issueCount: normalized.issues.length,
     };
   } catch (error) {
     await prisma.syncRun.update({
