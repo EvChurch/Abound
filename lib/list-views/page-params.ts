@@ -41,6 +41,8 @@ export type PeopleSortParam = {
 };
 
 export type HouseholdListQueryParams = {
+  householdStage?: string;
+  householdChristianStatus?: string;
   active?: string;
   after?: string;
   archived?: string;
@@ -57,6 +59,8 @@ export type HouseholdListQueryParams = {
 };
 
 export type ListViewShellFilters = {
+  householdStage?: string | null;
+  householdChristianStatus?: string | null;
   active?: string | null;
   archived?: string | null;
   campus?: string | null;
@@ -92,6 +96,8 @@ export function householdFiltersFromParams(
   params: HouseholdListQueryParams,
 ): ListViewShellFilters {
   return {
+    householdStage: params.householdStage,
+    householdChristianStatus: params.householdChristianStatus,
     active: params.active,
     archived: params.archived,
     campus: params.campus,
@@ -204,6 +210,18 @@ export function buildHouseholdFilter(
   params: HouseholdListQueryParams,
 ): FilterDefinition {
   const conditions: FilterNode[] = [];
+  if (params.householdStage?.trim())
+    conditions.push(
+      condition("householdStage", "EQUALS", params.householdStage.trim()),
+    );
+  if (params.householdChristianStatus?.trim())
+    conditions.push(
+      condition(
+        "householdChristianStatus",
+        "EQUALS",
+        params.householdChristianStatus.trim(),
+      ),
+    );
 
   if (params.q?.trim()) {
     conditions.push(condition("search", "CONTAINS", params.q.trim()));
@@ -317,6 +335,11 @@ export function encodePeopleSortParam(sort: PeopleSortParam) {
 
 export function paramsFromSearch(searchParams: URLSearchParams) {
   return {
+    householdStage: valueFromSearch(searchParams, "householdStage"),
+    householdChristianStatus: valueFromSearch(
+      searchParams,
+      "householdChristianStatus",
+    ),
     active: valueFromSearch(searchParams, "active"),
     after: valueFromSearch(searchParams, "after"),
     ageGroup: valueFromSearch(searchParams, "ageGroup"),

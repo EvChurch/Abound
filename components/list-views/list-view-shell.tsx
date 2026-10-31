@@ -1,3 +1,7 @@
+import {
+  STAGE_LABELS,
+  CHRISTIAN_LABELS,
+} from "@/lib/giving/household-participation-contract";
 import Link from "next/link";
 import { HeartPulse, List } from "lucide-react";
 
@@ -111,9 +115,9 @@ export function ListViewShell(props: ListViewShellProps) {
     props.kind === "people"
       ? filterValues(props.filters?.connectionStatus).length +
         filterValues(props.filters?.recordStatus).length
-      : queryHasValue(props.filters?.rockStatus)
-        ? 1
-        : 0;
+      : (queryHasValue(props.filters?.rockStatus) ? 1 : 0) +
+        (queryHasValue(props.filters?.householdStage) ? 1 : 0) +
+        (queryHasValue(props.filters?.householdChristianStatus) ? 1 : 0);
   const activityCount =
     (queryHasValue(props.filters?.taskStatus) ? 1 : 0) +
     (queryHasValue(props.filters?.taskPriority) ? 1 : 0) +
@@ -712,12 +716,42 @@ function StatusPanel({
       />
     </div>
   ) : (
-    <PanelSelect
-      defaultValue={filters?.rockStatus}
-      label="Household status"
-      name="rockStatus"
-      options={householdRockStatusOptions}
-    />
+    <div className="grid gap-3">
+      <PanelSelect
+        defaultValue={filters?.householdStage}
+        label="Household connection stage"
+        name="householdStage"
+        options={[
+          { value: "", label: "Any stage" },
+          ...Object.entries(STAGE_LABELS).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        ]}
+      />
+      <PanelSelect
+        defaultValue={filters?.householdChristianStatus}
+        label="Household Christian classification"
+        name="householdChristianStatus"
+        options={[
+          { value: "", label: "Any classification" },
+          ...Object.entries(CHRISTIAN_LABELS).map(([value, label]) => ({
+            value,
+            label,
+          })),
+        ]}
+      />
+      <p className="text-xs text-app-muted">
+        Active adults only. Investigating is a temporary non-Christian proxy;
+        other unverified statuses remain Unknown.
+      </p>
+      <PanelSelect
+        defaultValue={filters?.rockStatus}
+        label="Household status"
+        name="rockStatus"
+        options={householdRockStatusOptions}
+      />
+    </div>
   );
 }
 
@@ -1116,6 +1150,18 @@ function activeFilterChips({
     });
   }
 
+  if (filters?.householdStage)
+    chips.push({
+      label: "Household stage",
+      param: "householdStage",
+      value: filters.householdStage,
+    });
+  if (filters?.householdChristianStatus)
+    chips.push({
+      label: "Christian classification",
+      param: "householdChristianStatus",
+      value: filters.householdChristianStatus,
+    });
   if (filters?.rockStatus?.trim()) {
     chips.push({
       label: "Household",
@@ -1190,6 +1236,8 @@ type ListFilterParam =
   | "connectGroup"
   | "emailCapable"
   | "emailStatus"
+  | "householdStage"
+  | "householdChristianStatus"
   | "householdGivingState"
   | "lifecycle"
   | "pledgeState"
@@ -1321,6 +1369,12 @@ function listFilterQuery(filters?: ListViewShellFilters) {
       : {}),
     ...(filterValues(filters?.recordStatus).length > 0
       ? { recordStatus: filterValues(filters?.recordStatus) }
+      : {}),
+    ...(filters?.householdStage
+      ? { householdStage: filters.householdStage }
+      : {}),
+    ...(filters?.householdChristianStatus
+      ? { householdChristianStatus: filters.householdChristianStatus }
       : {}),
     ...(filters?.rockStatus ? { rockStatus: filters.rockStatus } : {}),
     ...(filters?.taskPriority ? { taskPriority: filters.taskPriority } : {}),

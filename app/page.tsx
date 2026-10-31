@@ -1,3 +1,4 @@
+import { getHouseholdParticipation } from "@/lib/giving/household-participation";
 import { redirect } from "next/navigation";
 
 import { AccessRequestForm } from "@/components/auth/access-request-form";
@@ -41,13 +42,16 @@ export default async function HomePage() {
     );
   }
 
-  const [givingPerAdult, householdDonorTrend] = await Promise.all([
-    getGivingPerAdult(),
-    getHouseholdDonorTrend(),
-  ]);
+  const [givingPerAdult, householdDonorTrend, participation] =
+    await Promise.all([
+      getGivingPerAdult(),
+      getHouseholdDonorTrend(),
+      getHouseholdParticipation({}, accessState.user),
+    ]);
 
   return (
     <StaffDashboard
+      participation={participation}
       givingPerAdult={givingPerAdult}
       householdDonorTrend={householdDonorTrend}
     />

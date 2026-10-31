@@ -1,7 +1,7 @@
 ---
 title: Household participation implementation plan
 date: 2026-10-24
-status: first-slice-deployed-and-verified-source-binding-pending
+status: household-report-implemented-reviewed-awaiting-release
 roadmap: RM-007
 ---
 
@@ -119,3 +119,7 @@ Latest operational and source investigation evidence is in [release verification
 ## Temporary classification decision after deployment
 
 Rowan replied at 11:35:51 UTC on 31 October, asking to use Investigating for non-Christian status for the time being. Tataihono subsequently adopted Investigating = non-Christian, other statuses = Unknown unless explicitly recorded. This supersedes the earlier prohibition on status fallback. Explicit values still take precedence if a positive source is later verified; do not infer all non-Investigating people are Christian. The existing source reference identifies Investigating as defined value 65. Label household categories to distinguish classified from explicitly recorded non-Christian adults. The source-marker investigation remains open, but it no longer blocks implementation of the temporary rule.
+
+## Household reporting execution
+
+Phases 3–4 now have a shared RepeatableRead service, dashboard panel, bounded household drilldowns, existing household classification filters, typed GraphQL and audited read-only MCP exposure. The approved temporary rule uses existing synced fields; no new Rock endpoint, schema field or migration is needed. UTC months preserve the verified effectiveMonth convention. Financial attribution and stale membership failures preserve demographic rows but withhold affected giving measures/rates. Positive Christian participation remains unavailable, not zero. See `docs/architecture/household-participation-report.md` and `docs/research/2026-11-01-household-report-implementation-verification.md`. Source membership repair, positive field binding, Xero reconciliation and attendance implementation remain separate follow-ups.

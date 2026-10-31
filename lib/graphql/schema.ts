@@ -1,3 +1,4 @@
+import { registerHouseholdParticipationTypes } from "@/lib/graphql/types/household-participation";
 import { builder } from "@/lib/graphql/builder";
 import { registerCommunicationTypes } from "@/lib/graphql/types/communications";
 import { registerListViewTypes } from "@/lib/graphql/types/list-views";
@@ -40,6 +41,7 @@ builder.queryType({
 
 builder.mutationType({});
 
+registerHouseholdParticipationTypes();
 registerSyncTypes();
 registerTaskTypes();
 registerPeopleTypes();

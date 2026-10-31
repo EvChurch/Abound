@@ -130,7 +130,7 @@ What this covers:
 
 ### RM-007: Household Participation and UniChurch Coverage
 
-Status: `UniChurch and archive refresh deployed and verified; temporary Christian-status rule approved`
+Status: `UniChurch and archive refresh verified; household report implemented and reviewed; awaiting release`
 
 Timing: `Now`
 
@@ -144,7 +144,9 @@ First implementation PR: [#61 — include UniChurch Connect Group memberships](h
 
 Release evidence: `docs/research/2026-10-31-unichurch-release-verification.md`
 
-Next slice: `docs/plans/2026-10-31-001-refresh-archived-connect-memberships.md`. The stale standard-group membership diagnosis found 29 active local rows already archived in Rock. PR #62 is merged as `ec6ced9` and both Railway services report SUCCESS; the authorized normal verification sync completed successfully. Stale active memberships fell from 29 to zero; UniChurch remains an exact source match and the deployed status service reports 34 groups / 478 active memberships. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`. Rowan requested Investigating as a temporary non-Christian proxy, and Tataihono approved Investigating (65) = non-Christian, other statuses = Unknown unless explicitly recorded. Positive explicit source and tag ownership remain unresolved. Evidence: `docs/research/2026-10-31-archived-membership-diagnosis.md`.
+Next slice: household participation reporting is implemented locally under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. Two stale adult memberships are retained as provisional review cases; their affected rates are withheld. No report release or source repair is claimed.
+
+The bounded Connect Group archive refresh from PR #62 is deployed and verified: stale active memberships fell from 29 to zero; UniChurch remains an exact source match. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.
 
 Request assessment and stakeholder review brief:
 
