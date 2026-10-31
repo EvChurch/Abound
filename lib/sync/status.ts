@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import { CONNECT_GROUP_TYPE_IDS } from "@/lib/giving/models";
 
 const MAX_OPEN_SYNC_ISSUES = 50;
 
@@ -104,7 +105,7 @@ export async function getSyncStatusSummary(
     client.rockHouseholdMember.count(),
     client.rockGroup.count({
       where: {
-        groupTypeRockId: 25,
+        groupTypeRockId: { in: CONNECT_GROUP_TYPE_IDS },
       },
     }),
     client.rockGroupMember.count({

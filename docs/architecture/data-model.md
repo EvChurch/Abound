@@ -93,11 +93,12 @@ Giving rollups should prefer `GivingGroupId` when Rock supplies it, falling back
 
 Active Connect Group participation means:
 
-- `RockGroup.groupTypeRockId = 25`
+- `RockGroup.groupTypeRockId` is 25 (Connect Group) or 46 (Connect Group - Unichurch Campus Group), retaining its original source type
 - group is active
 - group is not archived
 - membership is not archived
 - `GroupMemberStatus = 1`
+- an explicit member group type must agree with the parent group; contradictions raise `GROUP_TYPE_MISMATCH` and are excluded from active reporting pending review. An omitted member type is resolved from the parent group.
 
 Rock defines `GroupMemberStatus` as `0 = Inactive`, `1 = Active`, and `2 = Pending`.
 

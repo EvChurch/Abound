@@ -78,3 +78,9 @@ Verified on 2026-04-17 against the church Rock instance with API v1 `GET` reques
 - `TEST_DATABASE_URL` must not match `DATABASE_URL`.
 - `pnpm test:db:reset` resets only the test database and refuses to run unless the target database name includes `test`.
 - Keep fixture/demo records out of the local development database used for live read-only Rock sync.
+
+## Known archived Connect Group memberships
+
+Rock's current v1 GroupMembers collection omits archived rows that remain readable by ID. Normal full-sync job and CLI preparation therefore refresh up to 200 existing, not-yet-archived type-25/type-46 memberships omitted from that collection, restricted to source-confirmed supported parent groups. ID reads use the existing GET allowlist and typed validation; matching identity is required before the normalizer applies the actual archive/status values. Already-archived rows need no repeat lookup, and collection reads handle later unarchives.
+
+Unverified reads, missing records, changed identities and cap violations create ERROR SyncIssues and a PARTIAL run; unresolved local rows are preserved. This preparation does not delete records, infer archive state from absence, reconcile missing parent groups or run globally from person-slice sync. Raw mirror row counts can exceed collection counts because verified archived history is retained. See `docs/plans/2026-10-31-001-refresh-archived-connect-memberships.md` and `docs/research/2026-10-31-archived-membership-diagnosis.md` for source evidence and release verification.

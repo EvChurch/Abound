@@ -119,6 +119,20 @@ describe("data model guardrails", () => {
     ).toBe(false);
   });
 
+  it("includes UniChurch's source type without including hierarchy groups", () => {
+    for (const groupTypeId of [25, 46, 24, 10, 63]) {
+      expect(
+        isActiveConnectGroupMembership({
+          groupTypeId,
+          groupActive: true,
+          groupArchived: false,
+          memberArchived: false,
+          groupMemberStatus: GROUP_MEMBER_STATUS.ACTIVE,
+        }),
+      ).toBe(groupTypeId === 25 || groupTypeId === 46);
+    }
+  });
+
   it("models Rock families as GroupType 10 and preserves giving group identity", () => {
     expect(FAMILY_GROUP_TYPE_ID).toBe(10);
     expect(resolveGivingHouseholdRockId({ primaryFamilyRockId: 100 })).toBe(

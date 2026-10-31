@@ -126,6 +126,7 @@ describe("pg-boss sync jobs", () => {
       $transaction: vi.fn(async (handler) =>
         handler({
           givingFact: { deleteMany: vi.fn(async () => null) },
+          syncIssue: { createMany: vi.fn(async () => ({ count: 1 })) },
           syncRun: { update: vi.fn(async () => null) },
         }),
       ),
@@ -144,53 +145,83 @@ describe("pg-boss sync jobs", () => {
     expect(rockClient.getPersonSlice).toHaveBeenCalledWith(8597);
   });
 
-  it("performs a full sync job through the read-only Rock client abstraction", async () => {
-    const slice = {
-      groupTypes: [],
-      groupRoles: [],
-      definedValues: [],
-      personAliases: [],
-      people: [],
-      familyGroups: [],
-      familyMembers: [],
-      campuses: [],
-      groups: [],
-      groupMembers: [],
-      financialAccounts: [],
-      financialTransactions: [],
-      financialTransactionDetails: [],
-      financialScheduledTransactions: [],
-      financialScheduledTransactionDetails: [],
-    };
-    const rockClient = {
-      getFullSyncSlice: vi.fn(async () => slice),
-    };
-    const prisma = {
-      givingFact: {
-        findMany: vi.fn(async () => []),
-      },
-      givingPledgeRecommendationSnapshot: {
-        deleteMany: vi.fn(async () => null),
-      },
-      syncRun: {
-        create: vi.fn(async () => ({ id: "sync_1" })),
-        update: vi.fn(async () => null),
-      },
-      $transaction: vi.fn(async (handler) =>
-        handler({
-          givingFact: { deleteMany: vi.fn(async () => null) },
-          syncRun: { update: vi.fn(async () => null) },
-        }),
-      ),
-    };
+  it.each([
+    { severity: undefined, status: "SUCCEEDED", count: 0 },
+    { severity: "ERROR" as const, status: "PARTIAL", count: 1 },
+    { severity: "WARNING" as const, status: "SUCCEEDED", count: 1 },
+  ])(
+    "records full-sync source issues with $severity severity",
+    async ({ severity, status, count }) => {
+      const slice = {
+        groupTypes: [],
+        groupRoles: [],
+        definedValues: [],
+        personAliases: [],
+        people: [],
+        familyGroups: [],
+        familyMembers: [],
+        campuses: [],
+        groups: [],
+        groupMembers: [],
+        financialAccounts: [],
+        financialTransactions: [],
+        financialTransactionDetails: [],
+        financialScheduledTransactions: [],
+        financialScheduledTransactionDetails: [],
+      };
+      const rockClient = {
+        getFullSyncSlice: vi.fn(async () => slice),
+        getGroupMember: vi.fn(),
+      };
+      const prisma = {
+        givingFact: {
+          findMany: vi.fn(async () => []),
+        },
+        givingPledgeRecommendationSnapshot: {
+          deleteMany: vi.fn(async () => null),
+        },
+        syncRun: {
+          create: vi.fn(async () => ({ id: "sync_1" })),
+          update: vi.fn(async () => null),
+        },
+        $transaction: vi.fn(async (handler) =>
+          handler({
+            givingFact: { deleteMany: vi.fn(async () => null) },
+            syncIssue: { createMany: vi.fn(async () => ({ count: 1 })) },
+            syncRun: { update: vi.fn(async () => null) },
+          }),
+        ),
+      };
 
-    await expect(
-      performRockFullSyncJob({}, { prisma: prisma as never, rockClient }),
-    ).resolves.toMatchObject({
-      syncRunId: "sync_1",
-      status: "SUCCEEDED",
-    });
+      await expect(
+        performRockFullSyncJob(
+          {},
+          {
+            prisma: prisma as never,
+            rockClient,
+            syncOptions: {
+              sourceIssues: severity
+                ? [
+                    {
+                      severity,
+                      source: "rock:v1",
+                      recordType: "RockGroupMember",
+                      code: "MEMBERSHIP_REFRESH_UNRESOLVED",
+                      message: "Source read could not be verified.",
+                    },
+                  ]
+                : [],
+            },
+          },
+        ),
+      ).resolves.toMatchObject({
+        syncRunId: "sync_1",
+        status,
+        issueCount: count,
+        recordsSkipped: count,
+      });
 
-    expect(rockClient.getFullSyncSlice).toHaveBeenCalledOnce();
-  });
+      expect(rockClient.getFullSyncSlice).toHaveBeenCalledOnce();
+    },
+  );
 });

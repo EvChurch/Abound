@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { RockClient } from "@/lib/rock/client";
 import type { SyncProgressEvent } from "@/lib/sync/run-sync";
 import { syncRockSlice } from "@/lib/sync/run-sync";
+import { refreshKnownConnectMemberships } from "@/lib/sync/membership-refresh";
 
 const baseUrl = process.env.ROCK_BASE_URL;
 const restKey = process.env.ROCK_REST_KEY;
@@ -17,6 +18,7 @@ if (!baseUrl || !restKey) {
 async function main() {
   const client = new RockClient({ baseUrl: baseUrl!, restKey: restKey! });
   const slice = await client.getFullSyncSlice();
+  const prepared = await refreshKnownConnectMemberships(slice, prisma, client);
   console.log(
     [
       `fetchedPeople=${slice.people.length}`,
@@ -30,9 +32,10 @@ async function main() {
       `fetchedScheduledTransactionDetails=${slice.financialScheduledTransactionDetails.length}`,
     ].join(" "),
   );
-  const result = await syncRockSlice(prisma, slice, {
+  const result = await syncRockSlice(prisma, prepared.slice, {
     chunkSize,
     onProgress: createProgressLogger(),
+    sourceIssues: prepared.issues,
   });
 
   console.log(
