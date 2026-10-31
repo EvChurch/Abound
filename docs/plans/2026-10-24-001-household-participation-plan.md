@@ -1,7 +1,7 @@
 ---
 title: Household participation implementation plan
 date: 2026-10-24
-status: first-slice-deployed-and-verified-source-binding-pending
+status: household-report-implemented-reviewed-awaiting-release
 roadmap: RM-007
 ---
 
@@ -19,12 +19,12 @@ Read `docs/roadmap.md`, the requirements above, `docs/research/rock-integration.
 
 1. Rowan's reply is incorporated. Preserve the original Q1-Q15 interview and use the feedback record for the current decisions. Resolve only remaining discovery-dependent definitions; do not reopen accepted scope or status ordering.
 2. Verify current Rock group types 25 and 46, their roles, activity/archive flags, and whether any other group types are explicitly in scope. Preserve source taxonomy; do not infer membership from campus.
-3. Identify the explicit Christian-status field on this church's Rock instance. Use bounded read-only discovery with typed validation; record field identifier, allowed values, null/unknown semantics, API permissions, coverage and source update behaviour without raw person values. Inspect both Christian/non-Christian fields if present. Cross-check the verified Exploring connection status as a non-Christian signal; record mismatches without overwriting source data. Tataihono confirmed explicit-field precedence: missing explicit values stay Unknown; Exploring is a mismatch cross-check and never a fallback classification. Discover source IDs/value meanings before binding these rules.
+3. Bind the approved temporary non-Christian proxy to verified Rock connection status Investigating (defined value 65). Rowan requested this in message `1a191bed26637d5b`; Tataihono explicitly adopted it during the PR #62 deployment follow-up. Other statuses remain Unknown unless a verified explicit Christian/non-Christian value exists. Preserve per-adult provenance and explicit-field precedence; flag contradictions. Do not label the proxy as an explicit source field or infer Christianity from other statuses/tag absence. Continue bounded discovery of positive explicit source and tag ownership as follow-up, without blocking this temporary negative-status rule.
 4. Verify Adult role and active person status using source IDs and reference tables. Review family membership multiplicity and GivingGroupId versus PrimaryFamilyId exceptions. Settle how every exceptional mapping appears in demographic rows without counting gifts twice or assigning misleading participation.
 5. Verify enabled platform funds, actual gift/refund/reversal semantics and date boundaries. Existing `lib/giving/metrics.ts` uses UTC month helpers; inspect how `GivingFact.effectiveMonth` is generated before changing conventions. Propose Pacific/Auckland business-month interpretation where source timestamps support it; record any reconciliation impact before changing existing reports.
 6. In parallel, inspect actual Sunday and group attendance capabilities, permissions and coverage. Add endpoints to any read allowlist only after verification; recording no capability is a valid feasibility result.
 
-Completion: record verified contracts and all remaining limitations in `docs/research/`; Rowan's material product decisions are resolved. Christian classification implementation is blocked on a verified source contract; attendance integration remains separately scoped.
+Completion: record verified contracts and all remaining limitations in `docs/research/`; Rowan's material product decisions are resolved. The temporary Investigating contract is approved; positive explicit classification remains unresolved. Attendance integration remains separately scoped.
 
 ## Phase 2 Correct Connect Group coverage
 
@@ -42,7 +42,7 @@ Completion: synthetic type-25/type-46 fixtures yield consistent classifications 
 
 Proposed new module: `lib/giving/household-participation.ts`, with focused helpers only where there is a separate reusable responsibility. Keep population selection, derived household classification, financial attribution and measure definitions behind one typed interface.
 
-1. Add the minimum nullable person field(s) to `prisma/schema.prisma` required by the verified Christian-source contract; preserve unknown and sync provenance. Use an additive migration. Do not add generic raw attribute dumps or attendance tables before source discovery.
+1. Reuse the existing synced connection-status identifier for the temporary Investigating rule. Add nullable person fields only when a verified explicit source contract requires them; preserve Unknown and provenance. Do not add generic raw attribute dumps or attendance tables before source discovery.
 2. Extend `lib/rock/client.ts` and sync normalization with structured validation and explicit nullable values. Distinguish source access/fetch failure from an actual unknown response. Clear genuinely changed values on subsequent sync; do not erase valid data on an incomplete/failed fetch.
 3. Define typed report filters and metadata: as-of time, reporting months (1, 3, 6, 12 or 24 completed months; default 12), fund IDs, campus selection, Christian-status selection, mismatch state, connection status, snapshot/freshness context and rule version where needed.
 4. Build eligible household IDs from all qualifying adult members, not the three contacts currently selected for household list presentation. Compute status and Christian classification once per distinct household. Retain original statuses and reasons for Unknown/Other.
@@ -76,7 +76,7 @@ Completion: material report claims are verified, contradicted or explicitly unre
 
 ## Verification strategy
 
-- Unit tests: selectable 1/3/6/12/24-month windows and preserved drilldowns; explicit Christian/Exploring conflicts; same-period recorded-giver diagnostics; mixed adult statuses; all three Christian categories; unrecognised values; missing field access; ineligible children/deceased/inactive members; annual versus monthly participation; net-zero refunds; future pledges; empty denominators; date boundaries; ambiguous mappings and double-count protection.
+- Unit tests: selectable 1/3/6/12/24-month windows and preserved drilldowns; explicit Christian/Investigating conflicts and temporary-proxy provenance; same-period recorded-giver diagnostics; mixed adult statuses; all three Christian categories; unrecognised values; missing field access; ineligible children/deceased/inactive members; annual versus monthly participation; net-zero refunds; future pledges; empty denominators; date boundaries; ambiguous mappings and double-count protection.
 - Sync tests: type 46 survives normalization with its source ID; group/member active/archive combinations; missing or contradictory member group type; idempotent resync; explicit Christian value changes and fetch failures. Use synthetic fixtures and an isolated `TEST_DATABASE_URL` when database tests are needed.
 - Contract and UI tests: aggregate and drilldown equality beyond one page; combined filters and saved views; GraphQL/MCP parity and validation; unauthorized/inactive-user rejection; incomplete source metadata; responsive table and accessible labels.
 - Extend relevant existing suites: `tests/unit/giving-metrics.test.ts`, `sync-normalization.test.ts`, `sync-status.test.ts`, `households-list-view.test.ts`, `mcp-tools.test.ts`, plus focused new report tests and necessary integration tests.
@@ -115,3 +115,11 @@ See [31 October source verification and review findings](../research/2026-10-31-
 The locally verified UniChurch slice and confirmed requirements are in [PR #61](https://github.com/EvChurch/Abound/pull/61), targeting current `main`. GitHub CI and production-image verification run on the branch. PR #61 is merged as `ac07f83`; both GitHub-connected Railway services are deployed successfully. The authorized normal full sync completed successfully. UniChurch group/member set and state comparisons match Rock exactly: six groups, 106 memberships and 104 active memberships. The deployed sync-status service reports 34 Connect Groups overall. Christian person-field binding and standard-group membership reconciliation remain explicit follow-up findings.
 
 Latest operational and source investigation evidence is in [release verification](../research/2026-10-31-unichurch-release-verification.md). Person tag 8 (Non-Christian) and tag 36 (Non-Christian This Year) are populated negative-marker candidates, not a verified positive Christian source. Their coverage and maintenance policy need review; an absent tag remains Unknown. Do not bind classification to either tag or infer Christianity from absence while this source-contract review is open.
+
+## Temporary classification decision after deployment
+
+Rowan replied at 11:35:51 UTC on 31 October, asking to use Investigating for non-Christian status for the time being. Tataihono subsequently adopted Investigating = non-Christian, other statuses = Unknown unless explicitly recorded. This supersedes the earlier prohibition on status fallback. Explicit values still take precedence if a positive source is later verified; do not infer all non-Investigating people are Christian. The existing source reference identifies Investigating as defined value 65. Label household categories to distinguish classified from explicitly recorded non-Christian adults. The source-marker investigation remains open, but it no longer blocks implementation of the temporary rule.
+
+## Household reporting execution
+
+Phases 3–4 now have a shared RepeatableRead service, dashboard panel, bounded household drilldowns, existing household classification filters, typed GraphQL and audited read-only MCP exposure. The approved temporary rule uses existing synced fields; no new Rock endpoint, schema field or migration is needed. UTC months preserve the verified effectiveMonth convention. Financial attribution and stale membership failures preserve demographic rows but withhold affected giving measures/rates. Positive Christian participation remains unavailable, not zero. See `docs/architecture/household-participation-report.md` and `docs/research/2026-11-01-household-report-implementation-verification.md`. Source membership repair, positive field binding, Xero reconciliation and attendance implementation remain separate follow-ups.

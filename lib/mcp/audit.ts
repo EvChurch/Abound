@@ -86,6 +86,17 @@ export function auditMetadataForToolCall(
         resultCount: resultCollectionCount(result, toolName),
         targetType: stringField(toolInput, "resource"),
       };
+    case "get_household_participation":
+      return {
+        targetType: "HOUSEHOLD",
+        resultCount:
+          result &&
+          typeof result === "object" &&
+          "rows" in result &&
+          Array.isArray(result.rows)
+            ? result.rows.length
+            : undefined,
+      };
     case "query_households":
       return {
         resultCount: resultCollectionCount(result, toolName),
@@ -104,6 +115,7 @@ export function auditMetadataForToolCall(
 
 function isKnownReadTool(toolName: string): toolName is McpToolName {
   return [
+    "get_household_participation",
     "get_filter_catalog",
     "get_household_profile",
     "get_person_profile",
