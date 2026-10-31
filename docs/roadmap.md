@@ -130,7 +130,7 @@ What this covers:
 
 ### RM-007: Household Participation and UniChurch Coverage
 
-Status: `Rowan feedback incorporated; UniChurch correction locally verified`
+Status: `Decisions confirmed; UniChurch correction in PR review`
 
 Timing: `Now`
 
@@ -139,6 +139,8 @@ Outcome: Staff can inspect household counts and giving participation by connecti
 Requirements: `docs/brainstorms/2026-10-24-household-participation-requirements.md`
 
 Implementation plan: `docs/plans/2026-10-24-001-household-participation-plan.md`
+
+First implementation PR: [#61 — include UniChurch Connect Group memberships](https://github.com/EvChurch/Abound/pull/61). Release and post-deploy sync verification are pending.
 
 Request assessment and stakeholder review brief:
 

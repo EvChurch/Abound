@@ -1,7 +1,7 @@
 ---
 title: Household participation implementation plan
 date: 2026-10-24
-status: feedback-incorporated-first-slice-locally-verified
+status: first-slice-pr-review-source-binding-pending
 roadmap: RM-007
 ---
 
@@ -109,3 +109,7 @@ Code review checked normalization, full/person fetch paths, status and downstrea
 ## Live verification follow-up
 
 See [31 October source verification and review findings](../research/2026-10-31-household-source-verification.md). Current Rock types 25/46 and the missing UniChurch mirror coverage are verified. No current unarchived saved view uses Connect Group filters. Christian person-field binding remains unresolved: the located Christian attribute belongs to a workflow, and Exploring was not returned in the connection-status taxonomy. Tataihono is confirmed as first recipient. Standard-group source/mirror membership differences require separate reconciliation review; a full upsert sync alone does not certify removal of stale memberships. Attendance endpoints and historical confirmed records are readable; coverage and joins need further discovery.
+
+## Release tracking
+
+The locally verified UniChurch slice and confirmed requirements are in [PR #61](https://github.com/EvChurch/Abound/pull/61), targeting current `main`. GitHub CI and production-image verification run on the branch. The PR is unmerged; no production deployment or sync has been triggered. Christian person-field binding and standard-group membership reconciliation remain explicit follow-up findings.
