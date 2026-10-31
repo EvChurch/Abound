@@ -49,8 +49,12 @@ Verification on 31 October 2026:
 - Unit checks used a dummy localhost port-1 `DATABASE_URL` solely to initialize Prisma imports; no live database or Rock data was accessed.
 - Existing automation runs reuse frozen recipients; future runs resolve the current saved-view audience. Review inclusion and exclusion segments before the first sync after deployment. This session did not inspect production saved views or pending runs.
 
-Live taxonomy and current saved-view audience checks are complete; GitHub release and post-deploy full-sync/idempotency verification remain pending. No production deployment, source correction or outbound notification has occurred in this session.
+Live taxonomy and current saved-view audience checks are complete; GitHub release and post-deploy full-sync/idempotency verification remain pending. No production deployment or source correction has occurred. Tataihono subsequently received the initial review findings by email, as authorized; see the delivery record in the source-verification document.
 
 ## Live verification follow-up
 
 See [31 October source verification and review findings](../research/2026-10-31-household-source-verification.md). Current Rock types 25/46 and the missing UniChurch mirror coverage are verified. No current unarchived saved view uses Connect Group filters. Christian person-field binding remains unresolved: the located Christian attribute belongs to a workflow, and Exploring was not returned in the connection-status taxonomy. Tataihono is confirmed as first recipient. Standard-group source/mirror membership differences require separate reconciliation review; a full upsert sync alone does not certify removal of stale memberships. Attendance endpoints and historical confirmed records are readable; coverage and joins need further discovery.
+
+## Verification against current main
+
+The first slice was rebased onto `origin/main` at `bf8a2d1`. Frozen-lockfile install and Prisma client generation completed; formatting, lint, typecheck and the full suite passed (417 tests passed, one isolated-database integration test skipped). Local runtime was Node 24.22.1; GitHub CI uses the repository-pinned Node 22.23.4 and remains the release check for that runtime.

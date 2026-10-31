@@ -104,7 +104,7 @@ Completed: Rowan replied on 31 October and his feedback is reconciled in `docs/r
 
 Local code now retains Connect Group types 25 and 46, uses the shared active-membership classifier in fixture and live normalization, resolves omitted member types from their parent group, flags contradictory types and includes both types in sync-status counts. Existing household/people filters consume the same persisted `activeConnectGroup` flag. No schema or endpoint change is required. Regression tests cover both types, parent links, inactive/archived group and member states, pending membership and contradictory types.
 
-Code review checked normalization, full/person fetch paths, status and downstream predicates. Existing automation runs retain frozen recipients; future runs resolve current saved-view audiences (`lib/communications/automation-runs.ts`). Therefore review both inclusion and exclusion segments before the post-deploy sync changes flags. Live taxonomy verification, audience impact review, GitHub release and full-sync/idempotency checks remain pending. See the feedback record for test results.
+Code review checked normalization, full/person fetch paths, status and downstream predicates. Existing automation runs retain frozen recipients; future runs resolve current saved-view audiences (`lib/communications/automation-runs.ts`). Therefore review both inclusion and exclusion segments before the post-deploy sync changes flags. Live taxonomy verification and current saved-view audience review are complete. GitHub release and full-sync/idempotency checks remain pending. See the feedback record for test results.
 
 ## Live verification follow-up
 

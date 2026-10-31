@@ -62,3 +62,7 @@ Next discovery must verify occurrence/group/schedule taxonomy for Sunday service
 | HP-003 | Xero reconciliation still lacks an aligned export and mapping evidence.                                                                                 | Follow up with Vincent for the authorized export, account/fund mapping, reporting periods and treatment of reversals. Record discrepancies before declaring reconciliation.                                                                                                    | Tataihono: follow up with Vincent; open |
 
 Notification destination: the connected personal Gmail profile verifies `tataihono.nikora@gmail.com`, the account already used for Rowan's plan thread. This is verified independently of the app's user table; the read-only app-user lookup did not find a unique active profile at that address, so it must not be used as an app-user identity mapping. Notifications to Tataihono do not authorize delivery to other staff.
+
+## Delivery record
+
+The initial HP-001/HP-002/HP-003 findings were emailed to Tataihono alone at his verified personal Gmail address on 31 October. Each included why review is needed and a suggested check/action. Subject: Abound review findings — Christian-status source and membership reconciliation. Gmail confirmed sent message `1a19132388f6d0d7` in thread `1a19132388f6d0d7`. No Rowan/Vincent/staff recipients were included. Findings remain open until Tataihono records their disposition.
