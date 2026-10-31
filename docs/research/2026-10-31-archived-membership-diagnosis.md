@@ -1,7 +1,7 @@
 ---
 title: Archived Connect Group membership diagnosis and Christian-source clarification
 date: 2026-10-31
-status: locally-verified-awaiting-review-and-stakeholder-reply
+status: deployed-and-verified
 roadmap: RM-007
 ---
 
@@ -49,3 +49,7 @@ Verification:
 - Full suite: 443 passed, one isolated-database integration test skipped. Formatting, lint, typecheck and diff checks passed. The compiled supervisor/worker-runtime checks pass (two tests).
 
 The live production repro remains red until this change is deployed and a normal sync applies the verified archive states. This record does not claim production remediation. Release must follow GitHub review/main CI and the connected Railway flow, with saved-audience impact reviewed before the sync. No deployment or repair was performed for this follow-up.
+
+## Subsequent release and clarification
+
+The earlier local-only state above is superseded by PR #62's GitHub-managed deployment and successful normal sync. Production active extras are now zero; UniChurch remains an exact source match. Rowan also replied asking to use Investigating as a temporary non-Christian proxy, which Tataihono adopted with other statuses remaining Unknown unless explicitly recorded. See `docs/research/2026-10-31-archived-membership-release-verification.md` for deployment IDs, job/run evidence and the classification decision. No Christian-classification code shipped in this release.
