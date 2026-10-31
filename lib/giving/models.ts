@@ -1,5 +1,10 @@
 export const CONNECT_GROUP_TYPE_ID = 25;
+export const CONNECT_GROUP_TYPE_IDS = [CONNECT_GROUP_TYPE_ID, 46];
 export const FAMILY_GROUP_TYPE_ID = 10;
+
+export function isConnectGroupType(groupTypeId: number | null | undefined) {
+  return groupTypeId != null && CONNECT_GROUP_TYPE_IDS.includes(groupTypeId);
+}
 
 export const GROUP_MEMBER_STATUS = {
   INACTIVE: 0,
@@ -50,7 +55,7 @@ export function classifyGiftReliability(
 
 export function isActiveConnectGroupMembership(state: GroupMembershipState) {
   return (
-    state.groupTypeId === CONNECT_GROUP_TYPE_ID &&
+    isConnectGroupType(state.groupTypeId) &&
     state.groupActive &&
     !state.groupArchived &&
     !state.memberArchived &&

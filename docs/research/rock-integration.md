@@ -168,7 +168,7 @@ Relevant group types discovered:
 
 The full group type list is available from `/api/GroupTypes`.
 
-Small-group reporting boundary:
+Small-group reporting boundary (original 17 April discovery; see the 31 October correction below):
 
 - `GroupTypeId = 25` (`Connect Group`) is the actual member-facing small-group membership boundary.
 - `GroupTypeId = 24` (`Small Group Section`) appears to be hierarchy/organization context rather than the direct membership group type.
@@ -202,6 +202,12 @@ Current implementation direction:
 - Store synced reporting data locally and run dashboards against the app database.
 - Do not store payment instrument details, gateway customer identifiers, authorization codes, raw tokens, or REST keys.
 - For small-group reporting, count active participation when the group has `GroupTypeId = 25`, the group is active and not archived, the group member is not archived, and `GroupMemberStatus = 1`.
+
+## 31 October 2026 Connect Group correction
+
+The local classifier, live-sync normalization and sync-status counts now accept the previously discovered types 25 and 46. Original Rock type IDs are retained. Active membership requires an active, unarchived group and active, unarchived membership. Missing member type comes from its parent group; contradictory member type creates a review issue and does not count as active participation. The full and person-slice clients already fetch the relevant groups, so endpoint scope is unchanged.
+
+A subsequent read-only check through the existing Railway service verified both source type IDs, 28 standard groups and 6 UniChurch groups. The source/mirror counts and remaining gaps are recorded in `docs/research/2026-10-31-household-source-verification.md`. Before release, review changed membership audiences and then use the normal GitHub-managed deployment and full sync; code alone does not backfill UniChurch rows. Verify counts by source type and campus, missing references, mismatch issues and unchanged results on a second sync. No production sync or data correction was run for this change.
 
 ## Final Credential Boundary
 

@@ -63,6 +63,9 @@ describe("getSyncStatusSummary", () => {
     expect(summary.recentRuns).toEqual(recentRuns);
     expect(summary.openIssues).toEqual(openIssues);
     expect(summary.openIssueCount).toBe(1);
+    expect(client.rockGroup.count).toHaveBeenCalledWith({
+      where: { groupTypeRockId: { in: [25, 46] } },
+    });
     expect(summary.syncedCounts).toEqual({
       people: 10,
       households: 2,
