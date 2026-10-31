@@ -144,6 +144,8 @@ First implementation PR: [#61 — include UniChurch Connect Group memberships](h
 
 Release evidence: `docs/research/2026-10-31-unichurch-release-verification.md`
 
+Next slice: `docs/plans/2026-10-31-001-refresh-archived-connect-memberships.md`. The stale standard-group membership diagnosis found 29 active local rows already archived in Rock; the bounded refresh correction is locally verified, not deployed. Rowan has been asked to identify the authoritative Christian marker in the existing plan thread. Evidence: `docs/research/2026-10-31-archived-membership-diagnosis.md`.
+
 Request assessment and stakeholder review brief:
 
 - `docs/research/2026-10-24-rowan-abound-request-assessment.md`

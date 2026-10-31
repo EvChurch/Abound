@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { FAMILY_GROUP_TYPE_ID } from "@/lib/giving/models";
 import { ROCK_READ_ENDPOINTS } from "@/lib/sync/models";
 import { redactText } from "@/lib/sync/redaction";
@@ -32,6 +34,18 @@ export type RockFullSyncOptions = {
   pageSize?: number;
   maxPages?: number;
 };
+
+const groupMemberReadSchema = z.object({
+  Id: z.number().int().positive(),
+  Guid: z.string().optional(),
+  GroupId: z.number().int().positive(),
+  PersonId: z.number().int().positive(),
+  GroupTypeId: z.number().int().positive().nullish(),
+  GroupRoleId: z.number().int().positive().nullish(),
+  GroupMemberStatus: z.number().int(),
+  IsArchived: z.boolean(),
+  ModifiedDateTime: z.string().nullish(),
+});
 
 export type RockApiPerson = Record<string, unknown> & {
   Id: number;
@@ -204,7 +218,7 @@ export class RockClient {
     this.fetcher = config.fetcher ?? fetch;
   }
 
-  async getJson<T>(path: string): Promise<T> {
+  async getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     assertReadEndpoint(path);
 
     const response = await this.fetcher(`${this.baseUrl}${path}`, {
@@ -213,6 +227,7 @@ export class RockClient {
         "Authorization-Token": this.restKey,
       },
       method: "GET",
+      ...(signal ? { signal } : {}),
     });
 
     if (!response.ok) {
@@ -222,6 +237,26 @@ export class RockClient {
     }
 
     return (await response.json()) as T;
+  }
+
+  async getGroupMember(id: number): Promise<RockApiGroupMember> {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new Error("Rock group member ID must be a positive integer.");
+    }
+
+    const parsed = groupMemberReadSchema.safeParse(
+      await this.getJson<unknown>(
+        `/api/GroupMembers/${id}`,
+        AbortSignal.timeout(15_000),
+      ),
+    );
+    if (!parsed.success || parsed.data.Id !== id) {
+      throw new Error(
+        "Rock group member response did not match the verified read contract.",
+      );
+    }
+
+    return parsed.data;
   }
 
   async getPersonSlice(personId: number): Promise<RockPersonSlice> {
