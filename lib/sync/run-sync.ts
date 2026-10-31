@@ -7,6 +7,8 @@ import {
   CONNECT_GROUP_TYPE_ID,
   FAMILY_GROUP_TYPE_ID,
   GROUP_MEMBER_STATUS,
+  isActiveConnectGroupMembership,
+  isConnectGroupType,
   resolveGivingHouseholdRockId,
 } from "@/lib/giving/models";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
@@ -726,12 +728,16 @@ function fixtureToNormalized(
             ? GROUP_MEMBER_STATUS.ACTIVE
             : GROUP_MEMBER_STATUS.INACTIVE,
         archived: member.isArchived,
-        activeConnectGroup:
-          groupTypeRockId === CONNECT_GROUP_TYPE_ID &&
-          !member.isArchived &&
-          member.status === "Active" &&
-          Boolean(group?.isActive) &&
-          !group?.isArchived,
+        activeConnectGroup: isActiveConnectGroupMembership({
+          groupTypeId: groupTypeRockId,
+          groupActive: Boolean(group?.isActive),
+          groupArchived: Boolean(group?.isArchived),
+          memberArchived: member.isArchived,
+          groupMemberStatus:
+            member.status === "Active"
+              ? GROUP_MEMBER_STATUS.ACTIVE
+              : GROUP_MEMBER_STATUS.INACTIVE,
+        }),
         sourceUpdatedAt: toDate(member.sourceMetadata.sourceUpdatedAt),
         lastSyncRunId: "pending",
       },
@@ -894,7 +900,7 @@ function fixtureToNormalized(
   };
 }
 
-function rockPersonSliceToNormalized(
+export function rockPersonSliceToNormalized(
   slice: RockPersonSlice,
 ): NormalizedSyncData {
   const issues: SyncIssueInput[] = [];
@@ -1083,11 +1089,11 @@ function rockPersonSliceToNormalized(
 
   const connectGroupIds = new Set(
     slice.groups
-      .filter((group) => group.GroupTypeId === CONNECT_GROUP_TYPE_ID)
+      .filter((group) => isConnectGroupType(group.GroupTypeId))
       .map((group) => group.Id),
   );
   const groups = slice.groups
-    .filter((group) => group.GroupTypeId === CONNECT_GROUP_TYPE_ID)
+    .filter((group) => isConnectGroupType(group.GroupTypeId))
     .map((group) => ({
       rockId: group.Id,
       rockGuid: group.Guid,
@@ -1104,20 +1110,36 @@ function rockPersonSliceToNormalized(
       sourceUpdatedAt: toDate(group.ModifiedDateTime),
       lastSyncRunId: "pending",
     }));
-  const groupIds = new Set(groups.map((group) => group.rockId));
+  const groupsById = new Map(groups.map((group) => [group.rockId, group]));
 
   const groupMembers = slice.groupMembers.flatMap((member) => {
-    if (!member.GroupId || !member.PersonId || !groupIds.has(member.GroupId)) {
+    const group = member.GroupId ? groupsById.get(member.GroupId) : undefined;
+    if (!group || !member.PersonId) {
       return [];
+    }
+
+    const typeMismatch =
+      member.GroupTypeId != null &&
+      member.GroupTypeId !== group.groupTypeRockId;
+    if (typeMismatch) {
+      issues.push({
+        severity: "WARNING",
+        source: ROCK_SYNC_SOURCE,
+        recordType: "RockGroupMember",
+        rockId: String(member.Id),
+        code: "GROUP_TYPE_MISMATCH",
+        message:
+          "Group member type disagrees with its parent group; membership is excluded from active Connect Group reporting pending review.",
+      });
     }
 
     return [
       {
         rockId: member.Id,
         rockGuid: member.Guid,
-        groupRockId: member.GroupId,
+        groupRockId: group.rockId,
         personRockId: member.PersonId,
-        groupTypeRockId: member.GroupTypeId ?? CONNECT_GROUP_TYPE_ID,
+        groupTypeRockId: group.groupTypeRockId,
         groupRoleRockId:
           member.GroupRoleId && groupRoleIds.has(member.GroupRoleId)
             ? member.GroupRoleId
@@ -1126,11 +1148,15 @@ function rockPersonSliceToNormalized(
           member.GroupMemberStatus ?? GROUP_MEMBER_STATUS.INACTIVE,
         archived: member.IsArchived ?? false,
         activeConnectGroup:
-          (member.GroupTypeId ?? CONNECT_GROUP_TYPE_ID) ===
-            CONNECT_GROUP_TYPE_ID &&
-          (member.GroupMemberStatus ?? GROUP_MEMBER_STATUS.INACTIVE) ===
-            GROUP_MEMBER_STATUS.ACTIVE &&
-          !(member.IsArchived ?? false),
+          !typeMismatch &&
+          isActiveConnectGroupMembership({
+            groupTypeId: group.groupTypeRockId,
+            groupActive: group.active,
+            groupArchived: group.archived,
+            memberArchived: member.IsArchived ?? false,
+            groupMemberStatus:
+              member.GroupMemberStatus ?? GROUP_MEMBER_STATUS.INACTIVE,
+          }),
         sourceUpdatedAt: toDate(member.ModifiedDateTime),
         lastSyncRunId: "pending",
       },

@@ -128,6 +128,29 @@ What this covers:
 - Source notes or citations for recommendations.
 - Reviewable strategy suggestions rather than autonomous communication.
 
+### RM-007: Household Participation and UniChurch Coverage
+
+Status: `Rowan feedback incorporated; UniChurch correction locally verified`
+
+Timing: `Now`
+
+Outcome: Staff can inspect household counts and giving participation by connection status and recorded Christian status, with consistent UniChurch Connect Group coverage and explainable reporting definitions.
+
+Requirements: `docs/brainstorms/2026-10-24-household-participation-requirements.md`
+
+Implementation plan: `docs/plans/2026-10-24-001-household-participation-plan.md`
+
+Request assessment and stakeholder review brief:
+
+- `docs/research/2026-10-24-rowan-abound-request-assessment.md`
+- `docs/research/2026-10-24-rowan-abound-review-brief.md`
+
+First delivery includes household reporting and drilldowns, UniChurch membership coverage, reproducible report checks, a household data-quality review list and attendance feasibility research. Full attendance integration and Rock record corrections are separately scoped follow-up work. This supports RM-001 audience quality and RM-005 reporting.
+
+Rowan approved the direction on 31 October and requested the UniChurch fix/deployment, selectable 1/3/6/12/24-month periods, Christian/connection-status mismatch review, actionable review notifications and Xero discrepancies routed to Tataihono for follow-up with Vincent. See `docs/research/2026-10-31-rowan-plan-feedback.md`.
+
+Open dependencies: actual Rock Christian/non-Christian-field contract; attendance coverage; exceptional family/giving-household and flat mappings; aligned fund/month semantics and underlying Xero evidence; verified notification destination. Tataihono confirmed explicit Christian-field precedence, Unknown for missing explicit values, mismatch flags and himself as first review recipient. UniChurch correction is the first implementation slice; live source taxonomy and current saved-view audience checks are complete; GitHub release and resync remain separate verification steps. Source-contract findings and the membership reconciliation review are in `docs/research/2026-10-31-household-source-verification.md`.
+
 ## Maintenance Rules
 
 - Update this roadmap when a roadmap item's priority, status, product scope, blocker, or source document changes.
