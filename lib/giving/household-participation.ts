@@ -1,4 +1,8 @@
-import { ROCK_FULL_SYNC_SOURCE } from "@/lib/sync/models";
+import {
+  ROCK_FULL_SYNC_SOURCE,
+  ROCK_PERSON_SYNC_SOURCE,
+  ROCK_SYNC_SOURCE,
+} from "@/lib/sync/models";
 import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
@@ -89,6 +93,7 @@ export type ParticipationSummary = {
 export type ParticipationReport = {
   filters: ReturnType<typeof participationInputSchema.parse> & { asOf: string };
   snapshotId: string;
+  snapshotStable: boolean;
   ruleVersion: string;
   sourceExplanation: string;
   start: string;
@@ -149,20 +154,59 @@ export async function getHouseholdParticipation(
         orderBy: [{ startedAt: "desc" }, { id: "desc" }],
         select: { id: true, status: true, completedAt: true },
       });
-      const latestFull = await tx.syncRun.findFirst({
-        where: { source: ROCK_FULL_SYNC_SOURCE, status: "SUCCEEDED" },
+      const latestFullAttempt = await tx.syncRun.findFirst({
+        where: { source: ROCK_FULL_SYNC_SOURCE },
         orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-        select: { id: true, startedAt: true },
+        select: { id: true, startedAt: true, completedAt: true, status: true },
       });
+      const latestFull =
+        latestFullAttempt?.status === "SUCCEEDED" ? latestFullAttempt : null;
+      const unresolvedRun = latestFull
+        ? await tx.syncRun.findFirst({
+            where: {
+              source: {
+                in: [
+                  ROCK_FULL_SYNC_SOURCE,
+                  ROCK_PERSON_SYNC_SOURCE,
+                  ROCK_SYNC_SOURCE,
+                ],
+              },
+              status: { in: ["STARTED", "PARTIAL", "FAILED"] },
+              OR: [
+                {
+                  source: {
+                    in: [ROCK_FULL_SYNC_SOURCE, ROCK_PERSON_SYNC_SOURCE],
+                  },
+                  status: "STARTED",
+                },
+                { startedAt: { gte: latestFull.startedAt } },
+                ...(latestFull.completedAt
+                  ? [{ completedAt: { gte: latestFull.completedAt } }]
+                  : []),
+              ],
+            },
+            orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+            select: {
+              id: true,
+              status: true,
+              startedAt: true,
+              completedAt: true,
+            },
+          })
+        : null;
+      const snapshotStable =
+        latest?.status === "SUCCEEDED" && !!latestFull && !unresolvedRun;
       const snapshotId = createHash("sha256")
-        .update(JSON.stringify([latest, latestFull, scope]))
+        .update(
+          JSON.stringify([latest, latestFullAttempt, unresolvedRun, scope]),
+        )
         .digest("hex");
       if (filters.snapshotId && filters.snapshotId !== snapshotId)
         throw new GraphQLError(
           "Report data changed. Refresh the report before continuing.",
           { extensions: { code: "BAD_USER_INPUT" } },
         );
-      if (filters.snapshotId && latest?.status !== "SUCCEEDED")
+      if (filters.snapshotId && !snapshotStable)
         throw new GraphQLError(
           "Sync data is incomplete. Open a fresh report after sync completes.",
           { extensions: { code: "BAD_USER_INPUT" } },
@@ -227,14 +271,17 @@ export async function getHouseholdParticipation(
         "Positive Christian status is not yet verified; Christian-adult participation is unavailable.",
       ];
       const sourceComplete =
-        latest?.status === "SUCCEEDED" &&
-        !!latestFull &&
+        snapshotStable &&
         scope.mode === "CONFIGURED" &&
         funds.length > 0 &&
         unsupportedStatuses.length === 0;
       if (latest?.status !== "SUCCEEDED")
         warnings.push(
           "The latest sync is missing, incomplete or in progress. Counts are provisional; participation rates are withheld.",
+        );
+      if (unresolvedRun)
+        warnings.push(
+          "A sync since the full baseline is incomplete. Counts are provisional; participation rates and snapshot pagination require a new successful full sync.",
         );
       if (scope.mode !== "CONFIGURED")
         warnings.push(
@@ -311,7 +358,7 @@ export async function getHouseholdParticipation(
         );
       if (!latestFull)
         warnings.push(
-          "No successful full Rock sync is available; participation rates are withheld.",
+          "The latest full Rock sync is missing or incomplete; participation rates are withheld.",
         );
       const dataComplete = sourceComplete && !hasStaleMemberships;
       rows = rows.filter(
@@ -355,6 +402,7 @@ export async function getHouseholdParticipation(
       return {
         filters,
         snapshotId,
+        snapshotStable,
         ruleVersion: RULE_VERSION,
         sourceExplanation: SOURCE_EXPLANATION,
         start: window.start.toISOString(),

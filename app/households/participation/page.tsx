@@ -46,8 +46,7 @@ export default async function ParticipationPage({
   }
   const context = {
     ...report.filters,
-    snapshotId:
-      report.latestSync?.status === "SUCCEEDED" ? report.snapshotId : undefined,
+    snapshotId: report.snapshotStable ? report.snapshotId : undefined,
     fundRockIds: report.fundRockIds,
   };
   const yes = (value: boolean | null) =>
@@ -166,22 +165,20 @@ export default async function ParticipationPage({
               </tbody>
             </table>
           </div>
-          {report.nextAfter !== null &&
-            report.latestSync?.status === "SUCCEEDED" && (
-              <Link
-                className="w-fit rounded border border-app-border px-4 py-2 text-sm"
-                href={participationHref(context, { after: report.nextAfter })}
-              >
-                Next page
-              </Link>
-            )}
-          {report.nextAfter !== null &&
-            report.latestSync?.status !== "SUCCEEDED" && (
-              <p className="text-sm text-app-muted">
-                Further pages are available after a successful sync. These
-                counts are provisional.
-              </p>
-            )}
+          {report.nextAfter !== null && report.snapshotStable && (
+            <Link
+              className="w-fit rounded border border-app-border px-4 py-2 text-sm"
+              href={participationHref(context, { after: report.nextAfter })}
+            >
+              Next page
+            </Link>
+          )}
+          {report.nextAfter !== null && !report.snapshotStable && (
+            <p className="text-sm text-app-muted">
+              Further pages are available after a successful sync. These counts
+              are provisional.
+            </p>
+          )}
           {report.filters.after && (
             <Link
               className="text-sm underline"

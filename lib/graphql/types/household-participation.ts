@@ -118,6 +118,7 @@ const reportType = builder
   .implement({
     fields: (t) => ({
       snapshotId: t.exposeString("snapshotId"),
+      snapshotStable: t.exposeBoolean("snapshotStable"),
       ruleVersion: t.exposeString("ruleVersion"),
       sourceExplanation: t.exposeString("sourceExplanation"),
       start: t.exposeString("start"),

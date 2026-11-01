@@ -42,6 +42,7 @@ describe("household participation UI contract", () => {
         report={{
           ...report,
           latestSync: { id: "run", status: "STARTED", completedAt: null },
+          snapshotStable: false,
         }}
       />,
     );

@@ -90,3 +90,7 @@ Unverified reads, missing records, changed identities and cap violations create 
 Full Rock syncs (job and CLI via `syncRockSlice`) persist `source = rock:v1:full`. Person slices (via `syncRockPersonSlice`) persist `source = rock:v1:person`. `rock:v1` remains the common SyncIssue provenance; existing ambiguous run rows are preserved without backfill. Consumers that need a complete-population baseline must select the explicit full source, not infer scope from a successful run or record count. The household report withholds rates until the first successful explicitly scoped full sync after rollout. Person runs still update latest-sync/snapshot metadata but cannot advance that full-population baseline.
 
 Rollback requires reverting both writer and reader contracts together; report rates must remain unavailable if no reliable full baseline is recognised. No manual production data relabelling is part of release.
+
+The latest explicitly scoped full attempt must itself be SUCCEEDED. A subsequent successful person slice cannot hide a FAILED/PARTIAL full attempt or restore rates; a new successful full run is required. Snapshot fingerprints include the full attempt’s status. Incomplete full attempts do not become a baseline for stale-membership flags.
+
+Household-report completeness also checks for incomplete Rock runs newer than the baseline (including runs completed after the full baseline). A successful person retry or unrelated person run cannot prove global reconciliation; a new successful full run is required to reset earlier failures.

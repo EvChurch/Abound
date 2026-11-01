@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { ROCK_FULL_SYNC_SOURCE } from "@/lib/sync/models";
+import {
+  ROCK_FULL_SYNC_SOURCE,
+  ROCK_PERSON_SYNC_SOURCE,
+} from "@/lib/sync/models";
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -317,6 +320,31 @@ describe.skipIf(!url)("household participation real database contract", () => {
         db,
       );
       expect(giving.totalCount).toBe(1);
+      await db.syncRun.create({
+        data: {
+          id: `${prefix}:older-person`,
+          source: ROCK_PERSON_SYNC_SOURCE,
+          status: "STARTED",
+          startedAt: new Date("2098-01-01Z"),
+        },
+      });
+      const overlapping = await getHouseholdParticipation(
+        { ...report.filters },
+        actor,
+        db,
+      );
+      expect(overlapping.snapshotStable).toBe(false);
+      expect(overlapping.dataComplete).toBe(false);
+      await db.syncRun.update({
+        where: { id: `${prefix}:older-person` },
+        data: { status: "SUCCEEDED", completedAt: new Date("2099-01-02Z") },
+      });
+      const completed = await getHouseholdParticipation(
+        { ...report.filters },
+        actor,
+        db,
+      );
+      expect(completed.snapshotStable).toBe(true);
       await db.rockFinancialTransaction.update({
         where: { rockId: 783000 },
         data: { status: "Unverified" },
@@ -356,7 +384,9 @@ describe.skipIf(!url)("household participation real database contract", () => {
       await db.rockGroupRole.deleteMany({ where: { lastSyncRunId: runId } });
       await db.rockGroupType.deleteMany({ where: { lastSyncRunId: runId } });
       await db.rockDefinedValue.deleteMany({ where: { lastSyncRunId: runId } });
-      await db.syncRun.deleteMany({ where: { id: runId } });
+      await db.syncRun.deleteMany({
+        where: { id: { in: [runId, `${prefix}:older-person`] } },
+      });
       await db.$disconnect();
     }
   }, 30000);

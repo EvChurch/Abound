@@ -30,6 +30,7 @@ export const participationReportFixture: ParticipationReport = {
     asOf: "2026-10-24T00:00:00.000Z",
   },
   snapshotId: "snapshot",
+  snapshotStable: true,
   start: "2024-10-01T00:00:00Z",
   endExclusive: "2026-10-01T00:00:00Z",
   latestStart: "2026-09-01T00:00:00Z",

@@ -77,23 +77,59 @@ function harness() {
         }: {
           where: { id: string };
           data: Partial<Run>;
-        }) =>
-          Object.assign(
-            runs.find((r) => r.id === where.id)!,
+        }) => {
+          const run = runs.find((r) => r.id === where.id)!;
+          return Object.assign(
+            run,
             data,
-          ),
+            data.completedAt
+              ? { completedAt: new Date(run.startedAt.getTime() + 1000) }
+              : {},
+          );
+        },
       ),
       findFirst: vi.fn(
-        async ({ where }: { where?: { source?: string; status?: string } }) =>
+        async ({
+          where,
+        }: {
+          where?: {
+            source?: string | { in: string[] };
+            status?: string | { in: string[] };
+            OR?: Array<{
+              source?: { in: string[] };
+              status?: string;
+              startedAt?: { gte: Date };
+              completedAt?: { gte: Date };
+            }>;
+          };
+        }) =>
           [...runs]
             .reverse()
             .find(
               (r) =>
-                (!where?.source || r.source === where.source) &&
-                (!where?.status || r.status === where.status),
+                (!where?.source ||
+                  (typeof where.source === "string"
+                    ? r.source === where.source
+                    : where.source.in.includes(r.source))) &&
+                (!where?.status ||
+                  (typeof where.status === "string"
+                    ? r.status === where.status
+                    : where.status.in.includes(r.status))) &&
+                (!where?.OR ||
+                  where.OR.some(
+                    (c) =>
+                      (c.status === "STARTED" &&
+                        r.status === "STARTED" &&
+                        !!c.source?.in.includes(r.source)) ||
+                      (c.startedAt && r.startedAt >= c.startedAt.gte) ||
+                      (c.completedAt &&
+                        r.completedAt &&
+                        r.completedAt >= c.completedAt.gte),
+                  )),
             ) ?? null,
       ),
     },
+    syncIssue: { createMany: vi.fn(async () => ({ count: 1 })) },
     givingFact: {
       deleteMany: vi.fn(),
       groupBy: vi.fn(async () => []),
@@ -175,7 +211,7 @@ describe("full versus person sync report freshness", () => {
     expect(report.dataComplete).toBe(false);
     expect(report.summaries.at(-1)?.participationRate).toBeNull();
     expect(report.warnings).toContain(
-      "No successful full Rock sync is available; participation rates are withheld.",
+      "The latest full Rock sync is missing or incomplete; participation rates are withheld.",
     );
     const full = await syncRockSlice(db, emptySlice);
     member.lastSyncRunId = full.syncRunId;
@@ -187,5 +223,87 @@ describe("full versus person sync report freshness", () => {
     );
     expect(established.dataComplete).toBe(true);
     expect(established.summaries.at(-1)?.participationRate).toBe(0);
+  });
+  it.each([
+    { label: "full", sync: syncRockSlice },
+    { label: "person", sync: syncRockPersonSlice },
+  ])(
+    "does not let a successful person slice hide an incomplete newer $label sync",
+    async ({ sync }) => {
+      const { db, member, runs } = harness();
+      const full = await syncRockSlice(db, emptySlice);
+      member.lastSyncRunId = full.syncRunId;
+      member.lastSyncedAt = runs[0].startedAt;
+      await sync(db, emptySlice, {
+        sourceIssues: [
+          {
+            severity: "ERROR",
+            source: "rock:v1",
+            code: "UNRESOLVED_SOURCE",
+            message: "Synthetic unresolved source",
+          },
+        ],
+      });
+      await syncRockPersonSlice(db, emptySlice);
+      const report = await getHouseholdParticipation(
+        { asOf: "2026-10-24T00:00:00Z" },
+        actor,
+        db,
+      );
+      expect(report.latestSync?.status).toBe("SUCCEEDED");
+      expect(report.snapshotStable).toBe(false);
+      await expect(
+        getHouseholdParticipation(
+          { ...report.filters, snapshotId: report.snapshotId },
+          actor,
+          db,
+        ),
+      ).rejects.toThrow("Sync data is incomplete");
+      expect(report.dataComplete).toBe(false);
+      expect(report.summaries.at(-1)?.participationRate).toBeNull();
+      expect(report.rows[0].reviewReasons).toEqual([]);
+      // A later complete population snapshot is the conservative recovery boundary.
+      const recovery = await syncRockSlice(db, emptySlice);
+      member.lastSyncRunId = recovery.syncRunId;
+      member.lastSyncedAt = runs.at(-1)!.startedAt;
+      const recovered = await getHouseholdParticipation(
+        { asOf: "2026-10-24T00:00:00Z" },
+        actor,
+        db,
+      );
+      expect(recovered.dataComplete).toBe(true);
+      expect(recovered.snapshotStable).toBe(true);
+    },
+  );
+  it("blocks an older scoped person writer still running after a newer full baseline", async () => {
+    const { db, member, runs } = harness();
+    const older: Run = {
+      id: "older-person",
+      source: "rock:v1:person",
+      status: "STARTED",
+      startedAt: new Date("2026-09-30Z"),
+      completedAt: null,
+    };
+    runs.push(older);
+    const full = await syncRockSlice(db, emptySlice);
+    member.lastSyncRunId = full.syncRunId;
+    member.lastSyncedAt = runs.at(-1)!.startedAt;
+    const running = await getHouseholdParticipation(
+      { asOf: "2026-10-24T00:00:00Z" },
+      actor,
+      db,
+    );
+    expect(running.latestSync?.id).toBe(full.syncRunId);
+    expect(running.snapshotStable).toBe(false);
+    expect(running.dataComplete).toBe(false);
+    older.status = "SUCCEEDED";
+    older.completedAt = new Date(runs.at(-1)!.completedAt!.getTime() + 1000);
+    const finished = await getHouseholdParticipation(
+      { asOf: "2026-10-24T00:00:00Z" },
+      actor,
+      db,
+    );
+    expect(finished.snapshotStable).toBe(true);
+    expect(finished.snapshotId).not.toBe(running.snapshotId);
   });
 });

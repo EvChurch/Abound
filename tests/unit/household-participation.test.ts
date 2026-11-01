@@ -60,12 +60,17 @@ function client(
       ),
     },
     syncRun: {
-      findFirst: vi.fn(async () => ({
-        id: "run1",
-        status: opts.status ?? "SUCCEEDED",
-        completedAt: new Date(asOf),
-        startedAt: new Date(asOf),
-      })),
+      findFirst: vi.fn(
+        async ({ where }: { where?: { status?: { in?: string[] } } }) =>
+          where?.status?.in
+            ? null
+            : {
+                id: "run1",
+                status: opts.status ?? "SUCCEEDED",
+                completedAt: new Date(asOf),
+                startedAt: new Date(asOf),
+              },
+      ),
     },
     rockHousehold: { findMany: vi.fn(async () => households) },
     givingFact: {

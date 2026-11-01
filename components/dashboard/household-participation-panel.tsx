@@ -18,8 +18,7 @@ export function HouseholdParticipationPanel({
   const context = {
     ...report.filters,
     after: undefined,
-    snapshotId:
-      report.latestSync?.status === "SUCCEEDED" ? report.snapshotId : undefined,
+    snapshotId: report.snapshotStable ? report.snapshotId : undefined,
     fundRockIds: report.fundRockIds,
   };
   function countLink(
