@@ -1,3 +1,4 @@
+import { ROCK_FULL_SYNC_SOURCE } from "@/lib/sync/models";
 import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
@@ -149,7 +150,7 @@ export async function getHouseholdParticipation(
         select: { id: true, status: true, completedAt: true },
       });
       const latestFull = await tx.syncRun.findFirst({
-        where: { source: "rock:v1", status: "SUCCEEDED" },
+        where: { source: ROCK_FULL_SYNC_SOURCE, status: "SUCCEEDED" },
         orderBy: [{ startedAt: "desc" }, { id: "desc" }],
         select: { id: true, startedAt: true },
       });

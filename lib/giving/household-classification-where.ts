@@ -1,3 +1,4 @@
+import { HOUSEHOLD_STAGE_PRECEDENCE } from "./household-participation-contract";
 import type { Prisma } from "@prisma/client";
 import { eligibleAdultMembershipWhere } from "./household-participation";
 
@@ -29,16 +30,22 @@ export function householdClassificationWhere(
   };
   const conditions = values.map((value): Prisma.RockHouseholdWhereInput => {
     if (field === "householdStage") {
-      switch (value) {
-        case "GROWING":
-          return some([1229]);
-        case "ATTENDING":
-          return { AND: [none([1229]), some([146])] };
-        case "JOINING":
-          return { AND: [none([1229, 146]), some([1406])] };
-        case "OTHER":
-          return none([1229, 146, 1406]);
-      }
+      const orderedIds = HOUSEHOLD_STAGE_PRECEDENCE.map(
+        (rule) => rule.rockStatusId,
+      );
+      if (value === "OTHER") return none(orderedIds);
+      const index = HOUSEHOLD_STAGE_PRECEDENCE.findIndex(
+        (rule) => rule.stage === value,
+      );
+      if (index >= 0)
+        return index === 0
+          ? some([orderedIds[index]])
+          : {
+              AND: [
+                none(orderedIds.slice(0, index)),
+                some([orderedIds[index]]),
+              ],
+            };
     } else {
       const unknown: Prisma.RockHouseholdWhereInput = {
         members: {

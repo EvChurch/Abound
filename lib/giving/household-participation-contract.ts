@@ -6,6 +6,11 @@ export const HOUSEHOLD_STAGES = [
   "JOINING",
   "OTHER",
 ] as const;
+export const HOUSEHOLD_STAGE_PRECEDENCE = [
+  { stage: "GROWING", rockStatusId: 1229 },
+  { stage: "ATTENDING", rockStatusId: 146 },
+  { stage: "JOINING", rockStatusId: 1406 },
+] as const;
 export const CHRISTIAN_STATUSES = [
   "CHRISTIAN",
   "NON_CHRISTIAN",
@@ -69,13 +74,9 @@ export type AdultStatus = {
 };
 export function classifyHouseholdAdults(adults: AdultStatus[]) {
   const ids = new Set(adults.map((a) => a.connectionStatusValueRockId));
-  const stage: HouseholdStage = ids.has(1229)
-    ? "GROWING"
-    : ids.has(146)
-      ? "ATTENDING"
-      : ids.has(1406)
-        ? "JOINING"
-        : "OTHER";
+  const stage: HouseholdStage =
+    HOUSEHOLD_STAGE_PRECEDENCE.find((rule) => ids.has(rule.rockStatusId))
+      ?.stage ?? "OTHER";
   const statuses = adults.map((a) =>
     a.explicitChristianStatus && a.explicitChristianStatus !== "UNKNOWN"
       ? a.explicitChristianStatus

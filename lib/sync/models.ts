@@ -1,4 +1,7 @@
+// Issue provenance stays common; persisted run sources identify snapshot scope.
 export const ROCK_SYNC_SOURCE = "rock:v1" as const;
+export const ROCK_FULL_SYNC_SOURCE = "rock:v1:full" as const;
+export const ROCK_PERSON_SYNC_SOURCE = "rock:v1:person" as const;
 
 export const ROCK_READ_ENDPOINTS = [
   "/api/People",

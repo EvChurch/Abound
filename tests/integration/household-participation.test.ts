@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { ROCK_FULL_SYNC_SOURCE } from "@/lib/sync/models";
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -39,7 +40,7 @@ describe.skipIf(!url)("household participation real database contract", () => {
       await db.syncRun.create({
         data: {
           id: runId,
-          source: "rock:v1",
+          source: ROCK_FULL_SYNC_SOURCE,
           status: "SUCCEEDED",
           startedAt: new Date("2099-01-01Z"),
           completedAt: new Date("2099-01-01Z"),

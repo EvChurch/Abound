@@ -13,7 +13,11 @@ import {
 } from "@/lib/giving/models";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
 import { refreshPledgeRecommendationSnapshots } from "@/lib/giving/pledges";
-import { ROCK_SYNC_SOURCE } from "@/lib/sync/models";
+import {
+  ROCK_SYNC_SOURCE,
+  ROCK_FULL_SYNC_SOURCE,
+  ROCK_PERSON_SYNC_SOURCE,
+} from "@/lib/sync/models";
 import type { SyncIssueInput } from "@/lib/sync/reconcile";
 import { redactForLog } from "@/lib/sync/redaction";
 
@@ -82,7 +86,12 @@ export async function syncRockPersonSlice(
   slice: RockPersonSlice,
   options: SyncRunOptions = {},
 ) {
-  return syncRockSlice(prisma, slice, options);
+  return persistNormalizedSync(
+    prisma,
+    rockPersonSliceToNormalized(slice),
+    ROCK_PERSON_SYNC_SOURCE,
+    options,
+  );
 }
 
 export async function syncRockSlice(
@@ -93,7 +102,7 @@ export async function syncRockSlice(
   return persistNormalizedSync(
     prisma,
     rockPersonSliceToNormalized(slice),
-    "rock:v1",
+    ROCK_FULL_SYNC_SOURCE,
     options,
   );
 }
