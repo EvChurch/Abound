@@ -84,3 +84,13 @@ Verified on 2026-04-17 against the church Rock instance with API v1 `GET` reques
 Rock's current v1 GroupMembers collection omits archived rows that remain readable by ID. Normal full-sync job and CLI preparation therefore refresh up to 200 existing, not-yet-archived type-25/type-46 memberships omitted from that collection, restricted to source-confirmed supported parent groups. ID reads use the existing GET allowlist and typed validation; matching identity is required before the normalizer applies the actual archive/status values. Already-archived rows need no repeat lookup, and collection reads handle later unarchives.
 
 Unverified reads, missing records, changed identities and cap violations create ERROR SyncIssues and a PARTIAL run; unresolved local rows are preserved. This preparation does not delete records, infer archive state from absence, reconcile missing parent groups or run globally from person-slice sync. Raw mirror row counts can exceed collection counts because verified archived history is retained. See `docs/plans/2026-10-31-001-refresh-archived-connect-memberships.md` and `docs/research/2026-10-31-archived-membership-diagnosis.md` for source evidence and release verification.
+
+## Persisted run scope for household freshness
+
+Full Rock syncs (job and CLI via `syncRockSlice`) persist `source = rock:v1:full`. Person slices (via `syncRockPersonSlice`) persist `source = rock:v1:person`. `rock:v1` remains the common SyncIssue provenance; existing ambiguous run rows are preserved without backfill. Consumers that need a complete-population baseline must select the explicit full source, not infer scope from a successful run or record count. The household report withholds rates until the first successful explicitly scoped full sync after rollout. Person runs still update latest-sync/snapshot metadata but cannot advance that full-population baseline.
+
+Rollback requires reverting both writer and reader contracts together; report rates must remain unavailable if no reliable full baseline is recognised. No manual production data relabelling is part of release.
+
+The latest explicitly scoped full attempt must itself be SUCCEEDED. A subsequent successful person slice cannot hide a FAILED/PARTIAL full attempt or restore rates; a new successful full run is required. Snapshot fingerprints include the full attempt’s status. Incomplete full attempts do not become a baseline for stale-membership flags.
+
+Household-report completeness also checks for incomplete Rock runs newer than the baseline (including runs completed after the full baseline began). A successful person retry or unrelated person run cannot prove global reconciliation; a new successful full run is required to reset earlier failures.

@@ -1,3 +1,4 @@
+import { householdClassificationWhere } from "@/lib/giving/household-classification-where";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
@@ -271,6 +272,14 @@ function conditionToHouseholdWhere(
   condition: FilterCondition,
 ): Prisma.RockHouseholdWhereInput | null {
   switch (condition.field) {
+    case "householdStage":
+    case "householdChristianStatus":
+      return householdClassificationWhere(
+        condition.field,
+        Array.isArray(condition.value)
+          ? condition.value.map(String)
+          : [String(condition.value)],
+      );
     case "search":
       return {
         name: { contains: stringValue(condition), mode: "insensitive" },

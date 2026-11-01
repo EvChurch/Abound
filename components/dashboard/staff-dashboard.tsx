@@ -1,3 +1,5 @@
+import { HouseholdParticipationPanel } from "./household-participation-panel";
+import type { ParticipationReport } from "@/lib/giving/household-participation";
 import Link from "next/link";
 
 import { HouseholdDonorChart } from "@/components/dashboard/household-donor-chart";
@@ -13,6 +15,7 @@ import type {
 import { CircleHelp } from "lucide-react";
 
 type StaffDashboardProps = {
+  participation?: ParticipationReport;
   givingPerAdult: GivingPerAdult;
   householdDonorTrend: HouseholdDonorTrend;
 };
@@ -20,6 +23,7 @@ type StaffDashboardProps = {
 export function StaffDashboard({
   givingPerAdult,
   householdDonorTrend,
+  participation,
 }: StaffDashboardProps) {
   const months = householdDonorTrend.months;
   const latestCompletedMonth = months.at(-1);
@@ -104,6 +108,10 @@ export function StaffDashboard({
             <p>{householdDonorTrend.sourceExplanation}</p>
           </div>
         </section>
+
+        {participation && (
+          <HouseholdParticipationPanel report={participation} />
+        )}
 
         <HouseholdMovementPanel
           lifecycleCounts={householdDonorTrend.lifecycleCounts}
