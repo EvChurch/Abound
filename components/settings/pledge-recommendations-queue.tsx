@@ -29,10 +29,12 @@ export function PledgeRecommendationsQueue({
   result,
 }: PledgeRecommendationsQueueProps) {
   const [displayCandidates, setDisplayCandidates] = useState(candidates);
+  const [previousCandidates, setPreviousCandidates] = useState(candidates);
 
-  useEffect(() => {
+  if (candidates !== previousCandidates) {
+    setPreviousCandidates(candidates);
     setDisplayCandidates(candidates);
-  }, [candidates]);
+  }
 
   useEffect(() => {
     const resultMessage = result ? (RESULT_COPY[result] ?? null) : null;
