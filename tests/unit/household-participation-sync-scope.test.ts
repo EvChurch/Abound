@@ -306,4 +306,39 @@ describe("full versus person sync report freshness", () => {
     expect(finished.snapshotStable).toBe(true);
     expect(finished.snapshotId).not.toBe(running.snapshotId);
   });
+  it("requires recovery when an older writer fails during the full sync", async () => {
+    const { db, member, runs } = harness();
+    const older: Run = {
+      id: "overlap-failure",
+      source: "rock:v1:person",
+      status: "PARTIAL",
+      startedAt: new Date("2026-09-30Z"),
+      completedAt: null,
+    };
+    runs.push(older);
+    const full = await syncRockSlice(db, emptySlice);
+    const baseline = runs.at(-1)!;
+    member.lastSyncRunId = full.syncRunId;
+    member.lastSyncedAt = baseline.startedAt;
+    older.completedAt = new Date(baseline.startedAt.getTime() + 500);
+    const report = await getHouseholdParticipation(
+      { asOf: "2026-10-24T00:00:00Z" },
+      actor,
+      db,
+    );
+    expect(report.snapshotStable).toBe(false);
+    expect(report.dataComplete).toBe(false);
+    const recovery = await syncRockSlice(db, emptySlice);
+    member.lastSyncRunId = recovery.syncRunId;
+    member.lastSyncedAt = runs.at(-1)!.startedAt;
+    expect(
+      (
+        await getHouseholdParticipation(
+          { asOf: "2026-10-24T00:00:00Z" },
+          actor,
+          db,
+        )
+      ).snapshotStable,
+    ).toBe(true);
+  });
 });

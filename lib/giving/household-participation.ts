@@ -180,9 +180,7 @@ export async function getHouseholdParticipation(
                   status: "STARTED",
                 },
                 { startedAt: { gte: latestFull.startedAt } },
-                ...(latestFull.completedAt
-                  ? [{ completedAt: { gte: latestFull.completedAt } }]
-                  : []),
+                { completedAt: { gte: latestFull.startedAt } },
               ],
             },
             orderBy: [{ startedAt: "desc" }, { id: "desc" }],

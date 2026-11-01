@@ -93,4 +93,4 @@ Rollback requires reverting both writer and reader contracts together; report ra
 
 The latest explicitly scoped full attempt must itself be SUCCEEDED. A subsequent successful person slice cannot hide a FAILED/PARTIAL full attempt or restore rates; a new successful full run is required. Snapshot fingerprints include the full attempt’s status. Incomplete full attempts do not become a baseline for stale-membership flags.
 
-Household-report completeness also checks for incomplete Rock runs newer than the baseline (including runs completed after the full baseline). A successful person retry or unrelated person run cannot prove global reconciliation; a new successful full run is required to reset earlier failures.
+Household-report completeness also checks for incomplete Rock runs newer than the baseline (including runs completed after the full baseline began). A successful person retry or unrelated person run cannot prove global reconciliation; a new successful full run is required to reset earlier failures.
