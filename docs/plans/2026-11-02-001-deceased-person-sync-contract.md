@@ -1,7 +1,7 @@
 ---
 title: Include deceased records in the normal Rock full-sync contract
 date: 2026-11-02
-status: implemented-tested-awaiting-github-review
+status: implemented-tested-reviewed-awaiting-github-release
 roadmap: RM-007
 ---
 
@@ -41,3 +41,7 @@ Tataihono explicitly requested the fix and authorized asking Rowan about Commitm
 The known production case is not manually repaired by this code change. GitHub release and the following normal full sync remain required. Existing household eligibility filters already require non-deceased active adults; correcting the mirror can therefore change future audience resolution. Existing automation runs freeze recipients; this patch does not send any communication or change the approval/freeze contract.
 
 Validation: all 479 tests across 81 files passed, including the isolated PostgreSQL regression. Formatting, lint and typecheck run in the repository-required order; compiled-worker checks are also part of the verification. Local Node is 24.22.1; GitHub CI validates the pinned Node 22.23.4 environment before merge readiness.
+
+A bounded live GET-only impact query returned 13 deceased membership rows using `IncludeDeceased=true` and `Person/IsDeceased eq true`; none belong to the currently returned type-25/46 groups, and none satisfy the current active Connect Group predicate. Preserve the approved group/member-only active-membership definition (requirements R17); household reporting separately excludes inactive/deceased adults (R5). This observation does not replace post-sync source/count and audience verification.
+
+Independent Standards and Spec review of commit `8d3e0ac` against merged main `2ad467c` found no actionable findings on either axis. The later documentation addition records only the bounded live Connect Group impact check; runtime and tests are unchanged.
