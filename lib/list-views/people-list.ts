@@ -1,3 +1,4 @@
+import { currentFamilyMembershipWhere } from "@/lib/giving/household-membership";
 import type { GivingPledgePeriod, Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
@@ -1579,6 +1580,7 @@ function adultWhere(): Prisma.RockPersonWhereInput {
   return {
     householdMembers: {
       some: {
+        ...currentFamilyMembershipWhere,
         archived: false,
         household: {
           active: true,
@@ -1599,6 +1601,7 @@ function childWhere(): Prisma.RockPersonWhereInput {
   return {
     householdMembers: {
       some: {
+        ...currentFamilyMembershipWhere,
         archived: false,
         household: {
           active: true,
@@ -1619,6 +1622,7 @@ function currentHouseholdMembershipWhere(): Prisma.RockPersonWhereInput {
   return {
     householdMembers: {
       some: {
+        ...currentFamilyMembershipWhere,
         archived: false,
         household: {
           active: true,

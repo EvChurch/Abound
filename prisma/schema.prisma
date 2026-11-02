@@ -570,24 +570,28 @@ model RockHousehold {
 }
 
 model RockHouseholdMember {
-  rockId            Int       @id
-  rockGuid          String?   @unique
-  householdRockId   Int
-  personRockId      Int
-  groupRoleRockId   Int?
-  groupMemberStatus Int?
-  archived          Boolean   @default(false)
-  sourceUpdatedAt   DateTime?
-  firstSyncedAt     DateTime  @default(now())
-  lastSyncedAt      DateTime  @updatedAt
-  lastSyncRunId     String
+  rockId                  Int       @id
+  rockGuid                String?   @unique
+  householdRockId         Int
+  personRockId            Int
+  groupRoleRockId         Int?
+  groupMemberStatus       Int?
+  archived                Boolean   @default(false)
+  /// Local confirmation of source-recorded cessation, separate from Rock flags.
+  sourceRemovalVerifiedAt DateTime?
+  /// Most recent removal proof remains after verified source reappearance.
+  sourceRemovalEvidence   Json?
+  sourceUpdatedAt         DateTime?
+  firstSyncedAt           DateTime  @default(now())
+  lastSyncedAt            DateTime  @updatedAt
+  lastSyncRunId           String
 
   lastSyncRun SyncRun        @relation(fields: [lastSyncRunId], references: [id])
   household   RockHousehold  @relation(fields: [householdRockId], references: [rockId])
   person      RockPerson     @relation(fields: [personRockId], references: [rockId])
   groupRole   RockGroupRole? @relation(fields: [groupRoleRockId], references: [rockId])
 
-  @@unique([householdRockId, personRockId])
+  @@index([householdRockId, personRockId])
   @@index([personRockId])
   @@index([groupRoleRockId])
   @@index([lastSyncRunId])

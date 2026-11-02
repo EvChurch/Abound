@@ -1,3 +1,4 @@
+import { currentFamilyMembershipWhere } from "./household-membership";
 import {
   ROCK_FULL_SYNC_SOURCE,
   ROCK_PERSON_SYNC_SOURCE,
@@ -22,6 +23,7 @@ import {
 } from "./household-participation-contract";
 
 export const eligibleAdultMembershipWhere = {
+  ...currentFamilyMembershipWhere,
   archived: false,
   groupMemberStatus: 1,
   groupRoleRockId: 3,

@@ -5,6 +5,7 @@ import type {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import { currentFamilyMembershipWhere } from "./household-membership";
 import {
   GIVING_LIFECYCLE_KINDS,
   type GivingLifecycleKind,
@@ -375,6 +376,7 @@ export async function getGivingPerAdult(
             personRockId: true,
           },
           where: {
+            ...currentFamilyMembershipWhere,
             archived: false,
             groupRole: {
               name: {
