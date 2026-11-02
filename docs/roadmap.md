@@ -130,7 +130,7 @@ What this covers:
 
 ### RM-007: Household Participation and UniChurch Coverage
 
-Status: `UniChurch and archive refresh verified; household report implemented and reviewed; awaiting release`
+Status: `Household report deployed and full-sync verified; two membership review cases and source dependencies remain`
 
 Timing: `Now`
 
@@ -144,7 +144,9 @@ First implementation PR: [#61 — include UniChurch Connect Group memberships](h
 
 Release evidence: `docs/research/2026-10-31-unichurch-release-verification.md`
 
-Next slice: household participation reporting is implemented locally under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. Two stale adult memberships are retained as provisional review cases; their affected rates are withheld. No report release or source repair is claimed.
+Next slice: household participation reporting is implemented locally under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. Two stale adult memberships are retained as provisional review cases; their affected rates are withheld. PR #63 is merged and deployed; the new scoped full sync and complete 742-row pagination were verified on 2 November. Two membership review cases still withhold affected rates; no source repair is claimed. Release evidence: `docs/research/2026-11-02-household-report-release-verification.md`.
+
+2 November follow-up identified a deceased-person collection omission behind one membership case; the other person/member identity returns 404 and remains unresolved. Research: `docs/research/2026-11-02-household-membership-review-investigation.md`; sync correction implemented under verification, awaiting GitHub review/release: `docs/plans/2026-11-02-001-deceased-person-sync-contract.md`. Positive Christian evidence candidate: recorded Commitment step type 5, pending source-owner authority/status/removal decisions. See `docs/research/2026-11-02-christian-source-follow-up.md`. Rowan has been sent the authorized Commitment-source/status question in Giving Check. Classification and production data were not changed by this investigation.
 
 The bounded Connect Group archive refresh from PR #62 is deployed and verified: stale active memberships fell from 29 to zero; UniChurch remains an exact source match. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.
 

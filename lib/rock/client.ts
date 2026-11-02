@@ -436,10 +436,15 @@ export class RockClient {
         "/api/PersonAlias?$orderby=Id asc",
         options,
       ),
-      this.getAllPages<RockApiPerson>("/api/People?$orderby=Id asc", options),
+      // Default collections omit deceased people and their memberships, leaving
+      // previously synced active records stale after Rock marks someone deceased.
+      this.getAllPages<RockApiPerson>(
+        "/api/People?includeDeceased=true&$orderby=Id asc",
+        options,
+      ),
       this.getAllPages<RockApiGroup>("/api/Groups?$orderby=Id asc", options),
       this.getAllPages<RockApiGroupMember>(
-        "/api/GroupMembers?$orderby=Id asc",
+        "/api/GroupMembers?IncludeDeceased=true&$orderby=Id asc",
         options,
       ),
       this.getAllPages<RockApiCampus>("/api/Campuses?$orderby=Id asc", options),

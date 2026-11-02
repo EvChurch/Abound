@@ -1,7 +1,7 @@
 ---
 title: Household participation implementation plan
 date: 2026-10-24
-status: household-report-implemented-reviewed-awaiting-release
+status: household-report-deployed-with-data-review-follow-ups
 roadmap: RM-007
 ---
 
@@ -125,3 +125,15 @@ Rowan replied at 11:35:51 UTC on 31 October, asking to use Investigating for non
 Phases 3–4 now have a shared RepeatableRead service, dashboard panel, bounded household drilldowns, existing household classification filters, typed GraphQL and audited read-only MCP exposure. The approved temporary rule uses existing synced fields; no new Rock endpoint, schema field or migration is needed. UTC months preserve the verified effectiveMonth convention. Financial attribution and stale membership failures preserve demographic rows but withhold affected giving measures/rates. Positive Christian participation remains unavailable, not zero. See `docs/architecture/household-participation-report.md` and `docs/research/2026-11-01-household-report-implementation-verification.md`. Source membership repair, positive field binding, Xero reconciliation and attendance implementation remain separate follow-ups.
 
 Agent review correction: distinguish full/person run scope explicitly in persisted source labels, preserve ambiguous legacy runs, and require one successful scoped full sync after rollout before report-rate verification. Add the full → person → report regression; person slices must not advance full-population freshness. Share the ordered stage-ID policy between the classifier and saved-view predicates. See the implementation verification record for reproduction and checks.
+
+## 2 November production release verification
+
+PR #63 is merged and both GitHub-connected services deployed from `2ad467c`. Main CI and production-image verification passed. The normal full-sync job completed successfully with explicit `rock:v1:full` scope, establishing the first reliable report baseline. All 742 bounded household rows enumerate and match stage/giving summaries. Two membership review cases remain provisional and affected rates are withheld; positive Christian status remains unverified. UniChurch matches six live groups and 104 active memberships, with inactive history retained. See `docs/research/2026-11-02-household-report-release-verification.md`. No source repair or notification to other stakeholders was performed.
+
+## 2 November membership and Christian-source investigation
+
+The two report review cases now have distinct evidence. Membership 20270 belongs to a source-confirmed inactive/deceased person omitted by default People and GroupMembers collections; verified deceased-inclusive queries return both identities. Membership 79767 and its person return 404, with no usable alias or GUID identity found. Preserve that case for source-owner disposition. A wider bounded check found 18 stale locally active people: one deceased and 17 unreadable by ID, not 17 proven deletions. Research: `docs/research/2026-11-02-household-membership-review-investigation.md`. The normal-sync correction is implemented under verification in `docs/plans/2026-11-02-001-deceased-person-sync-contract.md`.
+
+Positive Christian research found populated Commitment step type 5: 61 recorded completion steps, 34 currently active/non-deceased people, and 33 eligible default-campus adult people in 33 households. Two active people also have Investigating status. Source-owner confirmation is required before adopting the step as positive evidence, including accepted completion statuses and correction/removal semantics. No explicit Christian person attribute was verified; the temporary approved rule remains unchanged. Evidence and the concrete owner question: `docs/research/2026-11-02-christian-source-follow-up.md`. No production correction or third-party message was performed.
+
+Tataihono subsequently requested the deceased-person sync fix and explicitly authorized the Commitment-source question to Rowan. Both verified deceased-inclusive full-reader options are implemented; focused reader and real-database regression checks pass. The normal GitHub review/release remains outstanding. Rowan was emailed the source/status question in Giving Check (sent message `1a1999efeec4ee59`); positive classification remains unbound pending his answer.
