@@ -7,6 +7,8 @@ import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { describe, expect, it } from "vitest";
+import { RockClient, type RockApiPerson } from "@/lib/rock/client";
+import { syncRockSlice } from "@/lib/sync/run-sync";
 import { getHouseholdParticipation } from "@/lib/giving/household-participation";
 import { householdClassificationWhere } from "@/lib/giving/household-classification-where";
 import {
@@ -387,6 +389,251 @@ describe.skipIf(!url)("household participation real database contract", () => {
       await db.syncRun.deleteMany({
         where: { id: { in: [runId, `${prefix}:older-person`] } },
       });
+      await db.$disconnect();
+    }
+  }, 30000);
+
+  it("refreshes a newly deceased adult through the full reader and preserves an unavailable identity for review", async () => {
+    if (
+      url === process.env.DATABASE_URL ||
+      !new URL(url!).pathname.includes("test")
+    )
+      throw new Error("An isolated TEST_DATABASE_URL is required.");
+    const db = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: url! }),
+    });
+    const campusId = 795000;
+    const accountId = 795001;
+    const familyA = 795010;
+    const familyB = 795020;
+    const deceasedId = 795101;
+    const missingId = 795103;
+    const people: RockApiPerson[] = [deceasedId, 795102, missingId, 795104].map(
+      (Id, i) => ({
+        Id,
+        PrimaryAliasId: Id + 100,
+        PrimaryFamilyId: i < 2 ? familyA : familyB,
+        GivingGroupId: i < 2 ? familyA : familyB,
+        RecordStatusValueId: 3,
+        ConnectionStatusValueId: i % 2 === 0 ? 1229 : 65,
+        IsDeceased: false,
+      }),
+    );
+    let changed = false;
+    const client = new RockClient({
+      baseUrl: "https://rock.example.test",
+      restKey: "synthetic-key",
+      fetcher: async (input) => {
+        const request = new URL(String(input));
+        const currentPeople = people
+          .filter((p) => !changed || p.Id !== missingId)
+          .map((p) =>
+            changed && p.Id === deceasedId
+              ? { ...p, IsDeceased: true, RecordStatusValueId: 4 }
+              : p,
+          );
+        const sources: Record<string, unknown[]> = {
+          "/api/GroupTypes": [{ Id: 10, Name: "Family" }],
+          "/api/GroupTypeRoles": [{ Id: 3, GroupTypeId: 10, Name: "Adult" }],
+          "/api/DefinedValues": [
+            { Id: 3, Value: "Active" },
+            { Id: 4, Value: "Inactive" },
+            { Id: 65, Value: "Investigating" },
+            { Id: 1229, Value: "Growing" },
+            { Id: 53, Value: "Contribution" },
+          ],
+          "/api/PersonAlias": currentPeople.map((p) => ({
+            Id: p.PrimaryAliasId,
+            PersonId: p.Id,
+          })),
+          "/api/People": currentPeople.filter(
+            (p) =>
+              request.searchParams.get("includeDeceased") === "true" ||
+              !p.IsDeceased,
+          ),
+          "/api/Groups": [familyA, familyB].map((Id) => ({
+            Id,
+            Name: "Synthetic family",
+            GroupTypeId: 10,
+            CampusId: campusId,
+            IsActive: true,
+            IsArchived: false,
+          })),
+          "/api/GroupMembers": currentPeople
+            .filter(
+              (p) =>
+                request.searchParams.get("IncludeDeceased") === "true" ||
+                !p.IsDeceased,
+            )
+            .map((p) => ({
+              Id: p.Id,
+              PersonId: p.Id,
+              GroupId: p.PrimaryFamilyId,
+              GroupRoleId: 3,
+              GroupMemberStatus: 1,
+              IsArchived: false,
+            })),
+          "/api/Campuses": [
+            {
+              Id: campusId,
+              Name: "Synthetic deceased sync campus",
+              IsActive: true,
+            },
+          ],
+          "/api/FinancialAccounts": [
+            { Id: accountId, Name: "Synthetic fund", IsActive: true },
+          ],
+          "/api/FinancialTransactions": [
+            {
+              Id: 795301,
+              AuthorizedPersonAliasId: deceasedId + 100,
+              TransactionTypeValueId: 53,
+              TransactionDateTime: "2026-09-15T00:00:00Z",
+            },
+          ],
+          "/api/FinancialTransactionDetails": [
+            {
+              Id: 795401,
+              TransactionId: 795301,
+              AccountId: accountId,
+              Amount: 10,
+            },
+          ],
+        };
+        const rows = sources[request.pathname] ?? [];
+        const skip = Number(request.searchParams.get("$skip"));
+        const top = Number(request.searchParams.get("$top"));
+        return Response.json(rows.slice(skip, skip + top));
+      },
+    });
+    const originalType = await db.rockGroupType.findUnique({
+      where: { rockId: 10 },
+    });
+    const originalRole = await db.rockGroupRole.findUnique({
+      where: { rockId: 3 },
+    });
+    const originalValues = await db.rockDefinedValue.findMany({
+      where: { rockId: { in: [3, 4, 65, 1229, 53] } },
+    });
+    const runIds: string[] = [];
+    const actor = {
+      id: "synthetic-staff",
+      auth0Subject: "synthetic-staff",
+      active: true,
+      name: null,
+      email: null,
+      rockPersonId: null,
+    };
+    const reportInput = {
+      campusRockIds: [campusId],
+      fundRockIds: [accountId],
+      asOf: "2026-10-24T00:00:00Z",
+    };
+    try {
+      const initial = await syncRockSlice(
+        db,
+        await client.getFullSyncSlice({ pageSize: 2 }),
+      );
+      runIds.push(initial.syncRunId);
+      expect(initial.status).toBe("SUCCEEDED");
+      await db.platformFundSetting.create({
+        data: { accountRockId: accountId, enabled: true },
+      });
+      const before = await getHouseholdParticipation(reportInput, actor, db);
+      expect(before.rows.map((r) => r.stage)).toEqual(["GROWING", "GROWING"]);
+      changed = true;
+      const updated = await syncRockSlice(
+        db,
+        await client.getFullSyncSlice({ pageSize: 2 }),
+      );
+      runIds.push(updated.syncRunId);
+      expect(updated.status).toBe("SUCCEEDED");
+      expect(
+        await db.rockPerson.findUniqueOrThrow({
+          where: { rockId: deceasedId },
+        }),
+      ).toMatchObject({
+        deceased: true,
+        recordStatusValueRockId: 4,
+        lastSyncRunId: updated.syncRunId,
+      });
+      expect(
+        await db.rockHouseholdMember.findUniqueOrThrow({
+          where: { rockId: deceasedId },
+        }),
+      ).toMatchObject({
+        archived: false,
+        groupMemberStatus: 1,
+        lastSyncRunId: updated.syncRunId,
+      });
+      const after = await getHouseholdParticipation(reportInput, actor, db);
+      expect(after.snapshotStable).toBe(true);
+      expect(after.rows.find((r) => r.rockId === familyA)).toMatchObject({
+        adultCount: 1,
+        stage: "OTHER",
+        christianStatus: "NON_CHRISTIAN",
+        givingSelected: true,
+        reviewReasons: [],
+      });
+      expect(after.rows.find((r) => r.rockId === familyB)).toMatchObject({
+        adultCount: 2,
+        givingSelected: null,
+        reviewReasons: ["STALE_ADULT_MEMBERSHIP"],
+        reviewMembershipRockIds: [missingId],
+      });
+      expect(after.dataComplete).toBe(false);
+      expect(
+        await db.rockPerson.findUniqueOrThrow({ where: { rockId: missingId } }),
+      ).toMatchObject({
+        deceased: false,
+        recordStatusValueRockId: 3,
+        mergedIntoPersonRockId: null,
+      });
+      const facts = await db.givingFact.findMany({
+        where: { personRockId: deceasedId },
+      });
+      expect(facts).toHaveLength(1);
+      expect(facts[0].amount.toString()).toBe("10");
+      expect(facts[0].householdRockId).toBe(familyA);
+    } finally {
+      const cohort = { lastSyncRunId: { in: runIds } };
+      await db.givingLifecycleSnapshot.deleteMany({ where: cohort });
+      await db.givingFact.deleteMany({ where: cohort });
+      await db.rockFinancialTransactionDetail.deleteMany({ where: cohort });
+      await db.rockFinancialTransaction.deleteMany({ where: cohort });
+      await db.rockHouseholdMember.deleteMany({ where: cohort });
+      await db.rockPerson.updateMany({
+        where: cohort,
+        data: { primaryAliasRockId: null },
+      });
+      await db.rockPersonAlias.deleteMany({ where: cohort });
+      await db.rockPerson.deleteMany({ where: cohort });
+      await db.rockHousehold.deleteMany({ where: cohort });
+      await db.platformFundSetting.deleteMany({
+        where: { accountRockId: accountId },
+      });
+      await db.rockFinancialAccount.deleteMany({ where: cohort });
+      await db.rockCampus.deleteMany({ where: cohort });
+      if (originalRole)
+        await db.rockGroupRole.update({
+          where: { rockId: 3 },
+          data: originalRole,
+        });
+      if (originalType)
+        await db.rockGroupType.update({
+          where: { rockId: 10 },
+          data: originalType,
+        });
+      for (const value of originalValues)
+        await db.rockDefinedValue.update({
+          where: { rockId: value.rockId },
+          data: value,
+        });
+      await db.rockGroupRole.deleteMany({ where: cohort });
+      await db.rockGroupType.deleteMany({ where: cohort });
+      await db.rockDefinedValue.deleteMany({ where: cohort });
+      await db.syncIssue.deleteMany({ where: { syncRunId: { in: runIds } } });
+      await db.syncRun.deleteMany({ where: { id: { in: runIds } } });
       await db.$disconnect();
     }
   }, 30000);
