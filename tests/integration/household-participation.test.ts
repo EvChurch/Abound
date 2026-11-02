@@ -987,6 +987,15 @@ describe.skipIf(!url)("household participation real database contract", () => {
       ).toBe(1);
       oldPresent = true;
       source.familyMembers = [oldMember, survivor];
+      await db.rockHousehold.update({
+        where: { rockId: familyId },
+        data: { active: false, archived: true },
+      });
+      source.familyGroups[0] = {
+        ...source.familyGroups[0],
+        IsActive: false,
+        IsArchived: true,
+      };
       expect((await run()).status).toBe("SUCCEEDED");
       expect(
         (
@@ -1002,6 +1011,12 @@ describe.skipIf(!url)("household participation real database contract", () => {
           })
         ).sourceRemovalEvidence,
       ).toMatchObject({ memberHistoryRockId: 3 });
+      source.familyGroups[0] = {
+        ...source.familyGroups[0],
+        IsActive: true,
+        IsArchived: false,
+      };
+      expect((await run()).status).toBe("SUCCEEDED");
       oldPresent = false;
       source.familyMembers = [survivor];
       expect((await run()).status).toBe("PARTIAL"); // Old June proof cannot be replayed after reappearance.

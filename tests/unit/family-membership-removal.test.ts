@@ -285,22 +285,30 @@ describe("bounded full-sync membership preparation", () => {
     expect(result.removals[0].evidence.replacementMemberRockId).toBe(901);
     expect(result.slice.familyMembers.map((m) => m.Id)).toEqual([901]);
   });
-  it("requires a direct same-identity read to restore a marked membership", async () => {
-    const { db, rock } = prep();
-    db.rockHouseholdMember.findMany.mockResolvedValue([
-      { ...known, sourceRemovalVerifiedAt: new Date() },
-    ] as never);
-    const source = slice();
-    source.familyMembers = [member];
-    rock.findGroupMember.mockResolvedValue(member);
-    const result = await prepareFamilyMembershipReconciliation(
-      source,
-      db as never,
-      rock,
-    );
-    expect(result.restorations).toHaveLength(1);
-    expect(result.removals).toEqual([]);
-  });
+  it.each([false, true])(
+    "requires a direct same-identity read to restore a marked membership even for archived family=%s",
+    async (archived) => {
+      const { db, rock } = prep();
+      db.rockHouseholdMember.findMany.mockResolvedValue([
+        { ...known, sourceRemovalVerifiedAt: new Date() },
+      ] as never);
+      const source = slice();
+      source.familyMembers = [member];
+      source.familyGroups[0] = {
+        ...source.familyGroups[0],
+        IsActive: !archived,
+        IsArchived: archived,
+      };
+      rock.findGroupMember.mockResolvedValue(member);
+      const result = await prepareFamilyMembershipReconciliation(
+        source,
+        db as never,
+        rock,
+      );
+      expect(result.restorations).toHaveLength(1);
+      expect(result.removals).toEqual([]);
+    },
+  );
 });
 
 describe("typed membership/history reads", () => {

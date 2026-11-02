@@ -150,7 +150,7 @@ Household participation reporting is deployed under phases 3–4 of `docs/plans/
 
 PRs #67/#68 completed the deceased-person sync correction and verified full job on 2 November: the source inactive/deceased state is refreshed, the affected household's stale-data flag is cleared, and all 745 current-cohort report rows enumerate with matching summaries. The unavailable 404 identity remains provisional. Release and queue-operation evidence: `docs/research/2026-11-02-deceased-person-release-verification.md`.
 
-The remaining membership case has explicit source removal history for the exact family association on 29 June; the person's current deletion/merge/retention disposition remains unresolved. Findings: `docs/research/2026-11-02-unavailable-identity-follow-up.md`. Proposed reconciliation: `docs/plans/2026-11-02-002-confirmed-family-membership-removals.md`, not implemented. No later Rowan reply was found on the Commitment-source/status question.
+The remaining membership case has explicit source removal history for the exact family association on 29 June; the person's current deletion/merge/retention disposition remains unresolved. Findings: `docs/research/2026-11-02-unavailable-identity-follow-up.md`. Reconciliation implementation: `docs/plans/2026-11-02-002-confirmed-family-membership-removals.md`; local validation passed, independent review and release pending. No later Rowan reply was found on the Commitment-source/status question.
 
 The bounded Connect Group archive refresh from PR #62 is deployed and verified: stale active memberships fell from 29 to zero; UniChurch remains an exact source match. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.
 

@@ -144,7 +144,10 @@ export async function prepareFamilyMembershipReconciliation(
         g.GroupTypeId === 10 && g.IsActive === true && g.IsArchived === false,
     )
     .map((g) => g.Id);
-  if (!familyIds.length) return result;
+  const allFamilyIds = new Set(
+    slice.familyGroups.filter((g) => g.GroupTypeId === 10).map((g) => g.Id),
+  );
+  if (!allFamilyIds.size) return result;
   const presentIds = new Set(slice.familyMembers.map((m) => m.Id));
   const supportedFamilies = new Set(familyIds);
   const candidates: KnownMembership[] = [];
@@ -169,9 +172,9 @@ export async function prepareFamilyMembershipReconciliation(
     const rows = await client.rockHouseholdMember.findMany({
       where: {
         rockId: { gt: after },
-        household: { active: true, archived: false, groupTypeRockId: 10 },
         OR: [
           {
+            household: { active: true, archived: false, groupTypeRockId: 10 },
             sourceRemovalVerifiedAt: null,
             archived: false,
             groupMemberStatus: 1,
@@ -198,7 +201,12 @@ export async function prepareFamilyMembershipReconciliation(
     });
     if (rows.some((r) => r.rockId <= after)) break;
     for (const row of rows) {
-      if (!supportedFamilies.has(row.householdRockId)) continue;
+      if (
+        !(row.sourceRemovalVerifiedAt ? allFamilyIds : supportedFamilies).has(
+          row.householdRockId,
+        )
+      )
+        continue;
       if (
         row.sourceRemovalVerifiedAt
           ? presentIds.has(row.rockId)
