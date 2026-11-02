@@ -444,7 +444,7 @@ export class RockClient {
       ),
       this.getAllPages<RockApiGroup>("/api/Groups?$orderby=Id asc", options),
       this.getAllPages<RockApiGroupMember>(
-        "/api/GroupMembers?IncludeDeceased=true&$orderby=Id asc",
+        "/api/GroupMembers?IncludeDeceased=true&$select=Id,Guid,GroupId,PersonId,GroupTypeId,GroupRoleId,GroupMemberStatus,IsArchived,ModifiedDateTime&$orderby=Id asc",
         options,
       ),
       this.getAllPages<RockApiCampus>("/api/Campuses?$orderby=Id asc", options),

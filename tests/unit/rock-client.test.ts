@@ -12,6 +12,15 @@ describe("RockClient", () => {
         path: `${url.pathname}${url.search}`,
       });
 
+      // Rock's deceased-inclusive full response fails on a later page, while
+      // selecting the verified membership contract returns that same page.
+      if (
+        url.pathname === "/api/GroupMembers" &&
+        Number(url.searchParams.get("$skip")) >= 2 &&
+        !url.searchParams.has("$select")
+      ) {
+        return new Response(null, { status: 500 });
+      }
       return Response.json(responseFor(url));
     });
 
@@ -38,7 +47,7 @@ describe("RockClient", () => {
     expect(slice.familyMembers.map((member) => member.Id)).toEqual([100, 101]);
     expect(requests).toContainEqual({
       method: "GET",
-      path: "/api/GroupMembers?IncludeDeceased=true&$orderby=Id%20asc&$top=2&$skip=2",
+      path: "/api/GroupMembers?IncludeDeceased=true&$select=Id,Guid,GroupId,PersonId,GroupTypeId,GroupRoleId,GroupMemberStatus,IsArchived,ModifiedDateTime&$orderby=Id%20asc&$top=2&$skip=2",
     });
     expect(requests.every((request) => request.method === "GET")).toBe(true);
     expect(requests).toContainEqual({
