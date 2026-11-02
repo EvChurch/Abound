@@ -130,7 +130,7 @@ What this covers:
 
 ### RM-007: Household Participation and UniChurch Coverage
 
-Status: `UniChurch deployed and sync verified; Christian-marker source contract unresolved`
+Status: `Household report and deceased-person fix deployed and verified; one unavailable-identity case and source dependencies remain`
 
 Timing: `Now`
 
@@ -144,7 +144,15 @@ First implementation PR: [#61 — include UniChurch Connect Group memberships](h
 
 Release evidence: `docs/research/2026-10-31-unichurch-release-verification.md`
 
-Next slice: `docs/plans/2026-10-31-001-refresh-archived-connect-memberships.md`. The stale standard-group membership diagnosis found 29 active local rows already archived in Rock; the bounded refresh correction is locally verified, not deployed. Rowan has been asked to identify the authoritative Christian marker in the existing plan thread. Evidence: `docs/research/2026-10-31-archived-membership-diagnosis.md`.
+Household participation reporting is deployed under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. One unavailable adult membership remains a provisional review case; its affected rates are withheld. PR #63 is merged and deployed; the new scoped full sync and complete 742-row pagination were verified on 2 November. The initial two membership review cases were subsequently reduced to one by the normal deceased-inclusive sync released in PRs #67/#68; no manual source repair is claimed. Release evidence: `docs/research/2026-11-02-household-report-release-verification.md`.
+
+2 November follow-up identified a deceased-person collection omission behind one membership case; the other person/member identity returns 404 and remains unresolved. Research: `docs/research/2026-11-02-household-membership-review-investigation.md`; sync correction deployed and verified: `docs/plans/2026-11-02-001-deceased-person-sync-contract.md`. Positive Christian evidence candidate: recorded Commitment step type 5, pending source-owner authority/status/removal decisions. See `docs/research/2026-11-02-christian-source-follow-up.md`. Rowan has been sent the authorized Commitment-source/status question in Giving Check. Classification and production data were not changed by this investigation.
+
+PRs #67/#68 completed the deceased-person sync correction and verified full job on 2 November: the source inactive/deceased state is refreshed, the affected household's stale-data flag is cleared, and all 745 current-cohort report rows enumerate with matching summaries. The unavailable 404 identity remains provisional. Release and queue-operation evidence: `docs/research/2026-11-02-deceased-person-release-verification.md`.
+
+The remaining membership case has explicit source removal history for the exact family association on 29 June; the person's current deletion/merge/retention disposition remains unresolved. Findings: `docs/research/2026-11-02-unavailable-identity-follow-up.md`. Reconciliation implementation: `docs/plans/2026-11-02-002-confirmed-family-membership-removals.md`; local validation passed, independent review and release pending. No later Rowan reply was found on the Commitment-source/status question.
+
+The bounded Connect Group archive refresh from PR #62 is deployed and verified: stale active memberships fell from 29 to zero; UniChurch remains an exact source match. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.
 
 Request assessment and stakeholder review brief:
 
@@ -155,7 +163,7 @@ First delivery includes household reporting and drilldowns, UniChurch membership
 
 Rowan approved the direction on 31 October and requested the UniChurch fix/deployment, selectable 1/3/6/12/24-month periods, Christian/connection-status mismatch review, actionable review notifications and Xero discrepancies routed to Tataihono for follow-up with Vincent. See `docs/research/2026-10-31-rowan-plan-feedback.md`.
 
-Open dependencies: actual Rock Christian/non-Christian-field contract; attendance coverage; exceptional family/giving-household and flat mappings; aligned fund/month semantics and underlying Xero evidence; positive Christian-status source and ownership of the Non-Christian person tags. Tataihono confirmed explicit Christian-field precedence, Unknown for missing explicit values, mismatch flags and himself as first review recipient. UniChurch correction is the first implementation slice; live source taxonomy and current saved-view audience checks are complete; GitHub release and initial post-sync verification are complete. Source-contract findings and the membership reconciliation review are in `docs/research/2026-10-31-household-source-verification.md`.
+Open dependencies: actual Rock Christian/non-Christian-field contract; attendance coverage; exceptional family/giving-household and flat mappings; aligned fund/month semantics and underlying Xero evidence; positive Christian-status source and ownership of the Non-Christian person tags. Tataihono confirmed explicit Christian-field precedence, mismatch flags and himself as first review recipient; he subsequently approved the temporary Investigating proxy while preserving Unknown for other unverified statuses. UniChurch correction is the first implementation slice; live source taxonomy and current saved-view audience checks are complete; GitHub release and initial post-sync verification are complete. Source-contract findings and the membership reconciliation review are in `docs/research/2026-10-31-household-source-verification.md`.
 
 ## Maintenance Rules
 

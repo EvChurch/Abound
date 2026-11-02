@@ -1,8 +1,23 @@
 import { z } from "zod";
+import {
+  familyHistorySchema,
+  MAX_FAMILY_HISTORY_ROWS,
+  type FamilyHistoryRow,
+} from "./family-membership-history";
 
 import { FAMILY_GROUP_TYPE_ID } from "@/lib/giving/models";
 import { ROCK_READ_ENDPOINTS } from "@/lib/sync/models";
 import { redactText } from "@/lib/sync/redaction";
+
+export class RockHttpError extends Error {
+  constructor(
+    public readonly status: number,
+    path: string,
+  ) {
+    super(redactText(`Rock GET ${path} failed with status ${status}`));
+    this.name = "RockHttpError";
+  }
+}
 
 export type RockClientConfig = {
   baseUrl: string;
@@ -231,12 +246,33 @@ export class RockClient {
     });
 
     if (!response.ok) {
-      throw new Error(
-        redactText(`Rock GET ${path} failed with status ${response.status}`),
-      );
+      throw new RockHttpError(response.status, path);
     }
 
     return (await response.json()) as T;
+  }
+
+  async findGroupMember(id: number): Promise<RockApiGroupMember | null> {
+    try {
+      return await this.getGroupMember(id);
+    } catch (error) {
+      if (error instanceof RockHttpError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async getFamilyMembershipHistory(
+    personId: number,
+    memberId: number,
+  ): Promise<FamilyHistoryRow[]> {
+    if (![personId, memberId].every((id) => Number.isSafeInteger(id) && id > 0))
+      throw new Error("History lookup requires positive Rock identifiers.");
+    const filter = `(EntityTypeId eq 15 and EntityId eq ${personId}) or (RelatedEntityTypeId eq 15 and RelatedEntityId eq ${personId}) or (EntityTypeId eq 90 and EntityId eq ${memberId}) or (RelatedEntityTypeId eq 90 and RelatedEntityId eq ${memberId})`;
+    const value = await this.getJson<unknown>(
+      `/api/Histories?$filter=${encodeURIComponent(filter)}&$select=Id,EntityTypeId,EntityId,Verb,ChangeType,RelatedEntityTypeId,RelatedEntityId,CreatedDateTime&$orderby=CreatedDateTime asc,Id asc&$top=${MAX_FAMILY_HISTORY_ROWS}`,
+      AbortSignal.timeout(15_000),
+    );
+    return familyHistorySchema.parse(value);
   }
 
   async getGroupMember(id: number): Promise<RockApiGroupMember> {
@@ -436,10 +472,15 @@ export class RockClient {
         "/api/PersonAlias?$orderby=Id asc",
         options,
       ),
-      this.getAllPages<RockApiPerson>("/api/People?$orderby=Id asc", options),
+      // Default collections omit deceased people and their memberships, leaving
+      // previously synced active records stale after Rock marks someone deceased.
+      this.getAllPages<RockApiPerson>(
+        "/api/People?includeDeceased=true&$orderby=Id asc",
+        options,
+      ),
       this.getAllPages<RockApiGroup>("/api/Groups?$orderby=Id asc", options),
       this.getAllPages<RockApiGroupMember>(
-        "/api/GroupMembers?$orderby=Id asc",
+        "/api/GroupMembers?IncludeDeceased=true&$select=Id,Guid,GroupId,PersonId,GroupTypeId,GroupRoleId,GroupMemberStatus,IsArchived,ModifiedDateTime&$orderby=Id asc",
         options,
       ),
       this.getAllPages<RockApiCampus>("/api/Campuses?$orderby=Id asc", options),

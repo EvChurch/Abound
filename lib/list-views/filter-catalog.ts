@@ -34,6 +34,13 @@ const BASE_FIELDS: CatalogFieldInput[] = [
   field("PEOPLE", "reliabilityKind", "Giving reliability", "ENUM"),
   field("PEOPLE", "accountRockId", "Fund/account", "ID"),
   field("PEOPLE", "pledgeState", "Pledge", "ENUM"),
+  field("HOUSEHOLDS", "householdStage", "Household connection stage", "ENUM"),
+  field(
+    "HOUSEHOLDS",
+    "householdChristianStatus",
+    "Household Christian classification",
+    "ENUM",
+  ),
   field("HOUSEHOLDS", "search", "Household name", "STRING"),
   field("HOUSEHOLDS", "active", "Active", "BOOLEAN"),
   field("HOUSEHOLDS", "archived", "Archived", "BOOLEAN"),
@@ -75,7 +82,11 @@ export function getListViewFilterCatalog(
   return BASE_FIELDS.filter((candidate) => candidate.resource === resource).map(
     (candidate) => ({
       ...candidate,
-      operators: operatorsForFieldType(candidate.fieldType),
+      operators: ["householdStage", "householdChristianStatus"].includes(
+        candidate.id,
+      )
+        ? ["EQUALS", "IN"]
+        : operatorsForFieldType(candidate.fieldType),
     }),
   );
 }

@@ -67,6 +67,7 @@ describe("data model guardrails", () => {
       "/api/GroupTypeRoles",
       "/api/Groups",
       "/api/GroupMembers",
+      "/api/Histories",
       "/api/Campuses",
       "/api/FinancialAccounts",
       "/api/FinancialTransactions",

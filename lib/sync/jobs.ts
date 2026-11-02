@@ -3,6 +3,7 @@ import { PgBoss } from "pg-boss";
 import { RockClient } from "@/lib/rock/client";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { prepareFamilyMembershipReconciliation } from "@/lib/sync/family-membership-removal";
 import { refreshKnownConnectMemberships } from "@/lib/sync/membership-refresh";
 import {
   performFundScopedGivingRefresh,
@@ -53,7 +54,13 @@ export type FundScopedGivingRefreshJobResult = Awaited<
 
 export type RockFullSyncDependencies = {
   prisma?: PrismaClient;
-  rockClient: Pick<RockClient, "getFullSyncSlice" | "getGroupMember">;
+  rockClient: Pick<
+    RockClient,
+    | "getFullSyncSlice"
+    | "getGroupMember"
+    | "findGroupMember"
+    | "getFamilyMembershipHistory"
+  >;
   syncOptions?: SyncRunOptions;
 };
 
@@ -220,11 +227,18 @@ export async function performRockFullSyncJob(
     client,
     dependencies.rockClient,
   );
-  return syncRockSlice(client, prepared.slice, {
+  const family = await prepareFamilyMembershipReconciliation(
+    prepared.slice,
+    client,
+    dependencies.rockClient,
+  );
+  return syncRockSlice(client, family.slice, {
     ...dependencies.syncOptions,
+    familyMembershipDecisions: family,
     sourceIssues: [
       ...(dependencies.syncOptions?.sourceIssues ?? []),
       ...prepared.issues,
+      ...family.issues,
     ],
   });
 }

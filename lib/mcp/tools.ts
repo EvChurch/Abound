@@ -1,3 +1,5 @@
+import { getHouseholdParticipation } from "@/lib/giving/household-participation";
+import type { ParticipationInput } from "@/lib/giving/household-participation-contract";
 import { GraphQLError } from "graphql";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -23,6 +25,7 @@ import {
 } from "@/lib/mcp/tool-schemas";
 
 export type McpToolDependencies = {
+  getHouseholdParticipation: typeof getHouseholdParticipation;
   getFilterCatalog: typeof getListViewFilterCatalog;
   getHouseholdProfile: typeof getRockHouseholdProfile;
   getPersonProfile: typeof getRockPersonProfile;
@@ -39,6 +42,7 @@ export type McpToolContext = {
 };
 
 export const defaultMcpToolDependencies: McpToolDependencies = {
+  getHouseholdParticipation,
   getFilterCatalog: getListViewFilterCatalog,
   getHouseholdProfile: getRockHouseholdProfile,
   getPersonProfile: getRockPersonProfile,
@@ -54,6 +58,12 @@ export const MCP_TOOL_DEFINITIONS: Array<{
   name: McpToolName;
   title: string;
 }> = [
+  {
+    name: "get_household_participation",
+    title: "Get Household Participation",
+    description:
+      "Read household participation counts, period/fund/sync metadata and at most 100 matching households. Investigating is a temporary non-Christian proxy; other unverified statuses remain Unknown. Use the returned asOf and snapshotId for stable drilldowns; refreshed syncs require a new report.",
+  },
   {
     description: "Return the authenticated Abound staff context.",
     name: "get_staff_context",
@@ -167,6 +177,11 @@ async function executeParsedTool(
   dependencies: McpToolDependencies,
 ) {
   switch (name) {
+    case "get_household_participation":
+      return dependencies.getHouseholdParticipation(
+        input as ParticipationInput,
+        context.user,
+      );
     case "get_staff_context":
       return {
         user: {

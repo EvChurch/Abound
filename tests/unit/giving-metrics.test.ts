@@ -304,6 +304,7 @@ describe("giving metrics", () => {
         personRockId: true,
       },
       where: {
+        sourceRemovalVerifiedAt: null,
         archived: false,
         groupRole: {
           name: {

@@ -1,4 +1,9 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import type { FamilyMembershipDecisions } from "./family-membership-removal";
+import {
+  persistConfirmedFamilyRemoval,
+  persistCurrentFamilyMember,
+} from "./family-membership-persistence";
 
 import type { RockPersonSlice, RockSyncSlice } from "@/lib/rock/client";
 import type { SanitizedRockFixtureBundle } from "@/lib/rock/types";
@@ -13,7 +18,11 @@ import {
 } from "@/lib/giving/models";
 import { refreshGivingLifecycleSnapshots } from "@/lib/giving/lifecycle-snapshots";
 import { refreshPledgeRecommendationSnapshots } from "@/lib/giving/pledges";
-import { ROCK_SYNC_SOURCE } from "@/lib/sync/models";
+import {
+  ROCK_SYNC_SOURCE,
+  ROCK_FULL_SYNC_SOURCE,
+  ROCK_PERSON_SYNC_SOURCE,
+} from "@/lib/sync/models";
 import type { SyncIssueInput } from "@/lib/sync/reconcile";
 import { redactForLog } from "@/lib/sync/redaction";
 
@@ -42,6 +51,7 @@ export type SyncRunOptions = {
   chunkSize?: number;
   onProgress?: (event: SyncProgressEvent) => void;
   sourceIssues?: readonly SyncIssueInput[];
+  familyMembershipDecisions?: FamilyMembershipDecisions;
 };
 
 type NormalizedSyncData = {
@@ -82,7 +92,12 @@ export async function syncRockPersonSlice(
   slice: RockPersonSlice,
   options: SyncRunOptions = {},
 ) {
-  return syncRockSlice(prisma, slice, options);
+  return persistNormalizedSync(
+    prisma,
+    rockPersonSliceToNormalized(slice),
+    ROCK_PERSON_SYNC_SOURCE,
+    options,
+  );
 }
 
 export async function syncRockSlice(
@@ -93,7 +108,7 @@ export async function syncRockSlice(
   return persistNormalizedSync(
     prisma,
     rockPersonSliceToNormalized(slice),
-    "rock:v1",
+    ROCK_FULL_SYNC_SOURCE,
     options,
   );
 }
@@ -121,6 +136,7 @@ async function persistNormalizedSync(
       syncRun.id,
     );
     let written = 0;
+    let presenceAuditCount = 0;
     const progress = (stage: string, completed: number, total: number) => {
       options.onProgress?.({ syncRunId: syncRun.id, stage, completed, total });
     };
@@ -261,6 +277,31 @@ async function persistNormalizedSync(
       },
     );
 
+    const decisions = options.familyMembershipDecisions;
+    const conflict = (rockId: number) =>
+      normalized.issues.push({
+        severity: "ERROR",
+        source: ROCK_SYNC_SOURCE,
+        recordType: "RockHouseholdMember",
+        rockId: String(rockId),
+        code: "FAMILY_MEMBERSHIP_PRESENCE_CONFLICT",
+        message:
+          "Family membership presence could not be changed atomically against the verified local identity/revision; the newer state was preserved for review.",
+      });
+    await persistUpdates(
+      prisma,
+      "confirmedFamilyRemovals",
+      decisions?.removals ?? [],
+      chunkSize,
+      progress,
+      async (tx, decision) => {
+        if (await persistConfirmedFamilyRemoval(tx, decision, syncRun.id)) {
+          written += 1;
+          presenceAuditCount += 1;
+        } else conflict(decision.known.rockId);
+      },
+    );
+    let skippedMemberWrites = 0;
     written += await persistUpserts(
       prisma,
       "householdMembers",
@@ -268,13 +309,22 @@ async function persistNormalizedSync(
       chunkSize,
       progress,
       async (tx, householdMember) => {
-        await tx.rockHouseholdMember.upsert({
-          where: { rockId: householdMember.rockId },
-          create: householdMember,
-          update: householdMember,
-        });
+        const result = await persistCurrentFamilyMember(
+          tx,
+          householdMember,
+          decisions?.restorations.find(
+            (d) => d.known.rockId === householdMember.rockId,
+          ),
+          syncRun.id,
+        );
+        if (!result.written) {
+          skippedMemberWrites += 1;
+          conflict(householdMember.rockId);
+        }
+        if (result.audited) presenceAuditCount += 1;
       },
     );
+    written -= skippedMemberWrites;
 
     written += await persistUpserts(
       prisma,
@@ -464,7 +514,7 @@ async function persistNormalizedSync(
       recordsRead,
       recordsWritten: written,
       recordsSkipped: normalized.issues.length,
-      issueCount: normalized.issues.length,
+      issueCount: normalized.issues.length + presenceAuditCount,
     };
   } catch (error) {
     await prisma.syncRun.update({

@@ -1,7 +1,7 @@
 ---
 title: Refresh archived Connect Group memberships omitted by Rock collections
 date: 2026-10-31
-status: locally-verified-awaiting-pr-review
+status: deployed-and-verified
 roadmap: RM-007
 ---
 
@@ -48,3 +48,7 @@ Reverting the code restores collection-only ingestion; it should not reactivate 
 ## Verification completed
 
 The full-job regression was observed failing before the change and passes with the patched orchestration and real normalizer. The full test suite passes (443 tests, one isolated-database integration test skipped). A read-only replay of the current source cohort through the actual patched reader/preparation/normalizer verifies all 37 missing records archived and reduces active extras from 29 to zero with no source issues or production writes. Source clarification was sent to Rowan in the existing plan thread and remains awaiting his reply. See `docs/research/2026-10-31-archived-membership-diagnosis.md`.
+
+## Production release
+
+PR #62 is merged as `ec6ced9`; main CI and production-image checks passed, and both GitHub-connected Railway services reached SUCCESS. The authorized full sync completed successfully at 18:51:09 UTC. The aggregate production comparison now reports zero active local extras, with all historical archived rows retained. UniChurch matches Rock exactly (six groups, 106 memberships, 104 active). The deployed status service reports 34 groups and 478 active memberships. Only the unchanged pre-existing MISSING_PERSON warning remains. Evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.

@@ -172,6 +172,8 @@ describe("pg-boss sync jobs", () => {
       const rockClient = {
         getFullSyncSlice: vi.fn(async () => slice),
         getGroupMember: vi.fn(),
+        findGroupMember: vi.fn(),
+        getFamilyMembershipHistory: vi.fn(),
       };
       const prisma = {
         givingFact: {

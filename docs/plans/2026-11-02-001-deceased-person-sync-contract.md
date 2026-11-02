@@ -1,0 +1,61 @@
+---
+title: Include deceased records in the normal Rock full-sync contract
+date: 2026-11-02
+status: deployed-full-sync-verified-deceased-case-resolved
+roadmap: RM-007
+---
+
+# Include deceased records in the normal full sync
+
+## Confirmed problem and boundary
+
+The default People collection excludes deceased people. GroupMembers also omits their memberships unless `IncludeDeceased=true`. If an existing local active person later becomes deceased in Rock, the upsert-only default full sync leaves that old eligibility intact. Household participation correctly withholds affected rates, but repeat syncs cannot clear the source staleness. See `docs/research/2026-11-02-household-membership-review-investigation.md`.
+
+Rock remains authoritative. This correction consumes actual source inactive/deceased values through GET requests; it does not infer archive/deletion or manually repair production. Membership 79767 remains unresolved because person and membership identity cannot be read. Keep its current review guard.
+
+## Scoped implementation
+
+1. Change full-sync People query to `/api/People?includeDeceased=true&$orderby=Id asc` and GroupMembers query to `/api/GroupMembers?IncludeDeceased=true&$orderby=Id asc`. Use existing typed paging, cancellation, caps and endpoint allowlist. Preserve source fields and primary-alias mapping. Do not broaden arbitrary endpoints or enable archived collection semantics without verification.
+2. Add meaningful reader contract tests that require both options and normal pagination. Add a regression at full-sync persistence/report service seams: initial active adult, source later inactive/deceased and omitted by default collection, deceased-inclusive full run updates the retained person, and report excludes that adult without rewriting membership archive state or deleting financial history. The unverified 404 case must remain unresolved.
+3. Check cases where new deceased people have aliases, no current family, or historical references. Existing MISSING_PERSON warnings must not silently turn into guessed identities. Verify financial attribution and merge logic still use verified aliases. Do not infer current household mapping from old membership alone.
+4. Review standards/spec, run format:check, lint, typecheck, relevant integration tests and full suite. Record failure and rollback behavior in sync architecture documentation.
+
+## Failure modes
+
+- API ignores or rejects option: contract test and actual instance controlled read must distinguish this; fail visibly rather than assuming completeness.
+- Additional deceased records increase source/persistence volume: preserve paging limits and monitor full job duration/memory.
+- Deceased-inclusive GroupMembers can expose rows whose people/parents are unavailable: retain existing safe missing-reference checks and redacted issues.
+- Reflecting source deceased/inactive fields can change saved-view and future workflow eligibility: inspect affected audience predicates and pending/frozen audience behavior before release. No communication send is authorized.
+- 404, permission errors and missing GUIDs never become an automatic deletion, archive flag, merge or replacement identity. Unresolved cases continue withholding affected report rates.
+
+## GitHub release and verification
+
+Production changes require reviewed/merged GitHub code and exact-main CI success, then successful connected web/worker deployments. Drain old sync work before rollout; run a normal full sync after both services update. Verify complete job completion including derived refreshes, correct scoped run source, refreshed deceased/inactive fields, no stale active interpretation for Case A, retained financial history, report counts/drilldowns and remaining Case B warning. Recheck UniChurch and standard active group memberships against source. No repair SQL or direct local Railway deploy.
+
+Rollback uses GitHub to revert reader options, but does not set source-confirmed deceased/inactive data back to active. Retained source values are correct and the report must keep its existing freshness guard. Source deletion/retention disposition and Christian marker authority remain separate decisions.
+
+## Implementation verification
+
+Tataihono explicitly requested the fix and authorized asking Rowan about Commitment steps. The full reader now requests both verified deceased-inclusive options. Reader paging/GET tests and a real PostgreSQL reader → full-sync persistence → household-report regression failed before the fix and pass after it. The regression covers an initially active adult later becoming source inactive/deceased, stage recomputation from the surviving adult, unchanged membership archive/status values, retained historical giving and continued withholding for a separate unavailable identity. Shared test reference rows are restored to their pre-test state.
+
+The known production case is not manually repaired by this code change. GitHub release and the following normal full sync remain required. Existing household eligibility filters already require non-deceased active adults; correcting the mirror can therefore change future audience resolution. Existing automation runs freeze recipients; this patch does not send any communication or change the approval/freeze contract.
+
+Validation: all 479 tests across 81 files passed, including the isolated PostgreSQL regression. Formatting, lint and typecheck run in the repository-required order; compiled-worker checks are also part of the verification. Local Node is 24.22.1; GitHub CI validates the pinned Node 22.23.4 environment before merge readiness.
+
+A bounded live GET-only impact query returned 13 deceased membership rows using `IncludeDeceased=true` and `Person/IsDeceased eq true`; none belong to the currently returned type-25/46 groups, and none satisfy the current active Connect Group predicate. Preserve the approved group/member-only active-membership definition (requirements R17); household reporting separately excludes inactive/deceased adults (R5). This observation does not replace post-sync source/count and audience verification.
+
+Independent Standards and Spec review of commit `8d3e0ac` against merged main `2ad467c` found no actionable findings on either axis. The later documentation addition records only the bounded live Connect Group impact check; runtime and tests are unchanged.
+
+## Release follow-up: projected membership contract
+
+PR #67 merged as `e2c17b37ce56b737912c3955c6459477a3d0f085`; main CI/image checks and both connected services succeeded. The authorized verification job `660da4b2-5023-4f8a-83b8-9fa11a0cf51e` then failed during fetch, before creating a SyncRun or persisting source data: Rock returned HTTP 500 for the deceased-inclusive GroupMembers page at `$skip=18500&$top=100`. A direct repeat reproduced 500. The default page returned 200, and the same deceased-inclusive page with explicit required-field projection returned 200 with 100 records.
+
+Necessary scoped follow-up: add `$select=Id,Guid,GroupId,PersonId,GroupTypeId,GroupRoleId,GroupMemberStatus,IsArchived,ModifiedDateTime` to the full membership collection request. These properties are verified in the actual instance schema; the same failing page succeeds with all nine, including GroupTypeId. This preserves member-level type mismatch detection, source GUID, parent/person identity, role/activity/archive state and freshness timestamp while avoiding unused response fields. The exact unused field responsible for the full response failure is not identified; do not claim the HTTP error proves a specific broken field or source record.
+
+Add a reader regression that returns 500 on a later unprojected page and succeeds only with the verified projection, asserting query options/pagination and normalized membership output. Retain the real database deceased-person regression. Verify the projected page and known membership 20270 against Rock via GET-only probes; never skip the failed page or infer deletion. Review, test and release the follow-up through GitHub; wait for old fetching attempts to finish, then rerun the normal full job and complete the original production checks. No repair SQL or source mutation.
+
+Follow-up source validation completed: the full projected collection read succeeded across 38 pages / 37,945 members, with all selected fields schema-validated and membership 20270 present. The later-page failure regression was observed red before the projection change. Production completion is still pending the follow-up release and normal full sync.
+
+## Production completion
+
+PR #67 and the required projected-response follow-up PR #68 are merged and deployed through GitHub; both exact-main CI/image checks and both services succeeded. Replacement normal full job `c9eb33cc-e3a9-4ac8-a5dd-6f10d0cb8b5c` completed successfully, including derived refreshes, with scoped run `cmvykcx80000208p9bhzmn6mm` at 2026-11-02T01:24:36.888Z. The deceased person now has actual inactive/deceased source fields, the membership is fresh without archive changes, and its household's stale-data flag is cleared. The distinct unavailable identity remains flagged. All 745 report rows enumerate and match summaries; UniChurch and standard-group source/count checks pass. Detailed release, queue-operation and verification record: `docs/research/2026-11-02-deceased-person-release-verification.md`. No repair SQL, Rock mutation or extra stakeholder message was performed.
