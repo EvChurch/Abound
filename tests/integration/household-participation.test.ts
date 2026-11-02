@@ -6,8 +6,18 @@ import {
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RockClient, type RockApiPerson } from "@/lib/rock/client";
+import { performRockFullSyncJob } from "@/lib/sync/jobs";
+import { listHouseholds } from "@/lib/list-views/households-list";
+import { listPeople } from "@/lib/list-views/people-list";
+import {
+  getRockHouseholdProfile,
+  getRockPersonProfile,
+} from "@/lib/people/profiles";
+import type { FilterDefinition } from "@/lib/list-views/filter-schema";
+import type { RockSyncSlice } from "@/lib/rock/client";
+import type { SyncProgressEvent } from "@/lib/sync/run-sync";
 import { syncRockSlice } from "@/lib/sync/run-sync";
 import { getHouseholdParticipation } from "@/lib/giving/household-participation";
 import { householdClassificationWhere } from "@/lib/giving/household-classification-where";
@@ -634,6 +644,468 @@ describe.skipIf(!url)("household participation real database contract", () => {
       await db.rockDefinedValue.deleteMany({ where: cohort });
       await db.syncIssue.deleteMany({ where: { syncRunId: { in: runIds } } });
       await db.syncRun.deleteMany({ where: { id: { in: runIds } } });
+      await db.$disconnect();
+    }
+  }, 30000);
+
+  it("retains removal proof, reconciles current consumers and permits a later new Rock membership ID", async () => {
+    if (
+      url === process.env.DATABASE_URL ||
+      !new URL(url!).pathname.includes("test")
+    )
+      throw new Error("An isolated TEST_DATABASE_URL is required.");
+    const db = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: url! }),
+    });
+    const campusId = 796000,
+      accountId = 796001,
+      familyId = 796010,
+      connectId = 796020;
+    const oldId = 796101,
+      survivorId = 796102,
+      personId = 796201,
+      otherPersonId = 796202,
+      newId = 796103;
+    const oldMember = {
+      Id: oldId,
+      GroupId: familyId,
+      PersonId: personId,
+      GroupTypeId: 10,
+      GroupRoleId: 3,
+      GroupMemberStatus: 1,
+      IsArchived: false,
+    };
+    const survivor = { ...oldMember, Id: survivorId, PersonId: otherPersonId };
+    const source: RockSyncSlice = {
+      groupTypes: [
+        { Id: 10, Name: "Family" },
+        { Id: 25, Name: "Connect Group" },
+      ],
+      groupRoles: [{ Id: 3, GroupTypeId: 10, Name: "Adult" }],
+      definedValues: [
+        { Id: 3, Value: "Active" },
+        { Id: 65, Value: "Investigating" },
+        { Id: 1229, Value: "Growing" },
+        { Id: 53, Value: "Contribution" },
+      ],
+      personAliases: [
+        { Id: 796301, PersonId: personId },
+        { Id: 796302, PersonId: otherPersonId },
+      ],
+      people: [
+        {
+          Id: personId,
+          FirstName: "Synthetic Former",
+          PrimaryAliasId: 796301,
+          PrimaryFamilyId: familyId,
+          PrimaryCampusId: campusId,
+          GivingGroupId: familyId,
+          RecordStatusValueId: 3,
+          ConnectionStatusValueId: 1229,
+          Email: "synthetic@example.test",
+          IsEmailActive: true,
+        },
+        {
+          Id: otherPersonId,
+          FirstName: "Synthetic Survivor",
+          PrimaryAliasId: 796302,
+          PrimaryFamilyId: familyId,
+          PrimaryCampusId: campusId,
+          GivingGroupId: familyId,
+          RecordStatusValueId: 3,
+          ConnectionStatusValueId: 65,
+        },
+      ],
+      familyGroups: [
+        {
+          Id: familyId,
+          Name: "Synthetic reconciliation family",
+          GroupTypeId: 10,
+          CampusId: campusId,
+          IsActive: true,
+          IsArchived: false,
+        },
+      ],
+      familyMembers: [oldMember, survivor],
+      campuses: [
+        {
+          Id: campusId,
+          Name: "Synthetic reconciliation campus",
+          IsActive: true,
+        },
+      ],
+      groups: [
+        {
+          Id: connectId,
+          Name: "Synthetic connect",
+          GroupTypeId: 25,
+          IsActive: true,
+          IsArchived: false,
+        },
+      ],
+      groupMembers: [
+        {
+          Id: 796501,
+          GroupId: connectId,
+          PersonId: personId,
+          GroupTypeId: 25,
+          GroupMemberStatus: 1,
+          IsArchived: false,
+        },
+      ],
+      financialAccounts: [
+        {
+          Id: accountId,
+          Name: "Synthetic reconciliation fund",
+          IsActive: true,
+        },
+      ],
+      financialTransactions: [
+        {
+          Id: 796401,
+          AuthorizedPersonAliasId: 796301,
+          TransactionTypeValueId: 53,
+          TransactionDateTime: "2026-09-15T00:00:00Z",
+        },
+      ],
+      financialTransactionDetails: [
+        { Id: 796402, TransactionId: 796401, AccountId: accountId, Amount: 75 },
+      ],
+      financialScheduledTransactions: [],
+      financialScheduledTransactionDetails: [],
+    };
+    const historyRow = (
+      Id: number,
+      EntityTypeId: number,
+      EntityId: number,
+      Verb: string,
+      CreatedDateTime = "2026-06-29T15:46:28.377",
+    ) => ({
+      Id,
+      EntityTypeId,
+      EntityId,
+      Verb,
+      ChangeType: "Record",
+      RelatedEntityTypeId: 16,
+      RelatedEntityId: familyId,
+      CreatedDateTime,
+    });
+    let histories = [
+      historyRow(1, 90, oldId, "ADDEDTOGROUP", "2026-06-22T19:03:35.32"),
+      historyRow(2, 15, personId, "REMOVEDFROMGROUP"),
+      historyRow(3, 90, oldId, "REMOVEDFROMGROUP"),
+    ];
+    let oldPresent = false,
+      replacementPresent = false;
+    const rock = new RockClient({
+      baseUrl: "https://rock.example.test",
+      restKey: "synthetic-key",
+      fetcher: async (input) => {
+        const path = new URL(String(input)).pathname;
+        if (path === "/api/Histories") return Response.json(histories);
+        if (path === `/api/GroupMembers/${oldId}`)
+          return oldPresent
+            ? Response.json(oldMember)
+            : new Response(null, { status: 404 });
+        if (path === `/api/GroupMembers/${newId}`)
+          return replacementPresent
+            ? Response.json({ ...oldMember, Id: newId })
+            : new Response(null, { status: 404 });
+        throw new Error("Unexpected synthetic source request");
+      },
+    });
+    vi.spyOn(rock, "getFullSyncSlice").mockImplementation(async () => source);
+    const originals = {
+      types: await db.rockGroupType.findMany({
+        where: { rockId: { in: [10, 25] } },
+      }),
+      role: await db.rockGroupRole.findUnique({ where: { rockId: 3 } }),
+      values: await db.rockDefinedValue.findMany({
+        where: { rockId: { in: [3, 65, 1229, 53] } },
+      }),
+    };
+    const runIds = new Set<string>();
+    const syncOptions = {
+      onProgress: ({ syncRunId }: SyncProgressEvent) => {
+        runIds.add(syncRunId);
+      },
+    };
+    const actor = {
+      id: "synthetic-staff",
+      auth0Subject: "synthetic-staff",
+      active: true,
+      name: null,
+      email: null,
+      rockPersonId: null,
+    };
+    const reportInput = {
+      campusRockIds: [campusId],
+      fundRockIds: [accountId],
+      asOf: "2026-10-24T00:00:00Z",
+    };
+    const filter = (
+      resource: "people" | "households",
+      extra: FilterDefinition["conditions"] = [],
+    ): FilterDefinition => ({
+      type: "group",
+      mode: "all",
+      conditions: [
+        {
+          type: "condition",
+          field: resource === "people" ? "primaryCampusRockId" : "campusRockId",
+          operator: "EQUALS",
+          value: String(campusId),
+        },
+        ...extra,
+      ],
+    });
+    const run = () =>
+      performRockFullSyncJob({}, { prisma: db, rockClient: rock, syncOptions });
+    try {
+      expect((await syncRockSlice(db, source, syncOptions)).status).toBe(
+        "SUCCEEDED",
+      );
+      await db.platformFundSetting.create({
+        data: { accountRockId: accountId, enabled: true },
+      });
+      expect(
+        (await getHouseholdParticipation(reportInput, actor, db)).rows[0],
+      ).toMatchObject({ adultCount: 2, stage: "GROWING" });
+      source.familyMembers = [survivor];
+      const removed = await run();
+      expect(removed.status).toBe("SUCCEEDED");
+      const retained = await db.rockHouseholdMember.findUniqueOrThrow({
+        where: { rockId: oldId },
+      });
+      expect(retained).toMatchObject({
+        archived: false,
+        groupMemberStatus: 1,
+        personRockId: personId,
+        householdRockId: familyId,
+        lastSyncRunId: removed.syncRunId,
+      });
+      expect(retained.sourceRemovalVerifiedAt).not.toBeNull();
+      expect(retained.sourceRemovalEvidence).toMatchObject({
+        memberHistoryRockId: 3,
+        personHistoryRockId: 2,
+        sourceRecordedAt: "2026-06-29T15:46:28.377",
+      });
+      const after = await getHouseholdParticipation(reportInput, actor, db);
+      expect(after.dataComplete).toBe(true);
+      expect(after.rows[0]).toMatchObject({
+        adultCount: 1,
+        stage: "OTHER",
+        christianStatus: "NON_CHRISTIAN",
+        givingSelected: true,
+        reviewReasons: [],
+      });
+      expect(
+        (
+          await db.rockHousehold.findMany({
+            where: householdClassificationWhere("householdChristianStatus", [
+              "NON_CHRISTIAN",
+            ]),
+            select: { rockId: true },
+          })
+        ).map((h) => h.rockId),
+      ).toContain(familyId);
+      const list = await listHouseholds(
+        { filterDefinition: filter("households") },
+        actor,
+        db,
+      );
+      expect(list.edges[0].node).toMatchObject({ memberCount: 1 });
+      expect(list.edges[0].node.primaryContacts.map((p) => p.rockId)).toEqual([
+        otherPersonId,
+      ]);
+      for (const field of [
+        "hasEmailCapableMember",
+        "hasActiveConnectGroupMember",
+      ]) {
+        const matching = await listHouseholds(
+          {
+            filterDefinition: filter("households", [
+              { type: "condition", field, operator: "EQUALS", value: false },
+            ]),
+          },
+          actor,
+          db,
+        );
+        expect(matching.edges.map((e) => e.node.rockId)).toEqual([familyId]);
+      }
+      const adults = await listPeople(
+        {
+          filterDefinition: filter("people", [
+            {
+              type: "condition",
+              field: "ageGroup",
+              operator: "EQUALS",
+              value: "ADULT",
+            },
+          ]),
+        },
+        actor,
+        db,
+      );
+      expect(adults.edges.map((e) => e.node.rockId)).toEqual([otherPersonId]);
+      expect(
+        (
+          await getRockHouseholdProfile({ rockId: familyId }, actor, db)
+        )?.members.map((m) => m.rockId),
+      ).toEqual([survivorId]);
+      expect(
+        (await getRockPersonProfile({ rockId: personId }, actor, db))
+          ?.householdMemberships,
+      ).toEqual([]);
+      const assertGiving = async () => {
+        const facts = await db.givingFact.findMany({
+          where: { personRockId: personId },
+        });
+        expect(facts).toHaveLength(1);
+        expect(facts[0].amount.toString()).toBe("75");
+        expect(facts[0].householdRockId).toBe(familyId);
+        expect(
+          await db.rockPerson.findUniqueOrThrow({
+            where: { rockId: personId },
+          }),
+        ).toMatchObject({
+          primaryFamilyRockId: familyId,
+          givingGroupRockId: familyId,
+          mergedIntoPersonRockId: null,
+          deceased: false,
+        });
+      };
+      await assertGiving();
+      expect((await run()).status).toBe("SUCCEEDED");
+      expect(
+        await db.syncIssue.count({
+          where: {
+            code: "FAMILY_MEMBERSHIP_REMOVAL_CONFIRMED",
+            rockId: String(oldId),
+          },
+        }),
+      ).toBe(1);
+      oldPresent = true;
+      source.familyMembers = [oldMember, survivor];
+      expect((await run()).status).toBe("SUCCEEDED");
+      expect(
+        (
+          await db.rockHouseholdMember.findUniqueOrThrow({
+            where: { rockId: oldId },
+          })
+        ).sourceRemovalVerifiedAt,
+      ).toBeNull();
+      expect(
+        (
+          await db.rockHouseholdMember.findUniqueOrThrow({
+            where: { rockId: oldId },
+          })
+        ).sourceRemovalEvidence,
+      ).toMatchObject({ memberHistoryRockId: 3 });
+      oldPresent = false;
+      source.familyMembers = [survivor];
+      expect((await run()).status).toBe("PARTIAL"); // Old June proof cannot be replayed after reappearance.
+      expect(
+        (
+          await db.rockHouseholdMember.findUniqueOrThrow({
+            where: { rockId: oldId },
+          })
+        ).sourceRemovalVerifiedAt,
+      ).toBeNull();
+      histories = [
+        ...histories,
+        historyRow(4, 15, personId, "ADDEDTOGROUP", "2026-07-01T10:00:00"),
+        historyRow(5, 15, personId, "REMOVEDFROMGROUP", "2026-07-02T10:00:00"),
+        historyRow(6, 90, oldId, "REMOVEDFROMGROUP", "2026-07-02T10:00:00"),
+        historyRow(7, 15, personId, "ADDEDTOGROUP", "2026-07-03T10:00:00"),
+      ];
+      replacementPresent = true;
+      source.familyMembers = [{ ...oldMember, Id: newId }, survivor];
+      expect((await run()).status).toBe("SUCCEEDED");
+      const rows = await db.rockHouseholdMember.findMany({
+        where: { householdRockId: familyId },
+        orderBy: { rockId: "asc" },
+      });
+      expect(rows).toHaveLength(3);
+      expect(
+        rows.find((m) => m.rockId === oldId)?.sourceRemovalVerifiedAt,
+      ).not.toBeNull();
+      expect(
+        rows.find((m) => m.rockId === newId)?.sourceRemovalVerifiedAt,
+      ).toBeNull();
+      const final = await getHouseholdParticipation(reportInput, actor, db);
+      expect(final.dataComplete).toBe(true);
+      expect(final.rows[0]).toMatchObject({ adultCount: 2, stage: "GROWING" });
+      expect(
+        (
+          await listHouseholds(
+            { filterDefinition: filter("households") },
+            actor,
+            db,
+          )
+        ).edges[0].node.memberCount,
+      ).toBe(2);
+      expect(
+        (
+          await getRockPersonProfile({ rockId: personId }, actor, db)
+        )?.householdMemberships.map((m) => m.rockId),
+      ).toEqual([newId]);
+      expect(
+        await db.syncIssue.count({
+          where: {
+            code: "FAMILY_MEMBERSHIP_REMOVAL_CONFIRMED",
+            rockId: String(oldId),
+          },
+        }),
+      ).toBe(2);
+      expect(
+        await db.syncIssue.count({
+          where: {
+            code: "FAMILY_MEMBERSHIP_SOURCE_REAPPEARED",
+            rockId: String(oldId),
+          },
+        }),
+      ).toBe(1);
+      await assertGiving();
+    } finally {
+      const ids = [...runIds],
+        cohort = { lastSyncRunId: { in: ids } };
+      await db.givingLifecycleSnapshot.deleteMany({ where: cohort });
+      await db.givingFact.deleteMany({ where: cohort });
+      await db.rockFinancialTransactionDetail.deleteMany({ where: cohort });
+      await db.rockFinancialTransaction.deleteMany({ where: cohort });
+      await db.rockGroupMember.deleteMany({ where: cohort });
+      await db.rockGroup.deleteMany({ where: cohort });
+      await db.rockHouseholdMember.deleteMany({ where: cohort });
+      await db.rockPerson.updateMany({
+        where: cohort,
+        data: { primaryAliasRockId: null },
+      });
+      await db.rockPersonAlias.deleteMany({ where: cohort });
+      await db.rockPerson.deleteMany({ where: cohort });
+      await db.rockHousehold.deleteMany({ where: cohort });
+      await db.platformFundSetting.deleteMany({
+        where: { accountRockId: accountId },
+      });
+      await db.rockFinancialAccount.deleteMany({ where: cohort });
+      await db.rockCampus.deleteMany({ where: cohort });
+      if (originals.role)
+        await db.rockGroupRole.update({
+          where: { rockId: 3 },
+          data: originals.role,
+        });
+      for (const t of originals.types)
+        await db.rockGroupType.update({ where: { rockId: t.rockId }, data: t });
+      for (const v of originals.values)
+        await db.rockDefinedValue.update({
+          where: { rockId: v.rockId },
+          data: v,
+        });
+      await db.rockGroupRole.deleteMany({ where: cohort });
+      await db.rockGroupType.deleteMany({ where: cohort });
+      await db.rockDefinedValue.deleteMany({ where: cohort });
+      await db.syncIssue.deleteMany({ where: { syncRunId: { in: ids } } });
+      await db.syncRun.deleteMany({ where: { id: { in: ids } } });
       await db.$disconnect();
     }
   }, 30000);

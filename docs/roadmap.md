@@ -130,7 +130,7 @@ What this covers:
 
 ### RM-007: Household Participation and UniChurch Coverage
 
-Status: `Household report deployed and full-sync verified; two membership review cases and source dependencies remain`
+Status: `Household report and deceased-person fix deployed and verified; one unavailable-identity case and source dependencies remain`
 
 Timing: `Now`
 
@@ -144,9 +144,13 @@ First implementation PR: [#61 — include UniChurch Connect Group memberships](h
 
 Release evidence: `docs/research/2026-10-31-unichurch-release-verification.md`
 
-Next slice: household participation reporting is implemented locally under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. Two stale adult memberships are retained as provisional review cases; their affected rates are withheld. PR #63 is merged and deployed; the new scoped full sync and complete 742-row pagination were verified on 2 November. Two membership review cases still withhold affected rates; no source repair is claimed. Release evidence: `docs/research/2026-11-02-household-report-release-verification.md`.
+Household participation reporting is deployed under phases 3–4 of `docs/plans/2026-10-24-001-household-participation-plan.md`, with the approved Investigating (65) temporary non-Christian proxy. Validation/review: `docs/research/2026-11-01-household-report-implementation-verification.md`. Positive explicit source, Xero evidence and attendance coverage remain unresolved. One unavailable adult membership remains a provisional review case; its affected rates are withheld. PR #63 is merged and deployed; the new scoped full sync and complete 742-row pagination were verified on 2 November. The initial two membership review cases were subsequently reduced to one by the normal deceased-inclusive sync released in PRs #67/#68; no manual source repair is claimed. Release evidence: `docs/research/2026-11-02-household-report-release-verification.md`.
 
-2 November follow-up identified a deceased-person collection omission behind one membership case; the other person/member identity returns 404 and remains unresolved. Research: `docs/research/2026-11-02-household-membership-review-investigation.md`; sync correction implemented under verification, awaiting GitHub review/release: `docs/plans/2026-11-02-001-deceased-person-sync-contract.md`. Positive Christian evidence candidate: recorded Commitment step type 5, pending source-owner authority/status/removal decisions. See `docs/research/2026-11-02-christian-source-follow-up.md`. Rowan has been sent the authorized Commitment-source/status question in Giving Check. Classification and production data were not changed by this investigation.
+2 November follow-up identified a deceased-person collection omission behind one membership case; the other person/member identity returns 404 and remains unresolved. Research: `docs/research/2026-11-02-household-membership-review-investigation.md`; sync correction deployed and verified: `docs/plans/2026-11-02-001-deceased-person-sync-contract.md`. Positive Christian evidence candidate: recorded Commitment step type 5, pending source-owner authority/status/removal decisions. See `docs/research/2026-11-02-christian-source-follow-up.md`. Rowan has been sent the authorized Commitment-source/status question in Giving Check. Classification and production data were not changed by this investigation.
+
+PRs #67/#68 completed the deceased-person sync correction and verified full job on 2 November: the source inactive/deceased state is refreshed, the affected household's stale-data flag is cleared, and all 745 current-cohort report rows enumerate with matching summaries. The unavailable 404 identity remains provisional. Release and queue-operation evidence: `docs/research/2026-11-02-deceased-person-release-verification.md`.
+
+The remaining membership case has explicit source removal history for the exact family association on 29 June; the person's current deletion/merge/retention disposition remains unresolved. Findings: `docs/research/2026-11-02-unavailable-identity-follow-up.md`. Proposed reconciliation: `docs/plans/2026-11-02-002-confirmed-family-membership-removals.md`, not implemented. No later Rowan reply was found on the Commitment-source/status question.
 
 The bounded Connect Group archive refresh from PR #62 is deployed and verified: stale active memberships fell from 29 to zero; UniChurch remains an exact source match. Release evidence: `docs/research/2026-10-31-archived-membership-release-verification.md`.
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { RockClient } from "@/lib/rock/client";
 import type { SyncProgressEvent } from "@/lib/sync/run-sync";
 import { syncRockSlice } from "@/lib/sync/run-sync";
+import { prepareFamilyMembershipReconciliation } from "@/lib/sync/family-membership-removal";
 import { refreshKnownConnectMemberships } from "@/lib/sync/membership-refresh";
 
 const baseUrl = process.env.ROCK_BASE_URL;
@@ -32,10 +33,16 @@ async function main() {
       `fetchedScheduledTransactionDetails=${slice.financialScheduledTransactionDetails.length}`,
     ].join(" "),
   );
-  const result = await syncRockSlice(prisma, prepared.slice, {
+  const family = await prepareFamilyMembershipReconciliation(
+    prepared.slice,
+    prisma,
+    client,
+  );
+  const result = await syncRockSlice(prisma, family.slice, {
     chunkSize,
     onProgress: createProgressLogger(),
-    sourceIssues: prepared.issues,
+    sourceIssues: [...prepared.issues, ...family.issues],
+    familyMembershipDecisions: family,
   });
 
   console.log(

@@ -1,7 +1,7 @@
 ---
 title: Include deceased records in the normal Rock full-sync contract
 date: 2026-11-02
-status: implemented-tested-reviewed-awaiting-github-release
+status: deployed-full-sync-verified-deceased-case-resolved
 roadmap: RM-007
 ---
 
@@ -55,3 +55,7 @@ Necessary scoped follow-up: add `$select=Id,Guid,GroupId,PersonId,GroupTypeId,Gr
 Add a reader regression that returns 500 on a later unprojected page and succeeds only with the verified projection, asserting query options/pagination and normalized membership output. Retain the real database deceased-person regression. Verify the projected page and known membership 20270 against Rock via GET-only probes; never skip the failed page or infer deletion. Review, test and release the follow-up through GitHub; wait for old fetching attempts to finish, then rerun the normal full job and complete the original production checks. No repair SQL or source mutation.
 
 Follow-up source validation completed: the full projected collection read succeeded across 38 pages / 37,945 members, with all selected fields schema-validated and membership 20270 present. The later-page failure regression was observed red before the projection change. Production completion is still pending the follow-up release and normal full sync.
+
+## Production completion
+
+PR #67 and the required projected-response follow-up PR #68 are merged and deployed through GitHub; both exact-main CI/image checks and both services succeeded. Replacement normal full job `c9eb33cc-e3a9-4ac8-a5dd-6f10d0cb8b5c` completed successfully, including derived refreshes, with scoped run `cmvykcx80000208p9bhzmn6mm` at 2026-11-02T01:24:36.888Z. The deceased person now has actual inactive/deceased source fields, the membership is fresh without archive changes, and its household's stale-data flag is cleared. The distinct unavailable identity remains flagged. All 745 report rows enumerate and match summaries; UniChurch and standard-group source/count checks pass. Detailed release, queue-operation and verification record: `docs/research/2026-11-02-deceased-person-release-verification.md`. No repair SQL, Rock mutation or extra stakeholder message was performed.

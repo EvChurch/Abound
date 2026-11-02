@@ -265,3 +265,9 @@ The initial fixture contract lives in `lib/rock/types.ts`, with sanitized sample
 ## References
 
 - Rock developer book, GroupMember enum mapping: https://community.rockrms.com/developer/book/17/17/content
+
+## Verified family membership removal history (2 November 2026)
+
+The normal sync read allowlist includes metadata-only `GET /api/Histories` for bounded, exact family-membership reconciliation. Actual instance Swagger and source records verify entity types Person 15, Group 16 and GroupMember 90, and fields Id, EntityTypeId, EntityId, Verb, ChangeType, RelatedEntityTypeId, RelatedEntityId and CreatedDateTime. The request filters exact person/member primary or related identities, selects only those fields, orders by CreatedDateTime/Id and requests at most 200 rows; a response reaching the bound is incomplete and rejected. Raw Value, ValueName, notes and actor details are not fetched or stored by this integration.
+
+A confirmed cessation requires current member-ID GET returning 404 plus matching exact Person/GroupMember REMOVEDFROMGROUP Record events related to the original family. Permissions/errors, ambiguous chronology/identity, missing evidence and later activity fail closed. Source timestamps are timezone-less and retained verbatim; comparisons normalize only fractional precision without assigning UTC. The original member and source flags remain untouched apart from local presence metadata, with proof retained in sync audit. See `docs/plans/2026-11-02-002-confirmed-family-membership-removals.md` and `docs/research/2026-11-02-unavailable-identity-follow-up.md`.

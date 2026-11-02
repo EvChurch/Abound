@@ -11,6 +11,7 @@ export const ROCK_READ_ENDPOINTS = [
   "/api/GroupTypeRoles",
   "/api/Groups",
   "/api/GroupMembers",
+  "/api/Histories",
   "/api/Campuses",
   "/api/FinancialAccounts",
   "/api/FinancialTransactions",

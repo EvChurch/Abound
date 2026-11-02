@@ -110,6 +110,7 @@ describe("people list view", () => {
             expect.objectContaining({
               householdMembers: {
                 some: {
+                  sourceRemovalVerifiedAt: null,
                   archived: false,
                   household: {
                     active: true,
@@ -317,6 +318,7 @@ describe("people list view", () => {
             expect.objectContaining({
               householdMembers: {
                 some: {
+                  sourceRemovalVerifiedAt: null,
                   archived: false,
                   household: {
                     active: true,
@@ -330,6 +332,7 @@ describe("people list view", () => {
                 expect.objectContaining({
                   householdMembers: {
                     some: {
+                      sourceRemovalVerifiedAt: null,
                       archived: false,
                       household: {
                         active: true,
