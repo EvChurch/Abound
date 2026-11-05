@@ -1,4 +1,4 @@
-FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
+FROM node:22.23.4-bookworm-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
 
 WORKDIR /app
 COPY scripts/update-security-ca.sh ./scripts/update-security-ca.sh
