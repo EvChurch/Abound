@@ -1,7 +1,7 @@
 # Claude Code Devcontainer
 # Based on Microsoft devcontainer image for better devcontainer integration
-ARG UV_VERSION=0.10.0
-FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:78a7ff97cd27b7124a5f3c2aefe146170793c56a1e03321dd31a289f6d82a04f AS uv
+ARG UV_VERSION=0.13.0
+FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:cdc6093146eb3ff6a40107b38f008b789e050e77ad87865e381d9917da55a168 AS uv
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
 
 ARG TZ
@@ -106,7 +106,11 @@ RUN curl -fsSL https://bun.sh/install | bash
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
-RUN uv python install 3.13 --default
+# Only UV manages packages here; pip and its optional bootstrap are unused.
+# Remove them in the install layer so their vendored dependencies are not shipped.
+RUN uv python install 3.13 --default && \
+  uv pip uninstall --python "$(uv python find 3.13 --managed-python)" --break-system-packages pip && \
+  python3 -c 'import pathlib, shutil, sysconfig; shutil.rmtree(pathlib.Path(sysconfig.get_path("stdlib")) / "ensurepip")'
 
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
