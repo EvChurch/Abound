@@ -54,8 +54,8 @@ importers:
         specifier: 5.24.6
         version: 5.24.6(graphql@16.15.0)
       jose:
-        specifier: 6.2.16
-        version: 6.2.16
+        specifier: 6.2.17
+        version: 6.2.17
       lucide-react:
         specifier: 1.70.0
         version: 1.70.0(@types/react@19.2.13)(react@19.2.5)
@@ -3875,8 +3875,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jose@6.2.16:
-    resolution: {integrity: sha512-4LSJpbuBuPdGrONCdZUy0xnxtLf8eEz+EY0SMXdHQEBU7bgUHDVblU/JAjryv3wID9/LK7/YuwFwq+AQNfMscQ==}
+  jose@6.2.17:
+    resolution: {integrity: sha512-wOuK9V1yujQFH5S0ZWmLcDZN7+IKh9bUCC2ZPCf2HDlol3WWHy+PPyNjEI75FXRLMp3vDKQcupP59xhVU95hcg==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -5630,7 +5630,7 @@ snapshots:
     dependencies:
       '@edge-runtime/cookies': 5.0.2
       '@panva/hkdf': 1.2.1
-      jose: 6.2.16
+      jose: 6.2.17
       next: 16.4.6(@babel/core@7.29.0)(@types/node@25.9.9)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       oauth4webapi: 3.8.5
       openid-client: 6.8.3
@@ -6388,7 +6388,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
       hono: 4.12.14
-      jose: 6.2.16
+      jose: 6.2.17
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -6410,7 +6410,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
       hono: 4.12.14
-      jose: 6.2.16
+      jose: 6.2.17
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -9472,7 +9472,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@6.2.16: {}
+  jose@6.2.17: {}
 
   js-tokens@4.0.0: {}
 
@@ -9937,7 +9937,7 @@ snapshots:
 
   openid-client@6.8.3:
     dependencies:
-      jose: 6.2.16
+      jose: 6.2.17
       oauth4webapi: 3.8.5
 
   optionator@0.9.4:
