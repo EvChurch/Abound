@@ -6,9 +6,9 @@ settings:
 
 overrides:
   '@react-email/ui>next': 16.4.6
-  '@maildev/smtp>nodemailer': 10.4.0
+  '@maildev/smtp>nodemailer': 10.5.0
   '@maildev/smtp>mailparser': 3.14.3
-  '@maildev/smtp>smtp-server': 3.21.3
+  '@maildev/smtp>smtp-server': 3.21.4
 
 importers:
 
@@ -66,8 +66,8 @@ importers:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.0)(@opentelemetry/api@1.10.0)(@types/node@25.9.9)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       nodemailer:
-        specifier: 10.4.0
-        version: 10.4.0
+        specifier: 10.5.0
+        version: 10.5.0
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -4282,14 +4282,6 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
-  nodemailer@10.3.1:
-    resolution: {integrity: sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA==}
-    engines: {node: '>=20.0.0'}
-
-  nodemailer@10.4.0:
-    resolution: {integrity: sha512-fyy6r4Q5euRJ9Qr3Cts9K7SZrfe9zmz9oLOYiAR02MEJRDRci+99y0OoYBYBgpLffOqkkjXrB/d26VfiMje/kA==}
-    engines: {node: '>=20.0.0'}
-
   nodemailer@10.5.0:
     resolution: {integrity: sha512-L/w/HH5MqpzMDuZD7fQdt/+KqymuvrpaApaIjAH2XA3ILePwlcvXCVVvP75xVrXCEt2ggK2marrrHHFB5Qu0kA==}
     engines: {node: '>=20.0.0'}
@@ -4975,8 +4967,8 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
-  smtp-server@3.21.3:
-    resolution: {integrity: sha512-RJRuhJWt+Zs8/c9Pa1Qrzz7RO49iRxrdj+7CXjz+zwRZLVliYyM/vrqF4VxsFH67eLCNW9kM3o5K9tHvlPuiIw==}
+  smtp-server@3.21.4:
+    resolution: {integrity: sha512-FnkLEd4QAsuUJTd7AK6zSDB8y2Fn3T1EXIC0OIUMqYbUmCv4VH9p6opt8afCiEd6x+hxjlh/CUFCSJKMW+Nfyg==}
     engines: {node: '>=20.0.0'}
 
   socket.io-adapter@2.5.8:
@@ -6350,8 +6342,8 @@ snapshots:
       dompurify: 3.4.17
       jsdom: 26.1.0
       mailparser: 3.14.3
-      nodemailer: 10.4.0
-      smtp-server: 3.21.3
+      nodemailer: 10.5.0
+      smtp-server: 3.21.4
       wildstring: 1.0.9
     transitivePeerDependencies:
       - bufferutil
@@ -9860,10 +9852,6 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  nodemailer@10.3.1: {}
-
-  nodemailer@10.4.0: {}
-
   nodemailer@10.5.0: {}
 
   non-error@0.1.0: {}
@@ -10680,10 +10668,10 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  smtp-server@3.21.3:
+  smtp-server@3.21.4:
     dependencies:
       ipv6-normalize: 1.0.1
-      nodemailer: 10.3.1
+      nodemailer: 10.5.0
       punycode.js: 2.3.1
 
   socket.io-adapter@2.5.8:

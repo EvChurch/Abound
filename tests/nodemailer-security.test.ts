@@ -51,6 +51,36 @@ describe.each(contexts)(
       expect(node.getEnvelope().to).toEqual(["user@example.invalid"]);
     });
 
+    it.each([
+      "user@victim.invalid .allowed.invalid",
+      "CEO <user@victim.invalid(comment).allowed.invalid>",
+      "user@victim.invalid\r\n \t.allowed.invalid",
+    ])(
+      "preserves the full CFWS domain in parser and envelope for %s",
+      (input) => {
+        // GHSA-3q53-mvfw-q9v8: a truncated domain can disagree with a
+        // recipient restriction. These fixtures use reserved synthetic domains.
+        const expected = "user@victim.invalid.allowed.invalid";
+        expect(parseAddress(input).map(({ address }) => address)).toEqual([
+          expected,
+        ]);
+        const nodemailer = parentRequire(
+          "nodemailer",
+        ) as typeof import("nodemailer");
+        const transport = nodemailer.createTransport({ jsonTransport: true });
+        return transport
+          .sendMail({
+            from: "sender@example.invalid",
+            to: input,
+            text: "synthetic CFWS fixture",
+          })
+          .then((message) => {
+            expect(message.envelope.to).toEqual([expected]);
+          })
+          .finally(() => transport.close());
+      },
+    );
+
     it("preserves ordinary display names and separate recipients", () => {
       expect(
         parseAddress(
@@ -193,13 +223,24 @@ it("sends through the actual application adapter over loopback SMTP and maps rej
       ).status,
     ).toBe("ACCEPTED");
     expect(messages[1].envelope.rcptTo[0].address).toBe("user@example.invalid");
+    for (const recipientEmail of [
+      "user@victim.invalid .allowed.invalid",
+      "CEO <user@victim.invalid(comment).allowed.invalid>",
+      "user@victim.invalid\r\n \t.allowed.invalid",
+    ]) {
+      const result = await sender.send({ ...payload, recipientEmail });
+      expect(result.status).toBe("ACCEPTED");
+      expect(
+        messages.at(-1)?.envelope.rcptTo.map(({ address }) => address),
+      ).toEqual(["user@victim.invalid.allowed.invalid"]);
+    }
     rejectRecipient = true;
     const rejected = await sender.send(payload);
     expect(rejected.status).toBe("FAILED");
     if (rejected.status !== "FAILED")
       throw new Error("Expected SMTP rejection");
     expect(rejected.errorMessage).toContain("synthetic rejection");
-    expect(messages).toHaveLength(2);
+    expect(messages).toHaveLength(5);
   } finally {
     await new Promise<void>((done) => server.close(done));
   }
