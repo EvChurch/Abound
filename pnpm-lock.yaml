@@ -81,8 +81,8 @@ importers:
         specifier: 19.2.5
         version: 19.2.5(react@19.2.5)
       recharts:
-        specifier: 3.8.1
-        version: 3.8.1(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1)
+        specifier: 3.10.1
+        version: 3.10.1(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1)
       resend:
         specifier: 6.16.0
         version: 6.16.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
@@ -137,7 +137,7 @@ importers:
         version: 29.1.1
       maildev:
         specifier: 3.0.0
-        version: 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6)
+        version: 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.2.10)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6)
       prettier:
         specifier: 3.10.0
         version: 3.10.0
@@ -3698,11 +3698,8 @@ packages:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
     engines: {node: '>= 4'}
 
-  immer@10.2.0:
-    resolution: {integrity: sha512-d/+XTN3zfODyjr89gM3mPq1WNX2B8pYsu7eORitdwyA2sBubnTl3laYlBk4sXY5FUa5qTZGBDPJICVbvqzjlbw==}
-
-  immer@11.1.4:
-    resolution: {integrity: sha512-XREFCPo6ksxVzP4E0ekD5aMdf8WMwmdNaz6vuvxgI40UaEiu6q3p8X52aU6GdyvLY3XXX/8R7JOTXStz/nBbRw==}
+  immer@11.2.10:
+    resolution: {integrity: sha512-pzANBj+0A9u+prdhBJ14DVi44vCvVUQzBa8DKt6I0AMCokPHtt722BK9IX5bFC70xUSU9TnzLRIJLTGqIzjEFw==}
 
   import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
@@ -4745,8 +4742,8 @@ packages:
   real-require@1.0.0:
     resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
-  recharts@3.8.1:
-    resolution: {integrity: sha512-mwzmO1s9sFL0TduUpwndxCUNoXsBw3u3E/0+A+cLcrSfQitSG62L32N69GhqUrrT5qKcAE3pCGVINC6pqkBBQg==}
+  recharts@3.10.1:
+    resolution: {integrity: sha512-QXFrvt6IVcw7eeZCoyXTwkIJAX3Dv1nyVhMicXJ47GsGDDpcN8z6o644DibE9XjpBTThtsomLKnTV6lc+cVFUA==}
     engines: {node: '>=18'}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -4780,8 +4777,8 @@ packages:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
 
-  reselect@5.1.1:
-    resolution: {integrity: sha512-K/BG6eIky/SBpzfHZv/dd+9JBFiS4SWV7FIujVyJRux6e45+73RaUHXLmIR1f7WOMaQ0U1km6qwklRQxpJJY0w==}
+  reselect@5.2.0:
+    resolution: {integrity: sha512-AgZ3UOZm3YndfrJ4OYjgrT7bmCm/1iqkjvEfH/oYjzh6PD2qw4QuT3jjnXIrpdt4MTpMXclMT3lXbmRY+XRakw==}
 
   resend@6.16.0:
     resolution: {integrity: sha512-SaKISwHtxvAxneF84Njgnzg+zdngUu1vOT/paRU1De9QF+zXQR3GnwJHSh+mpJPjUhsGD4WxYi5CfKkXMkDqwg==}
@@ -6351,7 +6348,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@maildev/ui@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))':
+  '@maildev/ui@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.2.10)(use-sync-external-store@1.6.0(react@19.2.5))':
     dependencies:
       '@fastify/static': 10.1.5
       '@maildev/core': 3.0.0
@@ -6362,7 +6359,7 @@ snapshots:
       react-dom: 19.2.5(react@19.2.5)
       socket.io-client: 4.8.3
       tailwind-merge: 2.6.1
-      zustand: 5.0.14(@types/react@19.2.13)(immer@11.1.4)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
+      zustand: 5.0.14(@types/react@19.2.13)(immer@11.2.10)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
     transitivePeerDependencies:
       - '@types/react'
       - bufferutil
@@ -7054,10 +7051,10 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@standard-schema/utils': 0.3.0
-      immer: 11.1.4
+      immer: 11.2.10
       redux: 5.0.1
       redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.1.1
+      reselect: 5.2.0
     optionalDependencies:
       react: 19.2.5
       react-redux: 9.2.0(@types/react@19.2.13)(react@19.2.5)(redux@5.0.1)
@@ -9296,9 +9293,7 @@ snapshots:
 
   ignore@7.0.5: {}
 
-  immer@10.2.0: {}
-
-  immer@11.1.4: {}
+  immer@11.2.10: {}
 
   import-fresh@3.3.1:
     dependencies:
@@ -9694,13 +9689,13 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  maildev@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6):
+  maildev@3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.2.10)(use-sync-external-store@1.6.0(react@19.2.5))(zod@4.3.6):
     dependencies:
       '@maildev/api': 3.0.0(zod@4.3.6)
       '@maildev/core': 3.0.0
       '@maildev/mcp': 3.0.0
       '@maildev/smtp': 3.0.0
-      '@maildev/ui': 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.1.4)(use-sync-external-store@1.6.0(react@19.2.5))
+      '@maildev/ui': 3.0.0(@types/react@19.2.13)(fastify@5.12.7)(immer@11.2.10)(use-sync-external-store@1.6.0(react@19.2.5))
       commander: 12.1.0
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -10359,19 +10354,19 @@ snapshots:
 
   real-require@1.0.0: {}
 
-  recharts@3.8.1(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1):
+  recharts@3.10.1(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1):
     dependencies:
       '@reduxjs/toolkit': 2.11.2(react-redux@9.2.0(@types/react@19.2.13)(react@19.2.5)(redux@5.0.1))(react@19.2.5)
       clsx: 2.1.1
       decimal.js-light: 2.5.1
       es-toolkit: 1.45.1
       eventemitter3: 5.0.4
-      immer: 10.2.0
+      immer: 11.2.10
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       react-is: 17.0.2
       react-redux: 9.2.0(@types/react@19.2.13)(react@19.2.5)(redux@5.0.1)
-      reselect: 5.1.1
+      reselect: 5.2.0
       tiny-invariant: 1.3.3
       use-sync-external-store: 1.6.0(react@19.2.5)
       victory-vendor: 37.3.6
@@ -10414,7 +10409,7 @@ snapshots:
 
   require-from-string@2.0.2: {}
 
-  reselect@5.1.1: {}
+  reselect@5.2.0: {}
 
   resend@6.16.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)):
     dependencies:
@@ -11279,9 +11274,9 @@ snapshots:
 
   zod@4.3.6: {}
 
-  zustand@5.0.14(@types/react@19.2.13)(immer@11.1.4)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5)):
+  zustand@5.0.14(@types/react@19.2.13)(immer@11.2.10)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5)):
     optionalDependencies:
       '@types/react': 19.2.13
-      immer: 11.1.4
+      immer: 11.2.10
       react: 19.2.5
       use-sync-external-store: 1.6.0(react@19.2.5)
