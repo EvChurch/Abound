@@ -31,6 +31,7 @@ describe("Resend webhook event recording", () => {
           data: {
             created_at: "2026-07-07T09:01:00.000Z",
             email_id: "email_123",
+            message_id: "<synthetic-email-123@example.org>",
             from: "hello@example.org",
             subject: "Hello",
             to: ["jane@example.com"],
@@ -106,6 +107,7 @@ describe("Resend webhook event recording", () => {
           data: {
             created_at: "2026-07-07T09:03:00.000Z",
             email_id: "email_123",
+            message_id: "<synthetic-email-123@example.org>",
             from: "info@ev.church",
             subject: "Hello",
             to: ["jane@example.com"],
@@ -123,7 +125,7 @@ describe("Resend webhook event recording", () => {
       expect.objectContaining({
         create: expect.objectContaining({
           metadata: expect.objectContaining({
-            messageId: null,
+            messageId: "<synthetic-email-123@example.org>",
             tags: null,
           }),
           eventType: "OPENED",
@@ -166,6 +168,7 @@ describe("Resend webhook event recording", () => {
             },
             created_at: "2026-07-07T09:04:00.000Z",
             email_id: "email_123",
+            message_id: "<synthetic-email-123@example.org>",
             from: "info@ev.church",
             subject: "Hello",
             tags: { automationId: "automation_1", runId: "run_1" },
@@ -211,6 +214,7 @@ describe("Resend webhook event recording", () => {
           data: {
             created_at: "2026-07-07T09:01:00.000Z",
             email_id: "email_unknown",
+            message_id: "<synthetic-unknown@example.org>",
             from: "hello@example.org",
             subject: "Hello",
             to: ["jane@example.com"],

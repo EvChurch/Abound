@@ -24,11 +24,11 @@ importers:
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.7)
       '@pothos/core':
-        specifier: 4.12.0
-        version: 4.12.0(graphql@16.15.0)
+        specifier: 4.17.0
+        version: 4.17.0(graphql@16.15.0)
       '@pothos/plugin-prisma':
-        specifier: 4.14.3
-        version: 4.14.3(@pothos/core@4.12.0(graphql@16.15.0))(@prisma/client@7.10.1(prisma@7.10.1(@types/node@25.9.9)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))(graphql@16.15.0)(typescript@6.0.3)
+        specifier: 4.17.2
+        version: 4.17.2(@pothos/core@4.17.0(graphql@16.15.0))(@prisma/client@7.10.1(prisma@7.10.1(@types/node@25.9.9)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))(graphql@16.15.0)
       '@prisma/adapter-pg':
         specifier: 7.10.1
         version: 7.10.1
@@ -84,8 +84,8 @@ importers:
         specifier: 3.10.1
         version: 3.10.1(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1)
       resend:
-        specifier: 6.16.0
-        version: 6.16.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+        specifier: 6.38.0
+        version: 6.38.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       sonner:
         specifier: 2.0.8
         version: 2.0.8(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -1159,19 +1159,24 @@ packages:
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
-  '@pothos/core@4.12.0':
-    resolution: {integrity: sha512-PeiODrj3GjQ7Nbs/5p65DEyBWZTSGGjgGO/BgaMEqS1jBNX/2zJTEQJA9zM5uPmCHUCDjE7Qn2U7lOi0ALp/8A==}
+  '@pothos/core@4.17.0':
+    resolution: {integrity: sha512-78KfWObZfhXrhTO5enOVest2GIYqQfAlHpWxnHCsXIZFNVPwmELSJN16vcS1fhv9205QI4iMOGeUnGPgvLUMZg==}
     peerDependencies:
-      graphql: ^16.10.0
+      graphql: ^16.10.0 || ^17.0.0
 
-  '@pothos/plugin-prisma@4.14.3':
-    resolution: {integrity: sha512-jeI6gGhozIpig4zmDT7uIu8LUjUZLRCG8GPD6ij/3y7hjl92yG7gc9vbqy14YbTNoYXPpoMPkumiOy+FeRSDcw==}
+  '@pothos/plugin-prisma@4.17.2':
+    resolution: {integrity: sha512-gHIsKu9HvRiLH7fIuCJfS9BXNlnuX18605iSPajBEjkW0fJmM16vdwZOq2H2cUDGAHjvdA23Q6yE7WOO4ptozg==}
     hasBin: true
     peerDependencies:
       '@pothos/core': '*'
       '@prisma/client': '*'
-      graphql: ^16.10.0
-      typescript: '>=4.7.2'
+      graphql: ^16.10.0 || ^17.0.0
+
+  '@pothos/selection-mapper@0.3.0':
+    resolution: {integrity: sha512-mZp5mW+j10N3I4HBzGntloj+D4h+Qztv/kM578EwSAAoGkVVImowLXvcW21Llmj9n0rStRYhBcdKGiHQu5xnqQ==}
+    peerDependencies:
+      '@pothos/core': '*'
+      graphql: ^16.10.0 || ^17.0.0
 
   '@prisma/adapter-pg@7.10.1':
     resolution: {integrity: sha512-EP9ruPYHjKP80WZlb5qVaEXKgZjJieBFjAxcBtQnDAHD6+16UN4keVmBh6L/RUpuDQT2FQRbvKNgq5d4Ix+IkQ==}
@@ -4503,8 +4508,8 @@ packages:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
 
-  postal-mime@2.7.4:
-    resolution: {integrity: sha512-0WdnFQYUrPGGTFu1uOqD2s7omwua8xaeYGdO6rb88oD5yJ/4pPHDA4sdWqfD8wQVfCny563n/HQS7zTFft+f/g==}
+  postal-mime@2.7.6:
+    resolution: {integrity: sha512-UUlyE2KlxmvwMGq060onF/VWU3zD6dVW31FwokQ5v26jWd35fbs2MoTFzh+jXnPwAyV2MULMKXcBInGOl5TO6Q==}
 
   postcss@8.5.23:
     resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
@@ -4780,8 +4785,8 @@ packages:
   reselect@5.2.0:
     resolution: {integrity: sha512-AgZ3UOZm3YndfrJ4OYjgrT7bmCm/1iqkjvEfH/oYjzh6PD2qw4QuT3jjnXIrpdt4MTpMXclMT3lXbmRY+XRakw==}
 
-  resend@6.16.0:
-    resolution: {integrity: sha512-SaKISwHtxvAxneF84Njgnzg+zdngUu1vOT/paRU1De9QF+zXQR3GnwJHSh+mpJPjUhsGD4WxYi5CfKkXMkDqwg==}
+  resend@6.38.0:
+    resolution: {integrity: sha512-+t1bz6unmYcyYrLqrZtkn73ODZhUgKJTViuRf+a4ewgo3mT/Bpg64WkBtAVQlXQcmUkeuorO1eLAd2+1h4jgNQ==}
     engines: {node: '>=20'}
     peerDependencies:
       '@react-email/render': '*'
@@ -5021,8 +5026,8 @@ packages:
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
-  standardwebhooks@1.0.0:
-    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
+  standardwebhooks@1.1.1:
+    resolution: {integrity: sha512-bCbX9ZEyFkWPsRz7Bl3NuQUJohmwGSev/yhr7vhaGPlc4AfIrspIRa6cPTBuI1ItmrTDJ4d/S2hCsfe4+vQGnQ==}
 
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
@@ -6481,17 +6486,22 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@pothos/core@4.12.0(graphql@16.15.0)':
+  '@pothos/core@4.17.0(graphql@16.15.0)':
     dependencies:
       graphql: 16.15.0
 
-  '@pothos/plugin-prisma@4.14.3(@pothos/core@4.12.0(graphql@16.15.0))(@prisma/client@7.10.1(prisma@7.10.1(@types/node@25.9.9)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))(graphql@16.15.0)(typescript@6.0.3)':
+  '@pothos/plugin-prisma@4.17.2(@pothos/core@4.17.0(graphql@16.15.0))(@prisma/client@7.10.1(prisma@7.10.1(@types/node@25.9.9)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))(graphql@16.15.0)':
     dependencies:
-      '@pothos/core': 4.12.0(graphql@16.15.0)
+      '@pothos/core': 4.17.0(graphql@16.15.0)
+      '@pothos/selection-mapper': 0.3.0(@pothos/core@4.17.0(graphql@16.15.0))(graphql@16.15.0)
       '@prisma/client': 7.10.1(prisma@7.10.1(@types/node@25.9.9)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3)
       '@prisma/generator-helper': 7.7.0
       graphql: 16.15.0
-      typescript: 6.0.3
+
+  '@pothos/selection-mapper@0.3.0(@pothos/core@4.17.0(graphql@16.15.0))(graphql@16.15.0)':
+    dependencies:
+      '@pothos/core': 4.17.0(graphql@16.15.0)
+      graphql: 16.15.0
 
   '@prisma/adapter-pg@7.10.1':
     dependencies:
@@ -10079,7 +10089,7 @@ snapshots:
 
   possible-typed-array-names@1.1.0: {}
 
-  postal-mime@2.7.4: {}
+  postal-mime@2.7.6: {}
 
   postcss@8.5.23:
     dependencies:
@@ -10411,10 +10421,10 @@ snapshots:
 
   reselect@5.2.0: {}
 
-  resend@6.16.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)):
+  resend@6.38.0(@react-email/render@2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)):
     dependencies:
-      postal-mime: 2.7.4
-      standardwebhooks: 1.0.0
+      postal-mime: 2.7.6
+      standardwebhooks: 1.1.1
     optionalDependencies:
       '@react-email/render': 2.0.9(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
@@ -10735,7 +10745,7 @@ snapshots:
 
   stackback@0.0.2: {}
 
-  standardwebhooks@1.0.0:
+  standardwebhooks@1.1.1:
     dependencies:
       '@stablelib/base64': 1.0.1
       fast-sha256: 1.3.0
