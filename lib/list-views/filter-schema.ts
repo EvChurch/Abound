@@ -1,3 +1,7 @@
+import {
+  HOUSEHOLD_STAGES,
+  CHRISTIAN_STATUSES,
+} from "@/lib/giving/household-participation-contract";
 export const LIST_VIEW_RESOURCES = ["PEOPLE", "HOUSEHOLDS"] as const;
 
 export type ListViewResource = (typeof LIST_VIEW_RESOURCES)[number];
@@ -293,7 +297,18 @@ function validateCondition(
     return;
   }
 
-  if (!valueMatchesOperator(input.value, input.operator, field.fieldType)) {
+  const allowed: readonly string[] | undefined =
+    field.id === "householdStage"
+      ? HOUSEHOLD_STAGES
+      : field.id === "householdChristianStatus"
+        ? CHRISTIAN_STATUSES
+        : undefined;
+  const values = Array.isArray(input.value) ? input.value : [input.value];
+  if (
+    (allowed &&
+      !values.every((v) => typeof v === "string" && allowed.includes(v))) ||
+    !valueMatchesOperator(input.value, input.operator, field.fieldType)
+  ) {
     errors.push({
       code: "INVALID_VALUE",
       message: `Value does not match ${field.fieldType} ${input.operator} filter.`,

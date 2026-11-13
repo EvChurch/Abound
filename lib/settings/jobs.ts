@@ -182,18 +182,16 @@ export async function loadQueueTelemetryFromPgBoss(): Promise<QueueTelemetry> {
       boss.getSchedules(),
     ]);
 
-    const stats = await Promise.all(
-      JOB_DASHBOARD_QUEUES.map(async (queueName) => {
-        try {
-          return await boss.getQueueStats(queueName);
-        } catch {
-          return queues.find((queue) => queue.name === queueName) ?? null;
-        }
-      }),
-    );
+    // getQueueStats returns time-series samples; getQueues supplies queue metadata
+    // and the latest counters maintained by pg-boss supervision.
+    for (const name of JOB_DASHBOARD_QUEUES) {
+      if (!queues.some((queue) => queue.name === name)) {
+        throw new Error(`Queue telemetry is missing expected queue: ${name}`);
+      }
+    }
 
     return {
-      queues: stats.filter((queue): queue is QueueResult => Boolean(queue)),
+      queues,
       schedules: schedules.filter((schedule) =>
         JOB_DASHBOARD_QUEUES.includes(schedule.name as JobsDashboardQueueName),
       ),

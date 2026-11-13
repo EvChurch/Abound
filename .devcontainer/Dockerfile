@@ -116,7 +116,7 @@ RUN uv python install 3.13 --default && \
 RUN uv tool install ast-grep-cli
 
 # Install fnm (Fast Node Manager) and Node 22
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22.23.5
 ENV FNM_DIR="/home/vscode/.fnm"
 RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell && \
   export PATH="$FNM_DIR:$PATH" && \

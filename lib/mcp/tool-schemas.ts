@@ -1,3 +1,4 @@
+import { participationInputSchema } from "@/lib/giving/household-participation-contract";
 import { z } from "zod";
 
 export const listViewResourceSchema = z.enum(["PEOPLE", "HOUSEHOLDS"]);
@@ -28,6 +29,7 @@ export const rockProfileInputSchema = z
   .strict();
 
 export const toolInputSchemas = {
+  get_household_participation: participationInputSchema,
   get_filter_catalog: filterCatalogInputSchema,
   get_household_profile: rockProfileInputSchema,
   get_person_profile: rockProfileInputSchema,

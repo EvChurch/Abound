@@ -41,6 +41,7 @@ The v1 tool registry is read-only:
 - `query_households`
 - `get_person_profile`
 - `get_household_profile`
+- `get_household_participation`
 
 These tools reuse existing Abound services for profiles, list views, saved segments, filter catalogs, and sync freshness. They do not query live Rock directly.
 
@@ -55,3 +56,5 @@ The endpoint intentionally follows the current staff access model: any active lo
 Every MCP tool invocation attempts to create an `McpAuditEvent`. Audit records store the local app user id, tool name, success/failure status, safe error code, optional target Rock id, result count, request id, and timestamp.
 
 Audit records do not store prompts, bearer tokens, donor payloads, result bodies, emails, or raw filters. Audit write failures are swallowed so they do not turn successful read-only tool calls into user-facing outages.
+
+The household participation tool returns the shared report aggregates and at most 100 household rows, with period/fund/snapshot context, temporary Investigating provenance and explicit incomplete-data warnings. It does not expose raw gifts or add a query passthrough. Follow-up pages must retain asOf and snapshotId; sync/fund changes require a fresh report. See `docs/architecture/household-participation-report.md`.

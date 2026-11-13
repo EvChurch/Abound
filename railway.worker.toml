@@ -1,6 +1,6 @@
 [build]
-builder = "RAILPACK"
-buildCommand = "pnpm prisma:generate && pnpm build:workers"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 watchPatterns = []
 
 [deploy]

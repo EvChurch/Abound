@@ -1,3 +1,4 @@
+import { currentFamilyMembershipWhere } from "@/lib/giving/household-membership";
 import { GraphQLError } from "graphql";
 import type {
   CommunicationAutomationRecipientStatus,
@@ -192,6 +193,7 @@ const personProfileSelect = {
     take: 4,
   },
   householdMembers: {
+    where: currentFamilyMembershipWhere,
     orderBy: [{ archived: "asc" }, { rockId: "asc" }],
     select: {
       archived: true,
@@ -240,6 +242,7 @@ const householdProfileSelect = {
     select: personSummarySelect(),
   },
   members: {
+    where: currentFamilyMembershipWhere,
     orderBy: [{ archived: "asc" }, { rockId: "asc" }],
     select: {
       archived: true,

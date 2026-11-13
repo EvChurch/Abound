@@ -12,6 +12,15 @@ describe("RockClient", () => {
         path: `${url.pathname}${url.search}`,
       });
 
+      // Rock's deceased-inclusive full response fails on a later page, while
+      // selecting the verified membership contract returns that same page.
+      if (
+        url.pathname === "/api/GroupMembers" &&
+        Number(url.searchParams.get("$skip")) >= 2 &&
+        !url.searchParams.has("$select")
+      ) {
+        return new Response(null, { status: 500 });
+      }
       return Response.json(responseFor(url));
     });
 
@@ -32,17 +41,22 @@ describe("RockClient", () => {
       1001, 1002, 1003,
     ]);
     expect(slice.people).toHaveLength(3);
+    expect(slice.people[2]?.IsDeceased).toBe(true);
     expect(slice.people[0]?.ConnectionStatusValueId).toBe(2001);
     expect(slice.familyGroups.map((group) => group.Id)).toEqual([10]);
-    expect(slice.familyMembers.map((member) => member.Id)).toEqual([100]);
+    expect(slice.familyMembers.map((member) => member.Id)).toEqual([100, 101]);
+    expect(requests).toContainEqual({
+      method: "GET",
+      path: "/api/GroupMembers?IncludeDeceased=true&$select=Id,Guid,GroupId,PersonId,GroupTypeId,GroupRoleId,GroupMemberStatus,IsArchived,ModifiedDateTime&$orderby=Id%20asc&$top=2&$skip=2",
+    });
     expect(requests.every((request) => request.method === "GET")).toBe(true);
     expect(requests).toContainEqual({
       method: "GET",
-      path: "/api/People?$orderby=Id%20asc&$top=2&$skip=0",
+      path: "/api/People?includeDeceased=true&$orderby=Id%20asc&$top=2&$skip=0",
     });
     expect(requests).toContainEqual({
       method: "GET",
-      path: "/api/People?$orderby=Id%20asc&$top=2&$skip=2",
+      path: "/api/People?includeDeceased=true&$orderby=Id%20asc&$top=2&$skip=2",
     });
   });
 
@@ -100,7 +114,7 @@ function responseFor(url: URL) {
             PrimaryFamilyId: 10,
           },
           { Id: 2, PrimaryAliasId: 1002, PrimaryFamilyId: 10 },
-          { Id: 3, PrimaryAliasId: 1003 },
+          { Id: 3, PrimaryAliasId: 1003, IsDeceased: true },
         ],
         skip,
       );
@@ -116,6 +130,9 @@ function responseFor(url: URL) {
       return page(
         [
           { Id: 100, GroupId: 10, PersonId: 1 },
+          ...(url.searchParams.get("IncludeDeceased") === "true"
+            ? [{ Id: 101, GroupId: 10, PersonId: 3 }]
+            : []),
           { Id: 200, GroupId: 20, PersonId: 1, GroupTypeId: 25 },
         ],
         skip,

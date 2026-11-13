@@ -1,3 +1,5 @@
+import { currentFamilyMembershipWhere } from "@/lib/giving/household-membership";
+import { householdClassificationWhere } from "@/lib/giving/household-classification-where";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 
@@ -81,7 +83,7 @@ export type HouseholdsConnection = {
 const householdListSelect = {
   _count: {
     select: {
-      members: true,
+      members: { where: currentFamilyMembershipWhere },
       staffTasks: {
         where: {
           status: {
@@ -122,6 +124,7 @@ const householdListSelect = {
     },
     take: 3,
     where: {
+      ...currentFamilyMembershipWhere,
       archived: false,
     },
   },
@@ -271,6 +274,14 @@ function conditionToHouseholdWhere(
   condition: FilterCondition,
 ): Prisma.RockHouseholdWhereInput | null {
   switch (condition.field) {
+    case "householdStage":
+    case "householdChristianStatus":
+      return householdClassificationWhere(
+        condition.field,
+        Array.isArray(condition.value)
+          ? condition.value.map(String)
+          : [String(condition.value)],
+      );
     case "search":
       return {
         name: { contains: stringValue(condition), mode: "insensitive" },
@@ -293,12 +304,18 @@ function conditionToHouseholdWhere(
       return condition.value
         ? {
             members: {
-              some: { person: { email: { not: null }, emailActive: true } },
+              some: {
+                ...currentFamilyMembershipWhere,
+                person: { email: { not: null }, emailActive: true },
+              },
             },
           }
         : {
             members: {
-              none: { person: { email: { not: null }, emailActive: true } },
+              none: {
+                ...currentFamilyMembershipWhere,
+                person: { email: { not: null }, emailActive: true },
+              },
             },
           };
     case "hasActiveConnectGroupMember":
@@ -306,6 +323,7 @@ function conditionToHouseholdWhere(
         ? {
             members: {
               some: {
+                ...currentFamilyMembershipWhere,
                 person: {
                   groupMembers: { some: { activeConnectGroup: true } },
                 },
@@ -315,6 +333,7 @@ function conditionToHouseholdWhere(
         : {
             members: {
               none: {
+                ...currentFamilyMembershipWhere,
                 person: {
                   groupMembers: { some: { activeConnectGroup: true } },
                 },

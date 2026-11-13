@@ -5,6 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccessState } from "@/lib/auth/types";
 import type { HouseholdDonorTrend } from "@/lib/giving/metrics";
 
+vi.mock("@/lib/giving/household-participation", async () => {
+  const { participationReportFixture } =
+    await import("../fixtures/household-participation");
+  return {
+    getHouseholdParticipation: vi.fn(async () => participationReportFixture),
+  };
+});
+
 const mocks = vi.hoisted(() => ({
   accessState: { status: "anonymous" } as AccessState,
   givingPerAdult: {
@@ -444,7 +452,11 @@ describe("HomePage", () => {
     expect(screen.getByText("At-risk households")).toBeInTheDocument();
     expect(screen.getAllByText("At risk").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Role:/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("table", {
+        name: "Household participation by connection stage",
+      }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Sign in" }),
     ).not.toBeInTheDocument();

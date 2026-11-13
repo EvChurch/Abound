@@ -1,3 +1,5 @@
+import type { QueueResult, Schedule } from "pg-boss";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { listJobsDashboardSummary } from "@/lib/settings/jobs";
@@ -83,6 +85,17 @@ describe("listJobsDashboardSummary", () => {
       queues: [
         {
           activeCount: 1,
+          blockedCount: 0,
+          completedDelta: 0,
+          createdDelta: 0,
+          deltaOn: null,
+          deltaSeconds: null,
+          failedCount: 0,
+          failedDelta: 0,
+          readyCount: 2,
+          readyOldestSeconds: null,
+          runBins: null,
+          waitBins: null,
           createdOn: new Date("2026-04-23T00:00:00.000Z"),
           deferredCount: 0,
           heartbeatSeconds: undefined,
@@ -93,17 +106,21 @@ describe("listJobsDashboardSummary", () => {
           table: "job",
           totalCount: 3,
           updatedOn: new Date("2026-04-23T00:00:00.000Z"),
-        } as unknown as import("pg-boss").QueueResult,
+        } satisfies QueueResult,
       ],
       schedules: [
         {
+          createdOn: new Date("2026-04-23T00:00:00.000Z"),
+          updatedOn: new Date("2026-04-23T00:00:00.000Z"),
+          kind: "cron",
+          lastJobId: null,
           cron: "0 * * * *",
           data: {},
           key: "default-rock-full-sync",
           name: JOB_DASHBOARD_QUEUES[0],
           options: {},
           timezone: "UTC",
-        },
+        } satisfies Schedule,
       ],
     }));
 

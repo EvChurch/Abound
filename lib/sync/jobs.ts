@@ -3,6 +3,8 @@ import { PgBoss } from "pg-boss";
 import { RockClient } from "@/lib/rock/client";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { prepareFamilyMembershipReconciliation } from "@/lib/sync/family-membership-removal";
+import { refreshKnownConnectMemberships } from "@/lib/sync/membership-refresh";
 import {
   performFundScopedGivingRefresh,
   type FundScopedGivingRefreshJobData,
@@ -52,7 +54,13 @@ export type FundScopedGivingRefreshJobResult = Awaited<
 
 export type RockFullSyncDependencies = {
   prisma?: PrismaClient;
-  rockClient: Pick<RockClient, "getFullSyncSlice">;
+  rockClient: Pick<
+    RockClient,
+    | "getFullSyncSlice"
+    | "getGroupMember"
+    | "findGroupMember"
+    | "getFamilyMembershipHistory"
+  >;
   syncOptions?: SyncRunOptions;
 };
 
@@ -213,11 +221,26 @@ export async function performRockFullSyncJob(
   dependencies: RockFullSyncDependencies,
 ): Promise<RockSyncJobResult> {
   const slice = await dependencies.rockClient.getFullSyncSlice();
-  return syncRockSlice(
-    dependencies.prisma ?? prisma,
+  const client = dependencies.prisma ?? prisma;
+  const prepared = await refreshKnownConnectMemberships(
     slice,
-    dependencies.syncOptions,
+    client,
+    dependencies.rockClient,
   );
+  const family = await prepareFamilyMembershipReconciliation(
+    prepared.slice,
+    client,
+    dependencies.rockClient,
+  );
+  return syncRockSlice(client, family.slice, {
+    ...dependencies.syncOptions,
+    familyMembershipDecisions: family,
+    sourceIssues: [
+      ...(dependencies.syncOptions?.sourceIssues ?? []),
+      ...prepared.issues,
+      ...family.issues,
+    ],
+  });
 }
 
 export async function performFundScopedGivingRefreshJob(
