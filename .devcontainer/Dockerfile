@@ -1,7 +1,7 @@
 # Claude Code Devcontainer
 # Based on Microsoft devcontainer image for better devcontainer integration
-ARG UV_VERSION=0.13.0
-FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:cdc6093146eb3ff6a40107b38f008b789e050e77ad87865e381d9917da55a168 AS uv
+ARG UV_VERSION=0.13.8
+FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:5cc1805e2426484abca4ad46ea783bab281fdb225fd82d8ce6d66a81254bac85 AS uv
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
 
 ARG TZ
@@ -55,6 +55,15 @@ EOF
 
 COPY sync-github-authorized-keys /usr/local/bin/sync-github-authorized-keys
 RUN chmod 0755 /usr/local/bin/sync-github-authorized-keys
+
+# Match the production trust policy for OpenSSL/Python/curl as well as uv.
+# Refresh the OS store without retaining the distrusted legacy roots.
+RUN sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf && \
+  update-ca-certificates --fresh && \
+  apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+  sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf && \
+  update-ca-certificates --fresh && \
+  apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install git-delta
 ARG GIT_DELTA_VERSION=0.18.2

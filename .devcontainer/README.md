@@ -77,3 +77,5 @@ This is a documented departure from the downstream distributor recommendations
 in [PEP 453](https://peps.python.org/pep-0453/#recommendations-for-downstream-distributors),
 for this UV-managed development image. Reinstalling managed Python can restore
 the upstream packaging tools; reassess their dependencies before doing so.
+
+The image refreshes system CA certificates and applies the same emSign/AAA root distrust policy as the production image. UV 0.13.8 also carries the refreshed bundled trust store.
