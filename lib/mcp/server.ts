@@ -10,14 +10,22 @@ import {
 } from "@/lib/mcp/tools";
 import { toolInputSchemas } from "@/lib/mcp/tool-schemas";
 
+// Bound authenticated input before SDK validation and application callbacks.
+// Keep these client-visible limits documented in docs/solutions/security-issues/.
+const MAX_TOOL_INPUT_ELEMENTS = 10_000;
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
+
 export function createAboundMcpServer(
   principal: McpPrincipal,
   dependencies?: Partial<McpToolDependencies>,
 ) {
-  const server = new McpServer({
-    name: "abound-staff-read-only",
-    version: "0.1.0",
-  });
+  const server = new McpServer(
+    {
+      name: "abound-staff-read-only",
+      version: "0.1.0",
+    },
+    { maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS },
+  );
 
   for (const definition of MCP_TOOL_DEFINITIONS) {
     server.registerTool(
@@ -55,6 +63,7 @@ export async function handleMcpRequest(
   const server = createAboundMcpServer(principal);
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     sessionIdGenerator: undefined,
   });
 
