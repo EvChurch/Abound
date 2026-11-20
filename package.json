@@ -90,7 +90,7 @@
     "overrides": {
       "@react-email/ui>next": "16.4.6",
       "@maildev/smtp>nodemailer": "10.5.0",
-      "@maildev/smtp>mailparser": "3.14.3",
+      "@maildev/smtp>mailparser": "3.15.0",
       "@maildev/smtp>smtp-server": "3.21.4"
     }
   },
